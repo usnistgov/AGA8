@@ -1,0 +1,14 @@
+c     Variables containing the common parameters in the GROSS equations
+      implicit none
+
+      common /GROSS/ xHN,MMiGross,b0,b1,b2,bCHx,cCHx,c0,c1,c2,
+     &               RGross,mN2,mCO2,dPdDsave
+
+      integer NcGross,MaxFlds
+      parameter (NcGross=21,MaxFlds=21)
+
+      double precision RGross,mN2,mCO2,dPdDsave
+      double precision xHN(MaxFlds),MMiGross(MaxFlds)
+      double precision b0(3,3),b1(3,3),b2(3,3)
+      double precision bCHx(0:2,0:2),cCHx(0:2,0:2)
+      double precision c0(3,3,3),c1(3,3,3),c2(3,3,3)

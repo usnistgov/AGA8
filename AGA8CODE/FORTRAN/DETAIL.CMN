@@ -1,0 +1,23 @@
+C     Variables containing the common parameters in the DETAIL equations
+      implicit none
+
+      common /DETAIL/ an,bn,kn,un,Bsnij2,Bs,Csn,
+     &                Fi,Gi,Qi,Ki25,Ei25,Kij5,Uij5,Gij5,Tun,
+     &                n0i,th0i,MMiDetail,RDetail,K3,xold,Told,
+     &                dPdDsave,fn,gn,qn
+
+      integer NcDetail,MaxFlds,NTerms
+      parameter (NcDetail=21,MaxFlds=21,NTerms=58)
+
+      integer fn(NTerms),gn(NTerms),qn(NTerms),bn(NTerms),kn(NTerms)
+      double precision RDetail
+      double precision an(NTerms),un(NTerms)
+      double precision Bsnij2(MaxFlds,MaxFlds,18),Bs(18),Csn(NTerms)
+      double precision Fi(MaxFlds),Gi(MaxFlds),Qi(MaxFlds)
+      double precision Ki25(MaxFlds),Ei25(MaxFlds)
+      double precision Kij5(MaxFlds,MaxFlds),Uij5(MaxFlds,MaxFlds)
+      double precision Gij5(MaxFlds,MaxFlds)
+      double precision Tun(NTerms),Told
+      double precision n0i(MaxFlds,7),th0i(MaxFlds,7)
+      double precision MMiDetail(MaxFlds),K3,xold(MaxFlds)
+      double precision dPdDsave !Calculated in the Pressure subroutine, but not included as an argument since it is only used internally in the density algorithm.
