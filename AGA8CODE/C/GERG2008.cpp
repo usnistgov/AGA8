@@ -94,11 +94,10 @@
 // x(1)=0.94, x(3)=0.05, x(20)=0.01
 
 // Function prototypes (not exported)
-void xTerms(const std::vector<double> &x);
-void Alpha0GERG(const double T, const double D, const std::vector<double> &x, double a0[3]);
-void AlpharGERG(const int iprop, const double T, const double D, const std::vector<double> &x, double ar[4][4]);
-void PseudoCriticalPointGERG(const std::vector<double> &x, double &Tcx, double &Dcx);
-void tTermsGERG(const double tau, const double lntau, const std::vector<double> &x);
+static void Alpha0GERG(const double T, const double D, const std::vector<double> &x, double a0[3]);
+static void AlpharGERG(const int iprop, const double T, const double D, const std::vector<double> &x, double ar[4][4]);
+static void PseudoCriticalPointGERG(const std::vector<double> &x, double &Tcx, double &Dcx);
+static void tTermsGERG(const double lntau, const std::vector<double> &x);
 
 // Variables containing the common parameters in the GERG-2008 equations
 static double RGERG;
@@ -113,7 +112,7 @@ static double eijk[MaxMdl+1][MaxTrmM+1], gijk[MaxMdl+1][MaxTrmM+1], nijk[MaxMdl+
 static double btij[MaxFlds+1][MaxFlds+1], bvij[MaxFlds+1][MaxFlds+1], gtij[MaxFlds+1][MaxFlds+1], gvij[MaxFlds+1][MaxFlds+1];
 static double fij[MaxFlds+1][MaxFlds+1], th0i[MaxFlds+1][MaxFlds+1], n0i[MaxFlds+1][MaxFlds+1];
 static double taup[MaxFlds+1][MaxTrmP+1], taupijk[MaxFlds+1][MaxTrmM+1];
-static double dPdDsave, d2PdTDsave; //Calculated in the PressureGERG subroutine, but not included as an argument since it is only used internally in the density algorithm.
+static double dPdDsave; //Calculated in the PressureGERG subroutine, but not included as an argument since it is only used internally in the density algorithm.
 
 inline double Tanh(double xx){ return (exp(xx) - exp(-xx)) / (exp(xx) + exp(-xx)); }
 inline double Sinh(double xx){ return (exp(xx) - exp(-xx)) / 2; }
@@ -261,7 +260,7 @@ void DensityGERG(const int iFlag, const double T, const double P, const std::vec
             vlog += - vdiff;
             if (std::abs(vdiff) < tolr) {
                 // Check to see if state is possibly 2-phase, and if so restart
-                if (dPdDsave < 0 || d2PdTDsave < 0){
+                if (dPdDsave < 0){
                     iFail = 1;
                 }
                 else{
@@ -359,8 +358,7 @@ void PropertiesGERG(const double T, const double D, const std::vector<double> &x
 
 
 // The following routines are low-level routines that should not be called outside of this code.
-
-void ReducingParametersGERG(const std::vector<double> &x, double &Tr, double &Dr)
+static void ReducingParametersGERG(const std::vector<double> &x, double &Tr, double &Dr)
 {
     // Private Sub ReducingParametersGERG(x, Tr, Dr)
 
@@ -412,7 +410,7 @@ void ReducingParametersGERG(const std::vector<double> &x, double &Tr, double &Dr
   Trold = Tr;
 }
 
-void Alpha0GERG(const double T, const double D, const std::vector<double> &x, double a0[3])
+static void Alpha0GERG(const double T, const double D, const std::vector<double> &x, double a0[3])
 {
     // Private Sub Alpha0GERG(T, D, x, a0)
 
@@ -470,7 +468,7 @@ void Alpha0GERG(const double T, const double D, const std::vector<double> &x, do
   }
 }
 
-void AlpharGERG(const int iprop, const double T, const double D, const std::vector<double> &x, double ar[4][4])
+static void AlpharGERG(const int iprop, const double T, const double D, const std::vector<double> &x, double ar[4][4])
 {
     // Private Sub AlpharGERG(iprop, T, D, x, ar)
 
@@ -512,7 +510,7 @@ void AlpharGERG(const int iprop, const double T, const double D, const std::vect
 
     // If temperature has changed, calculate temperature dependent parts
     if (std::abs(T - Told) > 0.00000001 || std::abs(Tr - Trold2) > 0.00000001) { 
-		  tTermsGERG(tau, lntau, x); 
+		  tTermsGERG(lntau, x); 
     }
     Told = T;
     Trold2 = Tr;
@@ -603,9 +601,9 @@ void AlpharGERG(const int iprop, const double T, const double D, const std::vect
     }
 }
 
-void tTermsGERG(const double tau, const double lntau, const std::vector<double> &x)
+static void tTermsGERG(const double lntau, const std::vector<double> &x)
 {
-    // Private Sub tTermsGERG(tau, lntau, x)
+    // Private Sub tTermsGERG(lntau, x)
 
     // Calculate temperature dependent parts of the GERG-2008 equation of state
   
@@ -648,7 +646,7 @@ void tTermsGERG(const double tau, const double lntau, const std::vector<double> 
 }
 
 
-void PseudoCriticalPointGERG(const std::vector<double> &x, double &Tcx, double &Dcx)
+static void PseudoCriticalPointGERG(const std::vector<double> &x, double &Tcx, double &Dcx)
 {
     // PseudoCriticalPointGERG(x, Tcx, Dcx)
 
@@ -1560,23 +1558,23 @@ void SetupGERG()
 
   // Code to produce nearly exact values for n0(1) and n0(2)
   // This is not called in the current code, but included below to show how the values were calculated.  The return above can be removed to call this code.
-  T0 = 298.15;
-  d0 = 101.325 / RGERG / T0;
-  for (int i = 1; i <= MaxFlds; ++i){
-    n1 = 0; n2 = 0;
-    if (th0i[i][4] > 0) { n2 += - n0i[i][4] * th0i[i][4] / Tanh(th0i[i][4] / T0); n1 += - n0i[i][4] * log(Sinh(th0i[i][4] / T0)); }
-    if (th0i[i][5] > 0) { n2 += + n0i[i][5] * th0i[i][5] * Tanh(th0i[i][5] / T0); n1 += + n0i[i][5] * log(Cosh(th0i[i][5] / T0)); }
-    if (th0i[i][6] > 0) { n2 += - n0i[i][6] * th0i[i][6] / Tanh(th0i[i][6] / T0); n1 += - n0i[i][6] * log(Sinh(th0i[i][6] / T0)); }
-    if (th0i[i][7] > 0) { n2 += + n0i[i][7] * th0i[i][7] * Tanh(th0i[i][7] / T0); n1 += + n0i[i][7] * log(Cosh(th0i[i][7] / T0)); }
-    n0i[i][3] = n0i[i][3] - 1;
-    n0i[i][1] = n1 - n2 / T0 + n0i[i][3] * (1 + log(T0));
-    n0i[i][2] = n2 - n0i[i][3] * T0;
-    for (int j = 1; j <= 7; ++j){
-      n0i[i][j] = Rsr * n0i[i][j];
-    }
-    n0i[i][2] = n0i[i][2] - T0;
-    n0i[i][1] = n0i[i][1] - log(d0);
-  }
+  // T0 = 298.15;
+  // d0 = 101.325 / RGERG / T0;
+  // for (int i = 1; i <= MaxFlds; ++i){
+  //   n1 = 0; n2 = 0;
+  //   if (th0i[i][4] > 0) { n2 += - n0i[i][4] * th0i[i][4] / Tanh(th0i[i][4] / T0); n1 += - n0i[i][4] * log(Sinh(th0i[i][4] / T0)); }
+  //   if (th0i[i][5] > 0) { n2 += + n0i[i][5] * th0i[i][5] * Tanh(th0i[i][5] / T0); n1 += + n0i[i][5] * log(Cosh(th0i[i][5] / T0)); }
+  //   if (th0i[i][6] > 0) { n2 += - n0i[i][6] * th0i[i][6] / Tanh(th0i[i][6] / T0); n1 += - n0i[i][6] * log(Sinh(th0i[i][6] / T0)); }
+  //   if (th0i[i][7] > 0) { n2 += + n0i[i][7] * th0i[i][7] * Tanh(th0i[i][7] / T0); n1 += + n0i[i][7] * log(Cosh(th0i[i][7] / T0)); }
+  //   n0i[i][3] = n0i[i][3] - 1;
+  //   n0i[i][1] = n1 - n2 / T0 + n0i[i][3] * (1 + log(T0));
+  //   n0i[i][2] = n2 - n0i[i][3] * T0;
+  //   for (int j = 1; j <= 7; ++j){
+  //     n0i[i][j] = Rsr * n0i[i][j];
+  //   }
+  //   n0i[i][2] = n0i[i][2] - T0;
+  //   n0i[i][1] = n0i[i][1] - log(d0);
+  // }
 }
 
 #ifdef TEST_GERG

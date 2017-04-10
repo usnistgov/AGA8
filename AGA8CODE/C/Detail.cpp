@@ -54,9 +54,9 @@
 
 
 // Function prototypes (not exported)
-void xTermsDetail(const std::vector<double> &x);
-void Alpha0Detail(const double T, const double D, const std::vector<double> &x, double a0[3]);
-void AlpharDetail(const int itau, const int idel, const double T, const double D, const std::vector<double> &x, double ar[4][4]);
+static void xTermsDetail(const std::vector<double> &x);
+static void Alpha0Detail(const double T, const double D, const std::vector<double> &x, double a0[3]);
+static void AlpharDetail(const int itau, const int idel, const double T, const double D, double ar[4][4]);
 
 // The compositions in the x() array use the following order and must be sent as mole fractions:
 //     0 - PLACEHOLDER
@@ -86,7 +86,7 @@ void AlpharDetail(const int itau, const int idel, const double T, const double D
 // x(1)=0.94, x(3)=0.05, x(20)=0.01
 
 // Variables containing the common parameters in the DETAIL equations
-double RDetail;
+static double RDetail;
 static const int NcDetail = 21, MaxFlds = 21, NTerms = 58;
 static int fn[NTerms+1], gn[NTerms+1], qn[NTerms+1];
 static double an[NTerms+1], un[NTerms+1];
@@ -144,7 +144,7 @@ void PressureDetail(const double T, const double D, const std::vector<double> &x
 
     double ar[3+1][3+1];
     xTermsDetail(x);
-    AlpharDetail(0, 2, T, D, x, ar);
+    AlpharDetail(0, 2, T, D, ar);
     Z = 1 + ar[0][1]/RDetail/T;         // ar(0,1) is the first derivative of alpha(r) with respect to density
     P = D*RDetail*T*Z;
     dPdDsave = RDetail*T + 2*ar[0][1]+ar[0][2]; // d(P)/d(D) for use in density iteration
@@ -251,7 +251,7 @@ void PropertiesDetail(const double T, const double D, const std::vector<double> 
     Alpha0Detail(T, D, x, a0);
 
     // Calculate the real gas Helmholtz energy, and its derivatives with respect to temperature and/or density.
-    AlpharDetail(2, 3, T, D, x, ar);
+    AlpharDetail(2, 3, T, D, ar);
 
     R = RDetail;
     RT = R * T;
@@ -287,7 +287,7 @@ void PropertiesDetail(const double T, const double D, const std::vector<double> 
 
 
 // 'The following routines are low-level routines that should not be called outside of this code.
-void xTermsDetail(const std::vector<double> &x)
+static void xTermsDetail(const std::vector<double> &x)
 {
     // Calculate terms dependent only on composition
     // 
@@ -354,7 +354,7 @@ void xTermsDetail(const std::vector<double> &x)
     }
 }
 
-void Alpha0Detail(const double T, const double D, const std::vector<double> &x, double a0[3]){
+static void Alpha0Detail(const double T, const double D, const std::vector<double> &x, double a0[3]){
     // Private Sub Alpha0Detail(T, D, x, a0)
 
     // Calculate the ideal gas Helmholtz energy and its derivatives with respect to T and D.
@@ -414,7 +414,7 @@ void Alpha0Detail(const double T, const double D, const std::vector<double> &x, 
     a0[2] = a0[2] * RDetail;
 }
 
-void AlpharDetail(const int itau, const int idel, const double T, const double D, const std::vector<double> &x, double ar[4][4])
+static void AlpharDetail(const int itau, const int idel, const double T, const double D, double ar[4][4])
 {
     // Private Sub AlpharDetail(itau, idel, ByVal T, D, x, ar)
 
@@ -965,18 +965,18 @@ void SetupDetail()
 
     // Code to produce nearly exact values for n0[1] and n0[2]
     // This is not called in the current code, but included below to show how the values were calculated.  The return above can be removed to call this code.
-    T0 = 298.15;
-    d0 = 101.325 / RDetail / T0;
-    for (int i=1; i <= MaxFlds; ++i){
-      n1 = 0; n2 = 0;
-      if (th0i[i][4] > 0) {n2 = n2 - n0i[i][4] * th0i[i][4] / Tanh(th0i[i][4] / T0); n1 = n1 - n0i[i][4] * log(Sinh(th0i[i][4] / T0));}
-      if (th0i[i][5] > 0) {n2 = n2 + n0i[i][5] * th0i[i][5] * Tanh(th0i[i][5] / T0); n1 = n1 + n0i[i][5] * log(Cosh(th0i[i][5] / T0));}
-      if (th0i[i][6] > 0) {n2 = n2 - n0i[i][6] * th0i[i][6] / Tanh(th0i[i][6] / T0); n1 = n1 - n0i[i][6] * log(Sinh(th0i[i][6] / T0));}
-      if (th0i[i][7] > 0) {n2 = n2 + n0i[i][7] * th0i[i][7] * Tanh(th0i[i][7] / T0); n1 = n1 + n0i[i][7] * log(Cosh(th0i[i][7] / T0));}
-      n0i[i][2] = n2 - n0i[i][3] * T0;
-      n0i[i][3] = n0i[i][3] - 1;
-      n0i[i][1] = n1 - n2 / T0 + n0i[i][3] * (1 + log(T0)) - log(d0);
-    }
+    // T0 = 298.15;
+    // d0 = 101.325 / RDetail / T0;
+    // for (int i=1; i <= MaxFlds; ++i){
+    //   n1 = 0; n2 = 0;
+    //   if (th0i[i][4] > 0) {n2 = n2 - n0i[i][4] * th0i[i][4] / Tanh(th0i[i][4] / T0); n1 = n1 - n0i[i][4] * log(Sinh(th0i[i][4] / T0));}
+    //   if (th0i[i][5] > 0) {n2 = n2 + n0i[i][5] * th0i[i][5] * Tanh(th0i[i][5] / T0); n1 = n1 + n0i[i][5] * log(Cosh(th0i[i][5] / T0));}
+    //   if (th0i[i][6] > 0) {n2 = n2 - n0i[i][6] * th0i[i][6] / Tanh(th0i[i][6] / T0); n1 = n1 - n0i[i][6] * log(Sinh(th0i[i][6] / T0));}
+    //   if (th0i[i][7] > 0) {n2 = n2 + n0i[i][7] * th0i[i][7] * Tanh(th0i[i][7] / T0); n1 = n1 + n0i[i][7] * log(Cosh(th0i[i][7] / T0));}
+    //   n0i[i][2] = n2 - n0i[i][3] * T0;
+    //   n0i[i][3] = n0i[i][3] - 1;
+    //   n0i[i][1] = n1 - n2 / T0 + n0i[i][3] * (1 + log(T0)) - log(d0);
+    // }
 }
 
 
