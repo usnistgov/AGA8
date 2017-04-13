@@ -1,0 +1,6 @@
+# Site settings
+title: "REFPROP"
+description: "Documentation for NIST REFPROP"
+
+baseurl: "/REFPROP-docs"
+rooturl: ""
