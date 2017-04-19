@@ -3,9 +3,9 @@ layout: default
 title: AGA8 Supplemental Material
 ---
 
-# REPOSITORY FOR THE SUPPLEMENTARY FILES TO AGA 8, 2017 EDITION
+# REPOSITORY FOR THE SUPPLEMENTARY FILES TO AGA 8, PARTS 1 & 2, 2017 EDITION
 
-A zipped file is available at the below URL containing the supplementary material described in Parts 1 and 2 of AGA 8 Report No. 8, titled Thermodynamic Properties of Natural Gas and Related Gases, 2017.  The description of the contents of each folder contained in the zipped file follows.
+A zipped file is available at the below URL containing the supplementary material described in Parts 1 and 2 of AGA 8, titled Thermodynamic Properties of Natural Gas and Related Gases, 2017.  The description of the contents of each folder in the zipped file follows.
 
 **THE FOLLOWING LINK IS NOT YET ACTIVE, WILL BE ACTIVATED WHEN AGA8 IS RELEASED**:
 
