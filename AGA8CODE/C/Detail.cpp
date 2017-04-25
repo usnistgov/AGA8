@@ -1,6 +1,4 @@
-//  **********  This code is preliminary, and will be updated.  **********
-//  **********  Use only for beta testing.  **********
-//  **********  June 7, 2016  **********
+
 
 #include "Detail.h"
 // We add both math headers to placate some non-standards-compliant compilers
@@ -12,16 +10,9 @@
 //  **********  Use only for beta testing.  **********
 //  **********  January 11, 2016  **********
 
-// Version 1.7 of routines for the calculation of thermodynamic properties from the
-//   AGA 8 Part 1, DETAIL equation of state.
-
-// 08/27/2014 - Original version
-// 01/12/2015 - Reduce calls to stack overhead, check for x(i)=0 before making calculations (Jason Lu, Thermo Fisher Scientific)
-// 03/10/2015 - Multiple changes to work with Excel, with new fluid order that matches other methods
-// 03/18/2015 - Reorder fluids from the original 1994 work to that shown below
-// 10/30/2015 - Addition of comments and further simplification of code
-// 05/16/2016 - Make minor final changes before publication
-// 05/25/2016 - Change the ideal gas coefficients so that the GERG and DETAIL use the same values
+// Version 2.0 of routines for the calculation of thermodynamic
+// properties from the AGA 8 Part 1 DETAIL equation of state.
+// April, 2017
 
 // Written by Eric W. Lemmon
 // Applied Chemicals and Materials Division
@@ -42,7 +33,7 @@
 // Ian Bell, NIST
 
 // The publication for the AGA 8 equation of state is available from AGA
-//   and the Transmission Measurement Committee
+//   and the Transmission Measurement Committee.
 
 // Subroutines contained here for property calculations:
 // ***** Subroutine SetupDetail must be called once before calling other routines. ******
@@ -109,13 +100,13 @@ void MolarMassDetail(const std::vector<double> &x, double &Mm)
     // Calculate molar mass of the mixture with the compositions contained in the x() input array
 
     // Inputs:
-    //    x() - composition (mole fraction)
+    //    x() - Composition (mole fraction)
     //          Do not send mole percents or mass fractions in the x() array, otherwise the output will be incorrect.
     //          The sum of the compositions in the x() array must be equal to one.
     //          The order of the fluids in this array is given at the top of this code.
 
     // Outputs:
-    //     Mm - molar mass (g/mol)
+    //     Mm - Molar mass (g/mol)
 
     Mm = 0;
     for(int i = 1; i <= NcDetail; ++i){
@@ -131,16 +122,17 @@ void PressureDetail(const double T, const double D, const std::vector<double> &x
     // for use in the iterative DensityDetail subroutine (and is only returned as a common variable).
 
     // Inputs:
-    //      T - temperature (K)
-    //      D - density (mol/l)
-    //    x() - composition (mole fraction)
+    //      T - Temperature (K)
+    //      D - Density (mol/l)
+    //    x() - Composition (mole fraction)
     //          Do not send mole percents or mass fractions in the x() array, otherwise the output will be incorrect.
     //          The sum of the compositions in the x() array must be equal to one.
 
     // Outputs:
-    //      P - pressure (kPa)
-    //      Z - compressibility factor
-    //   dPdDsave - d(P)/d(D) [kPa/(mol/l)]
+    //      P - Pressure (kPa)
+    //      Z - Compressibility factor
+    //   dPdDsave - d(P)/d(D) [kPa/(mol/l)] (at constant temperature)
+    //            - This variable is cached in the common variables for use in the iterative density solver, but not returned as an argument.
 
     double ar[3+1][3+1];
     xTermsDetail(x);
@@ -162,12 +154,12 @@ void DensityDetail(const double T, const double P, const std::vector<double> &x,
     // If the state point is 2-phase, the output density will represent a metastable state.
 
     // Inputs:
-    //      T - temperature (K)
-    //      P - pressure (kPa)
-    //    x() - composition (mole fraction)
+    //      T - Temperature (K)
+    //      P - Pressure (kPa)
+    //    x() - Composition (mole fraction)
 
     // Outputs:
-    //      D - density (mol/l) (make D negative and send as an input to use as an initial guess)
+    //      D - Density (mol/l) (make D negative and send as an input to use as an initial guess)
     //   ierr - Error number (0 indicates no error)
     //   herr - Error message if ierr is not equal to zero
 
@@ -176,7 +168,7 @@ void DensityDetail(const double T, const double P, const std::vector<double> &x,
     ierr = 0;
     herr = "";
     if (std::abs(P) < 1e-14){ D = 0; return; }
-    tolr = 0.00000001;
+    tolr = 0.00000000001;
     if (D >= 0) {
         D = P / RDetail / T;  // Ideal gas estimate
     }
@@ -205,7 +197,6 @@ void DensityDetail(const double T, const double P, const std::vector<double> &x,
             vlog = vlog - vdiff;
             if (std::abs(vdiff) < tolr){
                 D = exp(-vlog);
-                // NumbItDetail = it;    // Used to pass back the number of iterations //TODO
                 return;               // Iteration converged
             }
         }
@@ -221,23 +212,23 @@ void PropertiesDetail(const double T, const double D, const std::vector<double> 
     // with the known values of pressure and temperature.
 
     // Inputs:
-    //      T - temperature (K)
-    //      D - density (mol/l)
-    //    x() - composition (mole fraction)
+    //      T - Temperature (K)
+    //      D - Density (mol/l)
+    //    x() - Composition (mole fraction)
 
     // Outputs:
-    //      P - pressure (kPa)
-    //      Z - compressibility factor
-    //   dPdD - first derivative of pressure with respect to density [kPa/(mol/l)]
-    // d2PdD2 - second derivative of pressure with respect to density [kPa/(mol/l)^2]
-    // d2PdTD - second derivative of pressure with respect to temperature and density [kPa/(mol/l)/K]
-    //   dPdT - first derivative of pressure with respect to temperature (kPa/K)
-    //      U - internal energy (J/mol)
-    //      H - enthalpy (J/mol)
-    //      S - entropy (J/mol-K)
-    //     Cv - isochoric heat capacity (J/mol-K)
-    //     Cp - isobaric heat capacity (J/mol-K)
-    //      W - speed of sound (m/s)
+    //      P - Pressure (kPa)
+    //      Z - Compressibility factor
+    //   dPdD - First derivative of pressure with respect to density at constant temperature [kPa/(mol/l)]
+    // d2PdD2 - Second derivative of pressure with respect to density at constant temperature [kPa/(mol/l)^2]
+    // d2PdTD - Second derivative of pressure with respect to temperature and density [kPa/(mol/l)/K]
+    //   dPdT - First derivative of pressure with respect to temperature at constant density (kPa/K)
+    //      U - Internal energy (J/mol)
+    //      H - Enthalpy (J/mol)
+    //      S - Entropy [J/(mol-K)]
+    //     Cv - Isochoric heat capacity [J/(mol-K)]
+    //     Cp - Isobaric heat capacity [J/(mol-K)]
+    //      W - Speed of sound (m/s)
     //      G - Gibbs energy (J/mol)
     //     JT - Joule-Thomson coefficient (K/kPa)
     //  Kappa - Isentropic Exponent
@@ -271,8 +262,6 @@ void PropertiesDetail(const double T, const double D, const std::vector<double> 
         JT = (T / D * dPdT / dPdD - 1) / Cp / D;
     }
     else{
-        d2PdD2 = 0;
-        JT = 1E+20;
         H = U + RT;
         G = A + RT;
         Cp = Cv + R;
@@ -286,13 +275,13 @@ void PropertiesDetail(const double T, const double D, const std::vector<double> 
 }
 
 
-// 'The following routines are low-level routines that should not be called outside of this code.
+// The following routines are low-level routines that should not be called outside of this code.
 static void xTermsDetail(const std::vector<double> &x)
 {
     // Calculate terms dependent only on composition
     // 
     // Inputs:
-    //    x() - composition (mole fraction)
+    //    x() - Composition (mole fraction)
 
     double G, Q, F, U, Q2, xij, xi2;
     int icheck;
@@ -300,7 +289,7 @@ static void xTermsDetail(const std::vector<double> &x)
     // Check to see if a component fraction has changed.  If x is the same as the previous call, then exit.
     icheck = 0;
     for (int i = 1; i <= NcDetail; ++i){
-        if (std::abs(x[i] - xold[i]) > 0.00000001) { icheck = 1; }
+        if (std::abs(x[i] - xold[i]) > 0.00000000001) { icheck = 1; }
         xold[i] = x[i];
     }
     if (icheck == 0){ return; }
@@ -361,14 +350,14 @@ static void Alpha0Detail(const double T, const double D, const std::vector<doubl
     // This routine is not needed when only P (or Z) is calculated.
 
     // Inputs:
-    //      T - temperature (K)
-    //      D - density (mol/l)
-    //    x() - composition (mole fraction)
+    //      T - Temperature (K)
+    //      D - Density (mol/l)
+    //    x() - Composition (mole fraction)
 
     // Outputs:
-    // a0(0) - ideal gas Helmholtz energy (J/mol)
-    // a0(1) -   partial  (a0)/partial(T)
-    // a0(2) - T*partial^2(a0)/partial(T)^2
+    // a0(0) - Ideal gas Helmholtz energy (J/mol)
+    // a0(1) -   partial  (a0)/partial(T) [J/(mol-K)]
+    // a0(2) - T*partial^2(a0)/partial(T)^2 [J/(mol-K)]
 
     double LogT, LogD, LogHyp, th0T, LogxD;
     double SumHyp0, SumHyp1, SumHyp2;
@@ -416,26 +405,27 @@ static void Alpha0Detail(const double T, const double D, const std::vector<doubl
 
 static void AlpharDetail(const int itau, const int idel, const double T, const double D, double ar[4][4])
 {
-    // Private Sub AlpharDetail(itau, idel, ByVal T, D, x, ar)
+    // Private Sub AlpharDetail(itau, idel, T, D, ar)
 
-    // Calculate the derivatives of the residual Helmholtz energy with respect to T and D.
+    // Calculate the derivatives of the residual Helmholtz energy (ar) with respect to T and D.
     // itau and idel are inputs that contain the highest derivatives needed.
     // Outputs are returned in the array ar.
     // Subroutine xTerms must be called before this routine if x has changed
 
     // Inputs:
-    //     T - temperature (K)
-    //     D - density (mol/l)
-    //   x() - composition (mole fraction)
+    //  itau - Set this to 1 to calculate "ar" derivatives with respect to T [i.e., ar(1,0), ar(1,1), and ar(2,0)], otherwise set it to 0.
+    //  idel - Currently not used, but kept as an input for future use in specifing the highest density derivative needed.    
+    //     T - Temperature (K)
+    //     D - Density (mol/l)
 
     // Outputs:
-    // ar(0,0) - residual Helmholtz energy (J/mol)
-    // ar(0,1) -   D*partial  (ar)/partial(D)
-    // ar(0,2) - D^2*partial^2(ar)/partial(D)^2
-    // ar(0,3) - D^3*partial^3(ar)/partial(D)^3
-    // ar(1,0) -     partial  (ar)/partial(T)
-    // ar(1,1) -   D*partial^2(ar)/partial(D)/partial(T)
-    // ar(2,0) -   T*partial^2(ar)/partial(T)^2
+    // ar(0,0) - Residual Helmholtz energy (J/mol)
+    // ar(0,1) -   D*partial  (ar)/partial(D) (J/mol)
+    // ar(0,2) - D^2*partial^2(ar)/partial(D)^2 (J/mol)
+    // ar(0,3) - D^3*partial^3(ar)/partial(D)^3 (J/mol)
+    // ar(1,0) -     partial  (ar)/partial(T) [J/(mol-K)]
+    // ar(1,1) -   D*partial^2(ar)/partial(D)/partial(T) [J/(mol-K)]
+    // ar(2,0) -   T*partial^2(ar)/partial(T)^2 [J/(mol-K)]
 
 
     double ckd, bkd, Dred;
@@ -445,7 +435,7 @@ static void AlpharDetail(const int itau, const int idel, const double T, const d
     double CoefT1[NTerms+1], CoefT2[NTerms+1];
 
     for (int i = 0; i <3; ++i){ for (int j = 0; j <3; ++j){ ar[i][j] = 0; } }
-    if (std::abs(T - Told) > 0.0000000001){
+    if (std::abs(T - Told) > 0.00000000001){
         for (int n = 1; n <= 58; ++n){
             Tun[n] = pow(T, -un[n]);
         }
@@ -506,7 +496,7 @@ static void AlpharDetail(const int itau, const int idel, const double T, const d
           ar[1][0] = ar[1][0] - CoefT1[n] * s0;
           ar[1][1] = ar[1][1] - CoefT1[n] * s1;
           ar[2][0] = ar[2][0] + CoefT2[n] * s0;
-          //The following are not used
+          //The following are not used, but fully functional
           //ar(1, 2) = ar(1, 2) - CoefT1(n) * s2;
           //ar(1, 3) = ar(1, 3) - CoefT1(n) * s3;
           //ar(2, 1) = ar(2, 1) + CoefT2(n) * s1;
