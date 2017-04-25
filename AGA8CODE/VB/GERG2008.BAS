@@ -1,23 +1,6 @@
-'  **********  This code is preliminary, and will be updated.  **********
-'  **********  Use only for beta testing.  **********
-'  **********  June 7, 2016  **********
-
-'Version 1.7 of routines for the calculation of thermodynamic properties from the
-'  AGA 8 Part 2 GERG-2008 equation of state.
-
-'06/19/2012 - Change kexp from 7 to 9 for water
-'02/20/2013 - Remove one of the negative signs in the calculation of Cv
-'03/20/2014 - Change n1 and n2 constants in the ideal gas terms to match the latest values
-'03/10/2015 - Multiple changes to work with Excel, with new fluid order that matches other methods
-'03/18/2015 - Change order of butane and isobutane, and the order of pentane and isopentane
-'08/13/2015 - Change generalized equation array location from 0 to 10 to avoid arrays starting at 0
-'08/13/2015 - Declare kexp, kpol, kpolij, kexpij as integers instead of doubles
-'10/31/2015 - Change code to more closely match the DETAIL code
-'11/17/2015 - Modify density search to find liquid phase roots
-'12/17/2015 - Add subroutine tTermsGERG
-'05/16/2016 - Fix error in the calculation of entropy
-'05/16/2016 - Make minor final changes before publication
-'05/25/2016 - Change the ideal gas coefficients so that the GERG and DETAIL use the same values
+'Version 2.0 of routines for the calculation of thermodynamic
+' properties from the AGA 8 Part 2 GERG-2008 equation of state.
+' April, 2017
 
 'Written by Eric W. Lemmon
 'Applied Chemicals and Materials Division
@@ -32,7 +15,7 @@
 'Ian Bell, NIST
 
 'The publication for the AGA 8 equation of state is available from AGA
-'  and the Transmission Measurement Committee
+'  and the Transmission Measurement Committee.
 
 'The GERG-2008 equation of state was developed by Oliver Kunz and Wolfgang Wagner:
 
@@ -95,7 +78,7 @@ Private Dc(MaxFlds) As Double, Tc(MaxFlds) As Double, MMiGERG(MaxFlds) As Double
 Private cijk(MaxMdl, MaxTrmM) As Double, noik(MaxFlds, MaxTrmP) As Double, toik(MaxFlds, MaxTrmP) As Double
 Private eijk(MaxMdl, MaxTrmM) As Double, gijk(MaxMdl, MaxTrmM) As Double, nijk(MaxMdl, MaxTrmM) As Double, tijk(MaxMdl, MaxTrmM) As Double
 Private btij(MaxFlds, MaxFlds) As Double, bvij(MaxFlds, MaxFlds) As Double, gtij(MaxFlds, MaxFlds) As Double, gvij(MaxFlds, MaxFlds) As Double
-Private fij(MaxFlds, MaxFlds) As Double, th0i(MaxFlds, MaxFlds) As Double, n0i(MaxFlds, MaxFlds) As Double
+Private fij(MaxFlds, MaxFlds) As Double, th0i(MaxFlds, 7) As Double, n0i(MaxFlds, 7) As Double
 Private taup(MaxFlds, MaxTrmP) As Double, taupijk(MaxFlds, MaxTrmM) As Double
 Private dPdDsave As Double 'Calculated in the PressureGERG subroutine, but not included as an argument since it is only used internally in the density algorithm.
 
@@ -106,7 +89,7 @@ Sub MolarMassGERG(x() As Double, ByRef Mm As Double)
 'Calculate molar mass of the mixture with the compositions contained in the x() input array
 '
 'Inputs:
-'   x() - composition (mole fraction)
+'   x() - Composition (mole fraction)
 '         Do not send mole percents or mass fractions in the x() array, otherwise the output will be incorrect.
 '         The sum of the compositions in the x() array must be equal to one.
 '         The order of the fluids in this array is given at the top of this code.
@@ -128,16 +111,16 @@ Sub PressureGERG(ByVal T As Double, ByVal D As Double, x() As Double, ByRef P As
 'for use in the iterative DensityGERG subroutine (and is only returned as a common variable).
 '
 'Inputs:
-'     T - temperature (K)
-'     D - density (mol/l)
-'   x() - composition (mole fraction)
+'     T - Temperature (K)
+'     D - Density (mol/l)
+'   x() - Composition (mole fraction)
 '         Do not send mole percents or mass fractions in the x() array, otherwise the output will be incorrect.
 '         The sum of the compositions in the x() array must be equal to one.
 '
 'Outputs:
-'     P - pressure (kPa)
-'     Z - compressibility factor
-' dPdDsave - d(P)/d(D) [kPa/(mol/l)]
+'     P - Pressure (kPa)
+'     Z - Compressibility factor
+' dPdDsave - d(P)/d(D) [kPa/(mol/l)] (at constant temperature)
 
   Dim ar(3, 3) As Double
   Call AlpharGERG(0, T, D, x, ar)
@@ -157,16 +140,16 @@ Sub DensityGERG(iFlag As Integer, ByVal T As Double, ByVal P As Double, x() As D
 'If the state point is 2-phase, the output density will represent a metastable state.
 '
 'Inputs:
-' iFlag - set to 0 for strict pressure solver in gas phase without checks (fastest mode, but output state may not be stable single phase)
-'         set to 1 to make checks for possible 2-phase state (result may still not be stable single phase, but many unstable states will be identified)
-'         set to 2 to search for liquid phase (and make the same checks when iFlag=1)
-'     T - temperature (K)
-'     P - pressure (kPa)
-'   x() - composition (mole fraction)
+' iFlag - Set to 0 for strict pressure solver in the gas phase without checks (fastest mode, but output state may not be stable single phase)
+'         Set to 1 to make checks for possible 2-phase states (result may still not be stable single phase, but many unstable states will be identified)
+'         Set to 2 to search for liquid phase (and make the same checks when iFlag=1)
+'     T - Temperature (K)
+'     P - Pressure (kPa)
+'   x() - Composition (mole fraction)
 '(An initial guess for the density can be sent in D as the negative of the guess for roots that are in the liquid phase instead of using iFlag=2)
 '
 'Outputs:
-'     D - density (mol/l)
+'     D - Density (mol/l)
 '  ierr - Error number (0 indicates no error)
 '  herr - Error message if ierr is not equal to zero
 
@@ -181,7 +164,7 @@ Sub DensityGERG(iFlag As Integer, ByVal T As Double, ByVal P As Double, x() As D
   nFail = 0
   iFail = 0
   If P = 0 Then D = 0: Exit Sub
-  tolr = 0.00000001
+  tolr = 0.00000000001
   Call PseudoCriticalPointGERG(x, Tcx, Dcx)
 
   If D >= 0 Then
@@ -235,7 +218,7 @@ Sub DensityGERG(iFlag As Integer, ByVal T As Double, ByVal P As Double, x() As D
     End If
   Next
 
-'Iteration failed (above loop did find a solution or checks made below indicate possible 2-phase state)
+'Iteration failed (above loop did not find a solution or checks made below indicate possible 2-phase state)
 DError:
   ierr = 1
   herr = "Calculation failed to converge in GERG method, ideal gas density returned."
@@ -244,8 +227,6 @@ DError:
 
 'Iteration converged
 Converged:
-  'NumbItGERG = it    'Used to pass back the number of iterations for information only
-
   'If requested, check to see if point is possibly 2-phase
   If iFlag > 0 Then
     Call PropertiesGERG(T, D, x, PP, Z, dPdD, d2PdD2, d2PdTD, dPdT, U, H, S, Cv, Cp, W, G, JT, Kappa)
@@ -262,23 +243,23 @@ Sub PropertiesGERG(ByVal T As Double, ByVal D As Double, x() As Double, ByRef P 
 'Many of the formulas below do not appear in Part 2 of AGA 8, but rather in Part 1, which uses a dimensional Helmholtz equation with more direct formulas for quick calculation.
 '
 'Inputs:
-'     T - temperature (K)
-'     D - density (mol/l)
-'   x() - composition (mole fraction)
+'     T - Temperature (K)
+'     D - Density (mol/l)
+'   x() - Composition (mole fraction)
 '
 'Outputs:
-'     P - pressure (kPa)
-'     Z - compressibility factor
-'  dPdD - first derivative of pressure with respect to density [kPa/(mol/l)]
-'d2PdD2 - second derivative of pressure with respect to density [kPa/(mol/l)^2]
-'d2PdTD - second derivative of pressure with respect to temperature and density [kPa/(mol/l)/K]
-'  dPdT - first derivative of pressure with respect to temperature (kPa/K)
-'     U - internal energy (J/mol)
-'     H - enthalpy (J/mol)
-'     S - entropy (J/mol-K)
-'    Cv - isochoric heat capacity (J/mol-K)
-'    Cp - isobaric heat capacity (J/mol-K)
-'     W - speed of sound (m/s)
+'     P - Pressure (kPa)
+'     Z - Compressibility factor
+'  dPdD - First derivative of pressure with respect to density [kPa/(mol/l)] at constant temperature
+'d2PdD2 - Second derivative of pressure with respect to density [kPa/(mol/l)^2] at constant temperature
+'d2PdTD - Second derivative of pressure with respect to temperature and density [kPa/(mol/l)/K]
+'  dPdT - First derivative of pressure with respect to temperature (kPa/K) at constant density
+'     U - Internal energy (J/mol)
+'     H - Enthalpy (J/mol)
+'     S - Entropy [J/(mol-K)]
+'    Cv - Isochoric heat capacity [J/(mol-K)]
+'    Cp - Isobaric heat capacity [J/(mol-K)]
+'     W - Speed of sound (m/s)
 '     G - Gibbs energy (J/mol)
 '    JT - Joule-Thomson coefficient (K/kPa)
 ' Kappa - Isentropic Exponent
@@ -332,18 +313,18 @@ Private Sub ReducingParametersGERG(x() As Double, ByRef Tr As Double, ByRef Dr A
 'Calculate reducing variables.  Only need to call this if the composition has changed.
 '
 'Inputs:
-'   x() - composition (mole fraction)
+'   x() - Composition (mole fraction)
 '
 'Outputs:
-'    Tr - reducing temperature (K)
-'    Dr - reducing density (mol/l)
+'    Tr - Reducing temperature (K)
+'    Dr - Reducing density (mol/l)
 
   Dim Vr As Double, xij As Double, F As Double, i As Integer, j As Integer, icheck As Integer
 
   'Check to see if a component fraction has changed.  If x is the same as the previous call, then exit.
   icheck = 0
   For i = 1 To NcGERG
-    If Abs(x(i) - xold(i)) > 0.00000001 Then icheck = 1
+    If Abs(x(i) - xold(i)) > 0.00000000001 Then icheck = 1
     xold(i) = x(i)
   Next
   If icheck = 0 Then
@@ -383,12 +364,12 @@ Private Sub Alpha0GERG(ByVal T As Double, ByVal D As Double, x() As Double, a0()
 'This routine is not needed when only P (or Z) is calculated.
 '
 'Inputs:
-'     T - temperature (K)
-'     D - density (mol/l)
-'   x() - composition (mole fraction)
+'     T - Temperature (K)
+'     D - Density (mol/l)
+'   x() - Composition (mole fraction)
 '
 'Outputs:
-' a0(0) - ideal gas Helmholtz energy (dimensionless [i.e., divided by RT])
+' a0(0) - Ideal gas Helmholtz energy (dimensionless [i.e., divided by RT])
 ' a0(1) - tau*partial(a0)/partial(tau)
 ' a0(2) - tau^2*partial^2(a0)/partial(tau)^2
 
@@ -439,13 +420,13 @@ Private Sub AlpharGERG(ByVal iprop As Integer, ByVal T As Double, ByVal D As Dou
 'Calculate dimensionless residual Helmholtz energy and its derivatives with respect to tau and delta.
 '
 'Inputs:
-' iprop - set to 1 to return all derivatives or 0 to return only pressure related properties [ar(0,1) and ar(0,2)]
-'     T - temperature (K)
-'     D - density (mol/l)
-'   x() - composition (mole fraction)
+' iprop - Set to 1 to return all derivatives or 0 to return only pressure related properties [ar(0,1) and ar(0,2)]
+'     T - Temperature (K)
+'     D - Density (mol/l)
+'   x() - Composition (mole fraction)
 '
 'Outputs:
-' ar(0,0) - residual Helmholtz energy (dimensionless, =a/RT)
+' ar(0,0) - Residual Helmholtz energy (dimensionless, =a/RT)
 ' ar(0,1) -     del*partial  (ar)/partial(del)
 ' ar(0,2) -   del^2*partial^2(ar)/partial(del)^2
 ' ar(0,3) -   del^3*partial^3(ar)/partial(del)^3
@@ -473,7 +454,7 @@ Private Sub AlpharGERG(ByVal iprop As Integer, ByVal T As Double, ByVal D As Dou
   Next
 
 'If temperature has changed, calculate temperature dependent parts
-  If Abs(T - Told) > 0.00000001 Or Abs(Tr - Trold2) > 0.00000001 Then Call tTermsGERG(tau, lntau, x)
+  If Abs(T - Told) > 0.00000000001 Or Abs(Tr - Trold2) > 0.00000000001 Then Call tTermsGERG(lntau, x)
   Told = T
   Trold2 = Tr
 
@@ -553,7 +534,7 @@ Private Sub AlpharGERG(ByVal iprop As Integer, ByVal T As Double, ByVal D As Dou
                 ar(2, 0) = ar(2, 0) + ndtt * (tijk(mn, k) - 1)
                 ar(1, 1) = ar(1, 1) + ndtt * ex
                 ar(1, 2) = ar(1, 2) + ndtt * ex2
-                'ar(0, 3) = ar(0, 3) + ...       'The contribution from the Fij terms with an exponential piece is negligible for the 3rd derivative (<1 ppm)
+                ar(0, 3) = ar(0, 3) + ndt * (ex * (ex2 - 2 * (dijk(mn, k) - 2 * cij0)) + 2 * dijk(mn, k))
               End If
             Next
           End If
@@ -563,8 +544,8 @@ Private Sub AlpharGERG(ByVal iprop As Integer, ByVal T As Double, ByVal D As Dou
   Next
 End Sub
 
-Private Sub tTermsGERG(ByVal tau As Double, ByVal lntau As Double, x() As Double)
-'Private Sub tTermsGERG(tau, lntau, x)
+Private Sub tTermsGERG(ByVal lntau As Double, x() As Double)
+'Private Sub tTermsGERG(lntau, x)
 
 'Calculate temperature dependent parts of the GERG-2008 equation of state
 
@@ -1531,7 +1512,7 @@ Sub Setup2GERG()
     bvij(i, i) = 1
     btij(i, i) = 1
     gvij(i, i) = 1 / Dc(i)
-    gtij(i, i) = 1 * Tc(i)
+    gtij(i, i) = Tc(i)
     For j = i + 1 To MaxFlds
       gvij(i, j) = gvij(i, j) * bvij(i, j) * (Vc3(i) + Vc3(j)) ^ 3
       gtij(i, j) = gtij(i, j) * btij(i, j) * Tc2(i) * Tc2(j)

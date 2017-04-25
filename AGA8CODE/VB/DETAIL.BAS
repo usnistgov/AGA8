@@ -1,18 +1,6 @@
-'  **********  This code is preliminary, and will be updated.  **********
-'  **********  Use only for beta testing.  **********
-'  **********  June 7, 2016  **********
-
-'Version 1.7 of routines for the calculation of thermodynamic properties from the
-'  AGA 8 Part 1 DETAIL equation of state.
-
-'08/27/2014 - Original version
-'01/12/2015 - Reduce calls to stack overhead, check for x(i)=0 before making calculations (Jason Lu, Thermo Fisher Scientific)
-'03/10/2015 - Multiple changes to work with Excel, with new fluid order that matches other methods
-'03/18/2015 - Reorder fluids from the original 1994 work to that shown below
-'10/30/2015 - Addition of comments and further simplification of code
-'12/14/2015 - Set bn and kn as integers.  Change subroutine names from Pressure to PressureDetail, etc.
-'05/16/2016 - Make minor final changes before publication
-'05/25/2016 - Change the ideal gas coefficients so that the GERG and DETAIL use the same values
+'Version 2.0 of routines for the calculation of thermodynamic
+' properties from the AGA 8 Part 1 DETAIL equation of state.
+' April, 2017
 
 'Written by Eric W. Lemmon
 'Applied Chemicals and Materials Division
@@ -27,7 +15,7 @@
 'Ian Bell, NIST
 
 'The publication for the AGA 8 equation of state is available from AGA
-'  and the Transmission Measurement Committee
+'  and the Transmission Measurement Committee.
 
 'Subroutines contained here for property calculations:
 '***** Subroutine SetupDetail must be called once before calling other routines. ******
@@ -87,13 +75,13 @@ Sub MolarMassDetail(x() As Double, ByRef Mm As Double)
 'Calculate molar mass of the mixture with the compositions contained in the x() input array
 '
 'Inputs:
-'   x() - composition (mole fraction)
+'   x() - Composition (mole fraction)
 '         Do not send mole percents or mass fractions in the x() array, otherwise the output will be incorrect.
 '         The sum of the compositions in the x() array must be equal to one.
 '         The order of the fluids in this array is given at the top of this code.
 '
 'Outputs:
-'    Mm - molar mass (g/mol)
+'    Mm - Molar mass (g/mol)
 
   Dim i As Integer
   Mm = 0
@@ -109,20 +97,20 @@ Sub PressureDetail(ByVal T As Double, ByVal D As Double, x() As Double, ByRef P 
 'for use in the iterative DensityDetail subroutine (and is only returned as a common variable).
 '
 'Inputs:
-'     T - temperature (K)
-'     D - density (mol/l)
-'   x() - composition (mole fraction)
+'     T - Temperature (K)
+'     D - Density (mol/l)
+'   x() - Composition (mole fraction)
 '         Do not send mole percents or mass fractions in the x() array, otherwise the output will be incorrect.
 '         The sum of the compositions in the x() array must be equal to one.
 '
 'Outputs:
-'     P - pressure (kPa)
-'     Z - compressibility factor
-'  dPdDsave - d(P)/d(D) [kPa/(mol/l)]
+'     P - Pressure (kPa)
+'     Z - Compressibility factor
+'  dPdDsave - d(P)/d(D) [kPa/(mol/l)] (at constant temperature)
 
   Dim ar(3, 3) As Double
   Call xTermsDetail(x)
-  Call AlpharDetail(0, 2, T, D, x, ar)
+  Call AlpharDetail(0, 2, T, D, ar)
   Z = 1 + ar(0, 1) / RDetail / T         'ar(0,1) is the first derivative of alpha(r) with respect to density
   P = D * RDetail * T * Z
   dPdDsave = RDetail * T + 2 * ar(0, 1) + ar(0, 2)  'd(P)/d(D) for use in density iteration
@@ -139,12 +127,12 @@ Sub DensityDetail(ByVal T As Double, ByVal P As Double, x() As Double, ByRef D A
 'If the state point is 2-phase, the output density will represent a metastable state.
 '
 'Inputs:
-'     T - temperature (K)
-'     P - pressure (kPa)
-'   x() - composition (mole fraction)
+'     T - Temperature (K)
+'     P - Pressure (kPa)
+'   x() - Composition (mole fraction)
 '
 'Outputs:
-'     D - density (mol/l) (make D negative and send as an input to use as an initial guess)
+'     D - Density (mol/l) (make D negative and send as an input to use as an initial guess)
 '  ierr - Error number (0 indicates no error)
 '  herr - Error message if ierr is not equal to zero
 
@@ -154,7 +142,7 @@ Sub DensityDetail(ByVal T As Double, ByVal P As Double, x() As Double, ByRef D A
   ierr = 0
   herr = ""
   If P = 0 Then D = 0: Exit Sub
-  tolr = 0.00000001
+  tolr = 0.00000000001
   If D >= 0 Then
     D = P / RDetail / T  'Ideal gas estimate
   Else
@@ -177,7 +165,6 @@ Sub DensityDetail(ByVal T As Double, ByVal P As Double, x() As Double, ByRef D A
       vlog = vlog - vdiff
       If Abs(vdiff) < tolr Then
         D = Exp(-vlog)
-        'NumbItDetail = it   'Used to pass back the number of iterations
         Exit Sub             'Iteration converged
       End If
     End If
@@ -197,23 +184,23 @@ Sub PropertiesDetail(ByVal T As Double, ByVal D As Double, x() As Double, ByRef 
 'with the known values of pressure and temperature.
 '
 'Inputs:
-'     T - temperature (K)
-'     D - density (mol/l)
-'   x() - composition (mole fraction)
+'     T - Temperature (K)
+'     D - Density (mol/l)
+'   x() - Composition (mole fraction)
 '
 'Outputs:
-'     P - pressure (kPa)
-'     Z - compressibility factor
-'  dPdD - first derivative of pressure with respect to density [kPa/(mol/l)]
-'d2PdD2 - second derivative of pressure with respect to density [kPa/(mol/l)^2]
-'d2PdTD - second derivative of pressure with respect to temperature and density [kPa/(mol/l)/K]
-'  dPdT - first derivative of pressure with respect to temperature (kPa/K)
-'     U - internal energy (J/mol)
-'     H - enthalpy (J/mol)
-'     S - entropy (J/mol-K)
-'    Cv - isochoric heat capacity (J/mol-K)
-'    Cp - isobaric heat capacity (J/mol-K)
-'     W - speed of sound (m/s)
+'     P - Pressure (kPa)
+'     Z - Compressibility factor
+'  dPdD - First derivative of pressure with respect to density at constant temperature [kPa/(mol/l)]
+'d2PdD2 - Second derivative of pressure with respect to density at constant temperature [kPa/(mol/l)^2]
+'d2PdTD - Second derivative of pressure with respect to temperature and density [kPa/(mol/l)/K]
+'  dPdT - First derivative of pressure with respect to temperature at constant density (kPa/K)
+'     U - Internal energy (J/mol)
+'     H - Enthalpy (J/mol)
+'     S - Entropy [J/(mol-K)]
+'    Cv - Isochoric heat capacity [J/(mol-K)]
+'    Cp - Isobaric heat capacity [J/(mol-K)]
+'     W - Speed of sound (m/s)
 '     G - Gibbs energy (J/mol)
 '    JT - Joule-Thomson coefficient (K/kPa)
 ' Kappa - Isentropic Exponent
@@ -228,7 +215,7 @@ Sub PropertiesDetail(ByVal T As Double, ByVal D As Double, x() As Double, ByRef 
   Call Alpha0Detail(T, D, x, a0)
 
   'Calculate the real gas Helmholtz energy, and its derivatives with respect to temperature and/or density.
-  Call AlpharDetail(2, 3, T, D, x, ar)
+  Call AlpharDetail(2, 3, T, D, ar)
 
   R = RDetail
   RT = R * T
@@ -267,7 +254,7 @@ Private Sub xTermsDetail(x() As Double)
 'Calculate terms dependent only on composition
 '
 'Inputs:
-'   x() - composition (mole fraction)
+'   x() - Composition (mole fraction)
 
   Dim G As Double, Q As Double, F As Double, U As Double, Q2 As Double, xij As Double, xi2 As Double
   Dim i As Integer, j As Integer, n As Integer, icheck As Integer
@@ -275,7 +262,7 @@ Private Sub xTermsDetail(x() As Double)
   'Check to see if a component fraction has changed.  If x is the same as the previous call, then exit.
   icheck = 0
   For i = 1 To NcDetail
-    If Abs(x(i) - xold(i)) > 0.00000001 Then icheck = 1
+    If Abs(x(i) - xold(i)) > 0.00000000001 Then icheck = 1
     xold(i) = x(i)
   Next
   If icheck = 0 Then Exit Sub
@@ -336,18 +323,18 @@ Private Sub Alpha0Detail(ByVal T As Double, ByVal D As Double, x() As Double, a0
 'This routine is not needed when only P (or Z) is calculated.
 '
 'Inputs:
-'     T - temperature (K)
-'     D - density (mol/l)
-'   x() - composition (mole fraction)
+'     T - Temperature (K)
+'     D - Density (mol/l)
+'   x() - Composition (mole fraction)
 '
 'Outputs:
-' a0(0) - ideal gas Helmholtz energy (J/mol)
+' a0(0) - Ideal gas Helmholtz energy (J/mol) (dimensionless [i.e., divided by RT])
 ' a0(1) -   partial  (a0)/partial(T)
 ' a0(2) - T*partial^2(a0)/partial(T)^2
 
   Dim i As Integer, j As Integer
   Dim LogT As Double, LogD As Double, LogHyp As Double, th0T As Double, LogxD As Double
-  Dim Sum0 As Double, Sum1 As Double, Sum2 As Double, SumHyp0 As Double, SumHyp1 As Double, SumHyp2 As Double
+  Dim SumHyp0 As Double, SumHyp1 As Double, SumHyp2 As Double
   Dim em As Double, ep As Double, hcn As Double, hsn As Double
 
   a0(0) = 0: a0(1) = 0: a0(2) = 0
@@ -389,8 +376,8 @@ Private Sub Alpha0Detail(ByVal T As Double, ByVal D As Double, x() As Double, a0
   a0(2) = a0(2) * RDetail
 End Sub
 
-Private Sub AlpharDetail(ByVal itau As Integer, ByVal idel As Integer, ByVal T As Double, ByVal D As Double, x() As Double, ar() As Double)
-'Private Sub AlpharDetail(itau, idel, ByVal T, D, x, ar)
+Private Sub AlpharDetail(ByVal itau As Integer, ByVal idel As Integer, ByVal T As Double, ByVal D As Double, ar() As Double)
+'Private Sub AlpharDetail(itau, idel, T, D, ar)
 
 'Calculate the derivatives of the residual Helmholtz energy with respect to T and D.
 'itau and idel are inputs that contain the highest derivatives needed.
@@ -398,12 +385,11 @@ Private Sub AlpharDetail(ByVal itau As Integer, ByVal idel As Integer, ByVal T A
 'Subroutine xTerms must be called before this routine if x has changed
 
 'Inputs:
-'     T - temperature (K)
-'     D - density (mol/l)
-'   x() - composition (mole fraction)
+'     T - Temperature (K)
+'     D - Density (mol/l)
 '
 'Outputs:
-' ar(0,0) - residual Helmholtz energy (J/mol)
+' ar(0,0) - Residual Helmholtz energy (J/mol) (dimensionless [i.e., divided by RT])
 ' ar(0,1) -   D*partial  (ar)/partial(D)
 ' ar(0,2) - D^2*partial^2(ar)/partial(D)^2
 ' ar(0,3) - D^3*partial^3(ar)/partial(D)^3
@@ -418,7 +404,8 @@ Private Sub AlpharDetail(ByVal itau As Integer, ByVal idel As Integer, ByVal T A
   Dim CoefT1(NTerms) As Double, CoefT2(NTerms) As Double
 
   For i = 0 To 3: For j = 0 To 3: ar(i, j) = 0: Next: Next
-  If Abs(T - Told) > 0.0000000001 Then
+
+  If Abs(T - Told) > 0.00000000001 Then
     For n = 1 To 58
       Tun(n) = T ^ -un(n)
     Next
@@ -964,3 +951,4 @@ End Function
 Private Function Cosh(xx)
   Cosh = (Exp(xx) + Exp(-xx)) / 2
 End Function
+
