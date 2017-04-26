@@ -413,8 +413,6 @@ static void AlpharDetail(const int itau, const int idel, const double T, const d
     // Subroutine xTerms must be called before this routine if x has changed
 
     // Inputs:
-    //  itau - Set this to 1 to calculate "ar" derivatives with respect to T [i.e., ar(1,0), ar(1,1), and ar(2,0)], otherwise set it to 0.
-    //  idel - Currently not used, but kept as an input for future use in specifing the highest density derivative needed.    
     //     T - Temperature (K)
     //     D - Density (mol/l)
 

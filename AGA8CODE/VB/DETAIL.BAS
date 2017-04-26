@@ -107,7 +107,6 @@ Sub PressureDetail(ByVal T As Double, ByVal D As Double, x() As Double, ByRef P 
 '     P - Pressure (kPa)
 '     Z - Compressibility factor
 '  dPdDsave - d(P)/d(D) [kPa/(mol/l)] (at constant temperature)
-'           - This variable is cached in the common variables for use in the iterative density solver, but not returned as an argument.
 
   Dim ar(3, 3) As Double
   Call xTermsDetail(x)
@@ -329,9 +328,9 @@ Private Sub Alpha0Detail(ByVal T As Double, ByVal D As Double, x() As Double, a0
 '   x() - Composition (mole fraction)
 '
 'Outputs:
-' a0(0) - Ideal gas Helmholtz energy (J/mol)
-' a0(1) -   partial  (a0)/partial(T) [J/(mol-K)]
-' a0(2) - T*partial^2(a0)/partial(T)^2 [J/(mol-K)]
+' a0(0) - Ideal gas Helmholtz energy (J/mol) (dimensionless [i.e., divided by RT])
+' a0(1) -   partial  (a0)/partial(T)
+' a0(2) - T*partial^2(a0)/partial(T)^2
 
   Dim i As Integer, j As Integer
   Dim LogT As Double, LogD As Double, LogHyp As Double, th0T As Double, LogxD As Double
@@ -377,27 +376,26 @@ Private Sub Alpha0Detail(ByVal T As Double, ByVal D As Double, x() As Double, a0
   a0(2) = a0(2) * RDetail
 End Sub
 
-Private Sub AlpharDetail(ByVal itau As Integer, ByVal idel As Integer, ByVal T As Double, ByVal D As Double, ar() As Double)
-'Private Sub AlpharDetail(itau, idel, T, D, ar)
+Private Sub AlpharDetail(ByVal itau As Integer, ByVal idelta As Integer, ByVal T As Double, ByVal D As Double, ar() As Double)
+'Private Sub AlpharDetail(itau, idelta, T, D, ar)
 
-'Calculate the derivatives of the residual Helmholtz energy (ar) with respect to T and D.
+'Calculate the derivatives of the residual Helmholtz energy with respect to T and D.
+'itau and idelta are inputs that contain the highest derivatives needed.
 'Outputs are returned in the array ar.
 'Subroutine xTerms must be called before this routine if x has changed
 
 'Inputs:
-'  itau - Set this to 1 to calculate "ar" derivatives with respect to T [i.e., ar(1,0), ar(1,1), and ar(2,0)], otherwise set it to 0.
-'  idel - Currently not used, but kept as an input for future use in specifing the highest density derivative needed.
 '     T - Temperature (K)
 '     D - Density (mol/l)
 '
 'Outputs:
-' ar(0,0) - Residual Helmholtz energy (J/mol)
-' ar(0,1) -   D*partial  (ar)/partial(D) (J/mol)
-' ar(0,2) - D^2*partial^2(ar)/partial(D)^2 (J/mol)
-' ar(0,3) - D^3*partial^3(ar)/partial(D)^3 (J/mol)
-' ar(1,0) -     partial  (ar)/partial(T) [J/(mol-K)]
-' ar(1,1) -   D*partial^2(ar)/partial(D)/partial(T) [J/(mol-K)]
-' ar(2,0) -   T*partial^2(ar)/partial(T)^2 [J/(mol-K)]
+' ar(0,0) - Residual Helmholtz energy (J/mol) (dimensionless [i.e., divided by RT])
+' ar(0,1) -   D*partial  (ar)/partial(D)
+' ar(0,2) - D^2*partial^2(ar)/partial(D)^2
+' ar(0,3) - D^3*partial^3(ar)/partial(D)^3
+' ar(1,0) -     partial  (ar)/partial(T)
+' ar(1,1) -   D*partial^2(ar)/partial(D)/partial(T)
+' ar(2,0) -   T*partial^2(ar)/partial(T)^2
 
   Dim i As Integer, j As Integer, n As Integer, ckd As Double, bkd As Double, Dred As Double
   Dim Sum As Double, s0 As Double, s1 As Double, s2 As Double, s3 As Double, RT As Double
@@ -467,7 +465,7 @@ Private Sub AlpharDetail(ByVal itau As Integer, ByVal idel As Integer, ByVal T A
       ar(1, 0) = ar(1, 0) - CoefT1(n) * s0
       ar(1, 1) = ar(1, 1) - CoefT1(n) * s1
       ar(2, 0) = ar(2, 0) + CoefT2(n) * s0
-      'The following are not used, but fully functional
+      'The following are not used
       'ar(1, 2) = ar(1, 2) - CoefT1(n) * s2
       'ar(1, 3) = ar(1, 3) - CoefT1(n) * s3
       'ar(2, 1) = ar(2, 1) + CoefT2(n) * s1

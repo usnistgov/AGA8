@@ -95,7 +95,7 @@ Sub MolarMassGERG(x() As Double, ByRef Mm As Double)
 '         The order of the fluids in this array is given at the top of this code.
 '
 'Outputs:
-'    Mm - molar mass (g/mol)
+'    Mm - Molar mass (g/mol)
 
   Dim i As Integer
   Mm = 0
@@ -121,9 +121,10 @@ Sub PressureGERG(ByVal T As Double, ByVal D As Double, x() As Double, ByRef P As
 '     P - Pressure (kPa)
 '     Z - Compressibility factor
 ' dPdDsave - d(P)/d(D) [kPa/(mol/l)] (at constant temperature)
+'          - This variable is cached in the common variables for use in the iterative density solver, but not returned as an argument.
 
   Dim ar(3, 3) As Double
-  Call AlpharGERG(0, T, D, x, ar)
+  Call AlpharGERG(0, 0, T, D, x, ar)
   Z = 1 + ar(0, 1)
   P = D * RGERG * T * Z
   dPdDsave = RGERG * T * (1 + 2 * ar(0, 1) + ar(0, 2))
@@ -250,10 +251,10 @@ Sub PropertiesGERG(ByVal T As Double, ByVal D As Double, x() As Double, ByRef P 
 'Outputs:
 '     P - Pressure (kPa)
 '     Z - Compressibility factor
-'  dPdD - First derivative of pressure with respect to density [kPa/(mol/l)] at constant temperature
-'d2PdD2 - Second derivative of pressure with respect to density [kPa/(mol/l)^2] at constant temperature
+'  dPdD - First derivative of pressure with respect to density at constant temperature [kPa/(mol/l)]
+'d2PdD2 - Second derivative of pressure with respect to density at constant temperature [kPa/(mol/l)^2]
 'd2PdTD - Second derivative of pressure with respect to temperature and density [kPa/(mol/l)/K]
-'  dPdT - First derivative of pressure with respect to temperature (kPa/K) at constant density
+'  dPdT - First derivative of pressure with respect to temperature at constant density (kPa/K)
 '     U - Internal energy (J/mol)
 '     H - Enthalpy (J/mol)
 '     S - Entropy [J/(mol-K)]
@@ -274,7 +275,7 @@ Sub PropertiesGERG(ByVal T As Double, ByVal D As Double, x() As Double, ByRef P 
   Call Alpha0GERG(T, D, x, a0)
 
   'Calculate the real gas Helmholtz energy, and its derivatives with respect to temperature and/or density.
-  Call AlpharGERG(1, T, D, x, ar)
+  Call AlpharGERG(1, 0, T, D, x, ar)
 
   R = RGERG
   RT = R * T
@@ -369,7 +370,7 @@ Private Sub Alpha0GERG(ByVal T As Double, ByVal D As Double, x() As Double, a0()
 '   x() - Composition (mole fraction)
 '
 'Outputs:
-' a0(0) - Ideal gas Helmholtz energy (dimensionless [i.e., divided by RT])
+' a0(0) - Ideal gas Helmholtz energy (all dimensionless [i.e., divided by RT])
 ' a0(1) - tau*partial(a0)/partial(tau)
 ' a0(2) - tau^2*partial^2(a0)/partial(tau)^2
 
@@ -414,25 +415,26 @@ Private Sub Alpha0GERG(ByVal T As Double, ByVal D As Double, x() As Double, a0()
   Next
 End Sub
 
-Private Sub AlpharGERG(ByVal iprop As Integer, ByVal T As Double, ByVal D As Double, x() As Double, ar() As Double)
-'Private Sub AlpharGERG(iprop, T, D, x, ar)
+Private Sub AlpharGERG(ByVal itau As Integer, ByVal idel As Integer, ByVal T As Double, ByVal D As Double, x() As Double, ar() As Double)
+'Private Sub AlpharGERG(itau, idel, T, D, x, ar)
 
 'Calculate dimensionless residual Helmholtz energy and its derivatives with respect to tau and delta.
 '
 'Inputs:
-' iprop - Set to 1 to return all derivatives or 0 to return only pressure related properties [ar(0,1) and ar(0,2)]
+'  itau - Set this to 1 to calculate "ar" derivatives with respect to tau [i.e., ar(1,0), ar(1,1), and ar(2,0)], otherwise set it to 0.
+'  idel - Currently not used, but kept as an input for future use in specifing the highest density derivative needed.
 '     T - Temperature (K)
 '     D - Density (mol/l)
 '   x() - Composition (mole fraction)
 '
 'Outputs:
-' ar(0,0) - Residual Helmholtz energy (dimensionless, =a/RT)
-' ar(0,1) -     del*partial  (ar)/partial(del)
-' ar(0,2) -   del^2*partial^2(ar)/partial(del)^2
-' ar(0,3) -   del^3*partial^3(ar)/partial(del)^3
-' ar(1,0) -     tau*partial  (ar)/partial(tau)
-' ar(1,1) - tau*del*partial^2(ar)/partial(tau)/partial(del)
-' ar(2,0) -   tau^2*partial^2(ar)/partial(tau)^2
+' ar(0,0) - Residual Helmholtz energy (all dimensionless, =a/RT)
+' ar(0,1) -     delta*partial  (ar)/partial(delta)
+' ar(0,2) -   delta^2*partial^2(ar)/partial(delta)^2
+' ar(0,3) -   delta^3*partial^3(ar)/partial(delta)^3
+' ar(1,0) -       tau*partial  (ar)/partial(tau)
+' ar(1,1) - tau*delta*partial^2(ar)/partial(tau)/partial(delta)
+' ar(2,0) -     tau^2*partial^2(ar)/partial(tau)^2
 
   Dim i As Integer, j As Integer, k As Integer, mn As Integer
   Dim Tr As Double, Dr As Double, del As Double, tau As Double
@@ -466,7 +468,7 @@ Private Sub AlpharGERG(ByVal iprop As Integer, ByVal T As Double, ByVal D As Dou
         ndtd = ndt * doik(i, k)
         ar(0, 1) = ar(0, 1) + ndtd
         ar(0, 2) = ar(0, 2) + ndtd * (doik(i, k) - 1)
-        If iprop > 0 Then
+        If itau > 0 Then
           ndtt = ndt * toik(i, k)
           ar(0, 0) = ar(0, 0) + ndt
           ar(1, 0) = ar(1, 0) + ndtt
@@ -483,7 +485,7 @@ Private Sub AlpharGERG(ByVal iprop As Integer, ByVal T As Double, ByVal D As Dou
         ex3 = ex2 * (ex2 - 1)
         ar(0, 1) = ar(0, 1) + ndt * ex2
         ar(0, 2) = ar(0, 2) + ndt * (ex3 - coik(i, k) * ex)
-        If iprop > 0 Then
+        If itau > 0 Then
           ndtt = ndt * toik(i, k)
           ar(0, 0) = ar(0, 0) + ndt
           ar(1, 0) = ar(1, 0) + ndtt
@@ -509,7 +511,7 @@ Private Sub AlpharGERG(ByVal iprop As Integer, ByVal T As Double, ByVal D As Dou
               ndtd = ndt * dijk(mn, k)
               ar(0, 1) = ar(0, 1) + ndtd
               ar(0, 2) = ar(0, 2) + ndtd * (dijk(mn, k) - 1)
-              If iprop > 0 Then
+              If itau > 0 Then
                 ndtt = ndt * tijk(mn, k)
                 ar(0, 0) = ar(0, 0) + ndt
                 ar(1, 0) = ar(1, 0) + ndtt
@@ -527,7 +529,7 @@ Private Sub AlpharGERG(ByVal iprop As Integer, ByVal T As Double, ByVal D As Dou
               ex2 = (ex * ex - dijk(mn, k) + 2 * cij0)
               ar(0, 1) = ar(0, 1) + ndt * ex
               ar(0, 2) = ar(0, 2) + ndt * ex2
-              If iprop > 0 Then
+              If itau > 0 Then
                 ndtt = ndt * tijk(mn, k)
                 ar(0, 0) = ar(0, 0) + ndt
                 ar(1, 0) = ar(1, 0) + ndtt
@@ -1533,3 +1535,4 @@ End Function
 Private Function Cosh(xx)
   Cosh = (Exp(xx) + Exp(-xx)) / 2
 End Function
+

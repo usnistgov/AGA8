@@ -143,10 +143,11 @@ void PressureGERG(const double T, const double D, const std::vector<double> &x, 
     // Outputs:
     //      P - Pressure (kPa)
     //      Z - Compressibility factor
-    // dPdDsave - d(P)/d(D) [kPa/(mol/l)] (stored in global block)
+    // dPdDsave - d(P)/d(D) [kPa/(mol/l)]
+    //          - This variable is cached in the common variables for use in the iterative density solver, but not returned as an argument.
 
     double ar[4][4];
-    AlpharGERG(0, T, D,x,ar);
+    AlpharGERG(0, 0, T, D,x,ar);
 
     Z = 1 + ar[0][1];
     P = D * RGERG * T * Z;
@@ -311,7 +312,7 @@ void PropertiesGERG(const double T, const double D, const std::vector<double> &x
     Alpha0GERG(T, D, x, a0);
 
     // Calculate the real gas Helmholtz energy, and its derivatives with respect to temperature and/or density.
-    AlpharGERG(1, T, D, x, ar);
+    AlpharGERG(1, 0, T, D, x, ar);
 
     R = RGERG;
     RT = R * T;
@@ -409,7 +410,7 @@ static void Alpha0GERG(const double T, const double D, const std::vector<double>
     //    x() - Composition (mole fraction)
 
     // Outputs:
-    //  a0(0) - Ideal gas Helmholtz energy (dimensionless [i.e., divided by RT])
+    //  a0(0) - Ideal gas Helmholtz energy (all dimensionless [i.e., divided by RT])
     //  a0(1) - tau*partial(a0)/partial(tau)
     //  a0(2) - tau^2*partial^2(a0)/partial(tau)^2
 
@@ -454,20 +455,22 @@ static void Alpha0GERG(const double T, const double D, const std::vector<double>
   }
 }
 
-static void AlpharGERG(const int iprop, const double T, const double D, const std::vector<double> &x, double ar[4][4])
+static void AlpharGERG(const int itau, const int idelta, const double T, const double D, const std::vector<double> &x, double ar[4][4])
 {
-    // Private Sub AlpharGERG(iprop, T, D, x, ar)
+    // Private Sub AlpharGERG(itau, idelta, T, D, x, ar)
 
     // Calculate dimensionless residual Helmholtz energy and its derivatives with respect to tau and delta.
 
     // Inputs:
+    //   itau - Set this to 1 to calculate "ar" derivatives with respect to tau [i.e., ar(1,0), ar(1,1), and ar(2,0)], otherwise set it to 0.
+    // idelta - Currently not used, but kept as an input for future use in specifing the highest density derivative needed.
     //  iprop - Set to 1 to return all derivatives or 0 to return only pressure related properties [ar(0,1) and ar(0,2)]
     //      T - Temperature (K)
     //      D - Density (mol/l)
     //    x() - Composition (mole fraction)
 
     // Outputs:
-    //  ar(0,0) - Residual Helmholtz energy (dimensionless, =a/RT)
+    //  ar(0,0) - Residual Helmholtz energy (all dimensionless, =a/RT)
     //  ar(0,1) -     delta*partial  (ar)/partial(delta)
     //  ar(0,2) -   delta^2*partial^2(ar)/partial(delta)^2
     //  ar(0,3) -   delta^3*partial^3(ar)/partial(delta)^3
@@ -509,7 +512,7 @@ static void AlpharGERG(const int iprop, const double T, const double D, const st
                 ndtd = ndt * doik[i][k];
                 ar[0][1] += ndtd;
                 ar[0][2] += ndtd * (doik[i][k] - 1);
-                if (iprop > 0){
+                if (itau > 0){
                     ndtt = ndt * toik[i][k];
                     ar[0][0] += ndt;
                     ar[1][0] += ndtt;
@@ -526,7 +529,7 @@ static void AlpharGERG(const int iprop, const double T, const double D, const st
                 ex3 = ex2 * (ex2 - 1);
                 ar[0][1] += ndt * ex2;
                 ar[0][2] += ndt * (ex3 - coik[i][k] * ex);
-                if (iprop > 0){
+                if (itau > 0){
                     ndtt = ndt * toik[i][k];
                     ar[0][0] += ndt;
                     ar[1][0] += ndtt;
@@ -570,7 +573,7 @@ static void AlpharGERG(const int iprop, const double T, const double D, const st
                             ex2 = (ex * ex - dijk[mn][k] + 2 * cij0);
                             ar[0][1] += ndt * ex;
                             ar[0][2] += ndt * ex2;
-                            if(iprop > 0){
+                            if(itau > 0){
                                 ndtt = ndt * tijk[mn][k];
                                 ar[0][0] += ndt;
                                 ar[1][0] += ndtt;

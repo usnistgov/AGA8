@@ -106,6 +106,7 @@ Sub PressureGross(ByVal T As Double, ByVal D As Double, xGrs() As Double, ByVal 
 '     P - Pressure (kPa)
 '     Z - Compressibility factor
 '  dPdDsave - d(P)/d(D) [kPa/(mol/l)] (at constant temperature)
+'           - This variable is cached in the common variables for use in the iterative density solver, but not returned as an argument.
 '  ierr - Error number (0 indicates no error)
 '  herr - Error message if ierr is not equal to zero
 
@@ -509,3 +510,5 @@ Sub SetupGross()
   mN2 = MMiGross(2)
   mCO2 = MMiGross(3)
 End Sub
+
+
