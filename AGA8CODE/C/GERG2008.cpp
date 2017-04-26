@@ -194,7 +194,7 @@ void DensityGERG(const int iFlag, const double T, const double P, const std::vec
     nFail = 0;
     iFail = 0;
     if (P == 0) { D = 0; return; }
-    tolr = 0.00000000001;
+    tolr = 0.0000001;
     PseudoCriticalPointGERG(x, Tcx, Dcx);
 
     if (D >= 0){
@@ -364,7 +364,7 @@ static void ReducingParametersGERG(const std::vector<double> &x, double &Tr, dou
   // Check to see if a component fraction has changed.  If x is the same as the previous call, then exit.
   icheck = 0;
   for (int i = 1; i <= NcGERG; ++i){
-    if (std::abs(x[i] - xold[i]) > 0.00000000001){ icheck = 1; }
+    if (std::abs(x[i] - xold[i]) > 0.0000001){ icheck = 1; }
     xold[i] = x[i];
   }
   if (icheck == 0){

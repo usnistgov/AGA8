@@ -143,7 +143,7 @@ Sub DensityGross(ByVal T As Double, ByVal P As Double, xGrs() As Double, ByVal H
   ierr = 0
   herr = ""
   If P = 0 Then D = 0: Exit Sub
-  tolr = 0.00000000001
+  tolr = 0.0000001
   D = P / RGross / T       'Ideal gas estimate
   plog = Log(P)
   vlog = -Log(D)
@@ -359,7 +359,7 @@ Sub GrossMethod1(ByVal Th As Double, ByVal Td As Double, ByVal Pd As Double, xGr
     Call Bmix(Td, xGrs, HCH, B, C, ierr, herr)
     If ierr <> 0 Then Exit Sub
     Zd = 1 + B * Pd / RGross / Td
-    If Abs(Zold - Zd) < 0.00000000001 Then Exit For
+    If Abs(Zold - Zd) < 0.0000001 Then Exit For
   Next
 End Sub
 
@@ -409,7 +409,7 @@ Sub GrossMethod2(ByVal Th As Double, ByVal Td As Double, ByVal Pd As Double, xGr
     Call Bmix(Td, xGrs, HCH, B, C, ierr, herr)
     If ierr <> 0 Then Exit Sub
     Z = 1 + B * Pd / RGross / Td
-    If Abs(Zold - Z) < 0.00000000001 Then Exit For
+    If Abs(Zold - Z) < 0.0000001 Then Exit For
   Next
   HN = HCH * xCH
   Hv = HN / Z / RGross / Td * Pd / (1 + 0.0001027 * (Th - 298.15))
@@ -510,5 +510,3 @@ Sub SetupGross()
   mN2 = MMiGross(2)
   mCO2 = MMiGross(3)
 End Sub
-
-

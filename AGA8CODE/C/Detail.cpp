@@ -168,7 +168,7 @@ void DensityDetail(const double T, const double P, const std::vector<double> &x,
     ierr = 0;
     herr = "";
     if (std::abs(P) < 1e-14){ D = 0; return; }
-    tolr = 0.00000000001;
+    tolr = 0.0000001;
     if (D >= 0) {
         D = P / RDetail / T;  // Ideal gas estimate
     }
@@ -221,7 +221,7 @@ void PropertiesDetail(const double T, const double D, const std::vector<double> 
     //      Z - Compressibility factor
     //   dPdD - First derivative of pressure with respect to density at constant temperature [kPa/(mol/l)]
     // d2PdD2 - Second derivative of pressure with respect to density at constant temperature [kPa/(mol/l)^2]
-    // d2PdTD - Second derivative of pressure with respect to temperature and density [kPa/(mol/l)/K]
+    // d2PdTD - Second derivative of pressure with respect to temperature and density [kPa/(mol/l)/K] (currently not calculated)
     //   dPdT - First derivative of pressure with respect to temperature at constant density (kPa/K)
     //      U - Internal energy (J/mol)
     //      H - Enthalpy (J/mol)
@@ -272,6 +272,7 @@ void PropertiesDetail(const double T, const double D, const std::vector<double> 
     if (W < 0) { W = 0; }
     W = sqrt(W);
     Kappa = W * W * Mm / (RT * 1000 * Z);
+    d2PdTD = 0;
 }
 
 
@@ -289,7 +290,7 @@ static void xTermsDetail(const std::vector<double> &x)
     // Check to see if a component fraction has changed.  If x is the same as the previous call, then exit.
     icheck = 0;
     for (int i = 1; i <= NcDetail; ++i){
-        if (std::abs(x[i] - xold[i]) > 0.00000000001) { icheck = 1; }
+        if (std::abs(x[i] - xold[i]) > 0.0000001) { icheck = 1; }
         xold[i] = x[i];
     }
     if (icheck == 0){ return; }
@@ -413,6 +414,8 @@ static void AlpharDetail(const int itau, const int idel, const double T, const d
     // Subroutine xTerms must be called before this routine if x has changed
 
     // Inputs:
+    //  itau - Set this to 1 to calculate "ar" derivatives with respect to T [i.e., ar(1,0), ar(1,1), and ar(2,0)], otherwise set it to 0.
+    //  idel - Currently not used, but kept as an input for future use in specifing the highest density derivative needed.
     //     T - Temperature (K)
     //     D - Density (mol/l)
 
@@ -433,7 +436,7 @@ static void AlpharDetail(const int itau, const int idel, const double T, const d
     double CoefT1[NTerms+1], CoefT2[NTerms+1];
 
     for (int i = 0; i <3; ++i){ for (int j = 0; j <3; ++j){ ar[i][j] = 0; } }
-    if (std::abs(T - Told) > 0.00000000001){
+    if (std::abs(T - Told) > 0.0000001){
         for (int n = 1; n <= 58; ++n){
             Tun[n] = pow(T, -un[n]);
         }

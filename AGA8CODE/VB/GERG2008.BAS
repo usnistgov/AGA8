@@ -165,7 +165,7 @@ Sub DensityGERG(iFlag As Integer, ByVal T As Double, ByVal P As Double, x() As D
   nFail = 0
   iFail = 0
   If P = 0 Then D = 0: Exit Sub
-  tolr = 0.00000000001
+  tolr = 0.0000001
   Call PseudoCriticalPointGERG(x, Tcx, Dcx)
 
   If D >= 0 Then
@@ -325,7 +325,7 @@ Private Sub ReducingParametersGERG(x() As Double, ByRef Tr As Double, ByRef Dr A
   'Check to see if a component fraction has changed.  If x is the same as the previous call, then exit.
   icheck = 0
   For i = 1 To NcGERG
-    If Abs(x(i) - xold(i)) > 0.00000000001 Then icheck = 1
+    If Abs(x(i) - xold(i)) > 0.0000001 Then icheck = 1
     xold(i) = x(i)
   Next
   If icheck = 0 Then
@@ -370,7 +370,7 @@ Private Sub Alpha0GERG(ByVal T As Double, ByVal D As Double, x() As Double, a0()
 '   x() - Composition (mole fraction)
 '
 'Outputs:
-' a0(0) - Ideal gas Helmholtz energy (all dimensionless [i.e., divided by RT])
+' a0(0) - Ideal gas Helmholtz energy (dimensionless [i.e., divided by RT])
 ' a0(1) - tau*partial(a0)/partial(tau)
 ' a0(2) - tau^2*partial^2(a0)/partial(tau)^2
 
@@ -428,7 +428,7 @@ Private Sub AlpharGERG(ByVal itau As Integer, ByVal idel As Integer, ByVal T As 
 '   x() - Composition (mole fraction)
 '
 'Outputs:
-' ar(0,0) - Residual Helmholtz energy (all dimensionless, =a/RT)
+' ar(0,0) - Residual Helmholtz energy (dimensionless, =a/RT)
 ' ar(0,1) -     delta*partial  (ar)/partial(delta)
 ' ar(0,2) -   delta^2*partial^2(ar)/partial(delta)^2
 ' ar(0,3) -   delta^3*partial^3(ar)/partial(delta)^3
@@ -456,7 +456,7 @@ Private Sub AlpharGERG(ByVal itau As Integer, ByVal idel As Integer, ByVal T As 
   Next
 
 'If temperature has changed, calculate temperature dependent parts
-  If Abs(T - Told) > 0.00000000001 Or Abs(Tr - Trold2) > 0.00000000001 Then Call tTermsGERG(lntau, x)
+  If Abs(T - Told) > 0.0000001 Or Abs(Tr - Trold2) > 0.0000001 Then Call tTermsGERG(lntau, x)
   Told = T
   Trold2 = Tr
 
@@ -1535,4 +1535,3 @@ End Function
 Private Function Cosh(xx)
   Cosh = (Exp(xx) + Exp(-xx)) / 2
 End Function
-
