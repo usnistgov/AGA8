@@ -157,7 +157,7 @@ void DensityGross(const double T, const double P, const std::vector<double> &xGr
     if (std::abs(P) < 1e-14){
         D = 0; return;
     } 
-    tolr = 0.00000000001;
+    tolr = 0.0000001;
     D = P / RGross / T;       //Ideal gas estimate
     plog = log(P);
     vlog = -log(D);
@@ -392,7 +392,7 @@ void GrossMethod1(const double Th, const double Td, const double Pd, std::vector
             return;
         } 
         Zd = 1 + B*Pd/RGross/Td;
-        if(std::abs(Zold - Zd) < 0.00000000001) { break; }
+        if(std::abs(Zold - Zd) < 0.0000001) { break; }
     }
 }
 
@@ -441,7 +441,7 @@ void GrossMethod2(const double Th, const double Td, const double Pd, std::vector
         Bmix(Td, xGrs, HCH, B, C, ierr, herr);
         if (ierr != 0){ return; }
         Z = 1 + B * Pd / RGross / Td;
-        if (std::abs(Zold - Z) < 0.00000000001){ break; };
+        if (std::abs(Zold - Z) < 0.0000001){ break; };
     }
     HN = HCH * xCH;
     Hv = HN / Z / RGross / Td * Pd / (1 + 0.0001027 * (Th - 298.15));

@@ -203,9 +203,9 @@ void DensityDetail(const double T, const double P, const std::vector<double> &x,
     }
 }
 
-void PropertiesDetail(const double T, const double D, const std::vector<double> &x, double &P, double &Z, double &dPdD, double &d2PdD2, double &dPdT, double &U, double &H, double &S, double &Cv, double &Cp, double &W, double &G, double &JT, double &Kappa)
+void PropertiesDetail(const double T, const double D, const std::vector<double> &x, double &P, double &Z, double &dPdD, double &d2PdD2, double &d2PdTD, double &dPdT, double &U, double &H, double &S, double &Cv, double &Cp, double &W, double &G, double &JT, double &Kappa)
 {
-    // Sub Properties(T, D, x, P, Z, d2PdD, dPdD2, dPdT, U, H, S, Cv, Cp, W, G, JT, Kappa)
+    // Sub Properties(T, D, x, P, Z, dPdD, d2PdD2, d2PdTD, dPdT, U, H, S, Cv, Cp, W, G, JT, Kappa)
 
     // Calculate thermodynamic properties as a function of temperature and density.  Calls are made to the subroutines
     // Molarmass, Alpha0Detail, and AlpharDetail.  If the density is not known, call subroutine DensityDetail first
@@ -992,8 +992,8 @@ int main()
     DensityDetail(T, P, x, D, ierr, herr);
 
     // Sub PropertiesDetail(T, D, x, P, Z, dPdD, dPdD2, dPdT, U, H, S, Cv, Cp, W, G, JT, Kappa, A)
-    double Z, dPdD, dPdD2, dPdT, U, H, S, Cv, Cp, W, G, JT, Kappa;
-    PropertiesDetail(T, D, x, P, Z, dPdD, dPdD2, dPdT, U, H, S, Cv, Cp, W, G, JT, Kappa);
+    double Z, dPdD, dPdD2, d2PdTD, dPdT, U, H, S, Cv, Cp, W, G, JT, Kappa;
+    PropertiesDetail(T, D, x, P, Z, dPdD, dPdD2, d2PdTD, dPdT, U, H, S, Cv, Cp, W, G, JT, Kappa);
 
     printf("Inputs-----\n");
     printf("Temperature [K]:                    400.0000000000000 != %0.16g\n",T);

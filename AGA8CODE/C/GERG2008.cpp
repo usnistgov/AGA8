@@ -470,7 +470,7 @@ static void AlpharGERG(const int itau, const int idelta, const double T, const d
     //    x() - Composition (mole fraction)
 
     // Outputs:
-    //  ar(0,0) - Residual Helmholtz energy (all dimensionless, =a/RT)
+    //  ar(0,0) - Residual Helmholtz energy (dimensionless, =a/RT)
     //  ar(0,1) -     delta*partial  (ar)/partial(delta)
     //  ar(0,2) -   delta^2*partial^2(ar)/partial(delta)^2
     //  ar(0,3) -   delta^3*partial^3(ar)/partial(delta)^3
@@ -498,7 +498,7 @@ static void AlpharGERG(const int itau, const int idelta, const double T, const d
     }
 
     // If temperature has changed, calculate temperature dependent parts
-    if (std::abs(T - Told) > 0.00000000001 || std::abs(Tr - Trold2) > 0.00000000001) { 
+    if (std::abs(T - Told) > 0.0000001 || std::abs(Tr - Trold2) > 0.0000001) { 
 		  tTermsGERG(lntau, x); 
     }
     Told = T;
