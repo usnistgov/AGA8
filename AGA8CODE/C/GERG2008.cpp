@@ -82,7 +82,7 @@
 
 // Function prototypes (not exported)
 static void Alpha0GERG(const double T, const double D, const std::vector<double> &x, double a0[3]);
-static void AlpharGERG(const int iprop, const double T, const double D, const std::vector<double> &x, double ar[4][4]);
+static void AlpharGERG(const int itau, const int idelta, const double T, const double D, const std::vector<double> &x, double ar[4][4]);
 static void PseudoCriticalPointGERG(const std::vector<double> &x, double &Tcx, double &Dcx);
 static void tTermsGERG(const double lntau, const std::vector<double> &x);
 
@@ -555,7 +555,7 @@ static void AlpharGERG(const int itau, const int idelta, const double T, const d
                             ndtd = ndt * dijk[mn][k];
                             ar[0][1] += ndtd;
                             ar[0][2] += ndtd * (dijk[mn][k] - 1);
-                            if (iprop > 0){
+                            if (itau > 0){
                                 ndtt = ndt * tijk[mn][k];
                                 ar[0][0] += ndt;
                                 ar[1][0] += ndtt;
@@ -580,7 +580,7 @@ static void AlpharGERG(const int itau, const int idelta, const double T, const d
                                 ar[2][0] += ndtt * (tijk[mn][k] - 1);
                                 ar[1][1] += ndtt * ex;
                                 ar[1][2] += ndtt * ex2;
-                                ar[0][3] += ndt * (ex * (ex2 - 2 * (dijk[mn][k] - 2 * cij0)) + 2 * dijk[mn][k]));
+                                ar[0][3] += ndt * (ex * (ex2 - 2 * (dijk[mn][k] - 2 * cij0)) + 2 * dijk[mn][k]);
                             }
                         }
                     }
