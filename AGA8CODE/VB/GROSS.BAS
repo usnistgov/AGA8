@@ -112,6 +112,8 @@ Sub PressureGross(ByVal T As Double, ByVal D As Double, xGrs() As Double, ByVal 
 '  herr - Error message if ierr is not equal to zero
 
   Dim B As Double, C As Double
+  Z = 1
+  P = D * RGross * T
   Call Bmix(T, xGrs, HCH, B, C, ierr, herr)
   If ierr > 0 Then Exit Sub
   Z = 1 + B * D + C * D ^ 2
@@ -157,7 +159,7 @@ Sub DensityGross(ByVal T As Double, ByVal P As Double, xGrs() As Double, ByVal H
     D = Exp(-vlog)
     Call PressureGross(T, D, xGrs, HCH, P2, Z, ierr, herr)
     If ierr > 0 Then Exit Sub
-    If dPdDsave < Epsilon Or P2 <= Epsilon Then
+    If dPdDsave < Epsilon Or P2 < Epsilon Then
       vlog = vlog + 0.1
     Else
       'Find the next density with a first order Newton's type iterative scheme, with
@@ -343,8 +345,8 @@ Sub GrossMethod1(ByVal Th As Double, ByVal Td As Double, ByVal Pd As Double, xGr
   Dim G1 As Double, G2 As Double, Bref As Double, Zref As Double, B As Double, C As Double
   ierr = 0
   herr = ""
-  If Gr <= Epsilon Then ierr = 1: herr = "Invalid input for relative density": Exit Sub
-  If Hv <= Epsilon Then ierr = 2: herr = "Invalid input for heating value": Exit Sub
+  If Gr < Epsilon Then ierr = 1: herr = "Invalid input for relative density": Exit Sub
+  If Hv < Epsilon Then ierr = 2: herr = "Invalid input for heating value": Exit Sub
 
   xCO2 = xGrs(3)
   Zd = 1
@@ -396,7 +398,7 @@ Sub GrossMethod2(ByVal Th As Double, ByVal Td As Double, ByVal Pd As Double, xGr
   Dim G1 As Double, G2 As Double, B As Double, C As Double, xN2 As Double, xCO2 As Double
   ierr = 0
   herr = ""
-  If Gr <= Epsilon Then ierr = 1: herr = "Invalid input for relative density": Exit Sub
+  If Gr < Epsilon Then ierr = 1: herr = "Invalid input for relative density": Exit Sub
 
   xN2 = xGrs(2)
   xCO2 = xGrs(3)
@@ -516,5 +518,3 @@ Sub SetupGross()
   mN2 = MMiGross(2)
   mCO2 = MMiGross(3)
 End Sub
-
-

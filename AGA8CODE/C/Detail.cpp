@@ -79,6 +79,7 @@ static void AlpharDetail(const int itau, const int idel, const double T, const d
 // Variables containing the common parameters in the DETAIL equations
 static double RDetail;
 static const int NcDetail = 21, MaxFlds = 21, NTerms = 58;
+static const double epsilon = 1e-15;
 static int fn[NTerms+1], gn[NTerms+1], qn[NTerms+1];
 static double an[NTerms+1], un[NTerms+1];
 static int bn[NTerms+1], kn[NTerms+1]; // TODO: update VB
@@ -167,9 +168,9 @@ void DensityDetail(const double T, const double P, const std::vector<double> &x,
 
     ierr = 0;
     herr = "";
-    if (std::abs(P) < 1e-14){ D = 0; return; }
+    if (std::abs(P) < epsilon){ D = 0; return; }
     tolr = 0.0000001;
-    if (D >= 0) {
+    if (D > -epsilon) {
         D = P / RDetail / T;  // Ideal gas estimate
     }
     else{
@@ -185,7 +186,7 @@ void DensityDetail(const double T, const double P, const std::vector<double> &x,
         }
         D = exp(-vlog);
         PressureDetail(T, D, x, P2, Z);
-        if (dPdDsave < 0 || P2 <= 0){
+        if (dPdDsave < epsilon || P2 < epsilon){
           vlog += 0.1;
         }
         else{
@@ -257,7 +258,7 @@ void PropertiesDetail(const double T, const double D, const std::vector<double> 
     S = -a0[1] - ar[1][0];
     U = A + T * S;
     Cv = -(a0[2] + ar[2][0]);
-    if (D > 0) {
+    if (D > epsilon) {
         H = U + P / D;
         G = A + P / D;
         Cp = Cv + T * pow(dPdT / D, 2) / dPdD;
@@ -368,7 +369,7 @@ static void Alpha0Detail(const double T, const double D, const std::vector<doubl
     double em, ep, hcn, hsn;
 
     a0[0] = 0; a0[1] = 0; a0[2] = 0;
-    if (D > 0) { LogD = log(D); } else {LogD = log(1E-20);}
+    if (D > epsilon) { LogD = log(D); } else {LogD = log(epsilon);}
     LogT = log(T);
     for (int i = 1; i <= NcDetail; ++i) {
         if (x[i] > 0) {

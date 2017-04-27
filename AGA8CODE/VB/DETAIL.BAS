@@ -58,6 +58,7 @@
 Option Explicit
 Public RDetail As Double
 Private Const NcDetail As Integer = 21, MaxFlds As Integer = 21, NTerms As Integer = 58
+Private Const Epsilon As Double = 0.000000000000001  '1d-15
 Private fn(NTerms) As Integer, gn(NTerms) As Integer, qn(NTerms) As Integer
 Private an(NTerms) As Double, bn(NTerms) As Integer, kn(NTerms) As Integer, un(NTerms) As Double
 Private Bsnij2(MaxFlds, MaxFlds, 18) As Double, Bs(18) As Double, Csn(NTerms) As Double
@@ -142,9 +143,9 @@ Sub DensityDetail(ByVal T As Double, ByVal P As Double, x() As Double, ByRef D A
 
   ierr = 0
   herr = ""
-  If P = 0 Then D = 0: Exit Sub
+  If Abs(P) < Epsilon Then D = 0: Exit Sub
   tolr = 0.0000001
-  If D >= 0 Then
+  If D > -Epsilon Then
     D = P / RDetail / T  'Ideal gas estimate
   Else
     D = Abs(D)           'If D<0, then use as initial estimate
@@ -155,7 +156,7 @@ Sub DensityDetail(ByVal T As Double, ByVal P As Double, x() As Double, ByRef D A
     If vlog < -7 Or vlog > 100 Then GoTo DError:
     D = Exp(-vlog)
     Call PressureDetail(T, D, x, P2, Z)
-    If dPdDsave < 0 Or P2 <= 0 Then
+    If dPdDsave < Epsilon Or P2 < Epsilon Then
       vlog = vlog + 0.1
     Else
       'Find the next density with a first order Newton's type iterative scheme, with
@@ -228,7 +229,7 @@ Sub PropertiesDetail(ByVal T As Double, ByVal D As Double, x() As Double, ByRef 
   S = -a0(1) - ar(1, 0)
   U = A + T * S
   Cv = -(a0(2) + ar(2, 0))
-  If D > 0 Then
+  If D > Epsilon Then
     H = U + P / D
     G = A + P / D
     Cp = Cv + T * (dPdT / D) ^ 2 / dPdD
@@ -340,7 +341,7 @@ Private Sub Alpha0Detail(ByVal T As Double, ByVal D As Double, x() As Double, a0
   Dim em As Double, ep As Double, hcn As Double, hsn As Double
 
   a0(0) = 0: a0(1) = 0: a0(2) = 0
-  If D > 0 Then LogD = Log(D) Else LogD = Log(1E-20)
+  If D > Epsilon Then LogD = Log(D) Else LogD = Log(Epsilon)
   LogT = Log(T)
   For i = 1 To NcDetail
     If x(i) > 0 Then

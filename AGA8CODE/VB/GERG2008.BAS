@@ -71,6 +71,7 @@
 Option Explicit
 Public RGERG As Double
 Private Const NcGERG As Integer = 21, MaxFlds As Integer = 21, MaxMdl As Integer = 10, MaxTrmM As Integer = 12, MaxTrmP As Integer = 24
+Private Const Epsilon As Double = 0.000000000000001  '1d-15
 Private coik(MaxFlds, MaxTrmP) As Integer, doik(MaxFlds, MaxTrmP) As Integer, dijk(MaxMdl, MaxTrmM) As Integer
 Private mNumb(MaxFlds, MaxFlds) As Integer, kpol(MaxFlds) As Integer, kexp(MaxFlds) As Integer, kpolij(MaxMdl) As Integer, kexpij(MaxMdl) As Integer
 Private Drold As Double, Trold As Double, Told As Double, Trold2 As Double, xold(MaxFlds) As Double
@@ -164,11 +165,11 @@ Sub DensityGERG(iFlag As Integer, ByVal T As Double, ByVal P As Double, x() As D
   herr = ""
   nFail = 0
   iFail = 0
-  If P = 0 Then D = 0: Exit Sub
+  If P < Epsilon Then D = 0: Exit Sub
   tolr = 0.0000001
   Call PseudoCriticalPointGERG(x, Tcx, Dcx)
 
-  If D >= 0 Then
+  If D > -Epsilon Then
     D = P / RGERG / T               'Ideal gas estimate for vapor phase
     If iFlag = 2 Then D = Dcx * 3   'Initial estimate for liquid phase
   Else
@@ -193,7 +194,7 @@ Sub DensityGERG(iFlag As Integer, ByVal T As Double, ByVal P As Double, x() As D
     End If
     D = Exp(-vlog)
     Call PressureGERG(T, D, x, P2, Z)
-    If dPdDsave < 0 Or P2 <= 0 Then
+    If dPdDsave < Epsilon Or P2 < Epsilon Then
       'Current state is 2-phase, try locating a different state that is single phase
       vinc = 0.1
       If D > Dcx Then vinc = -0.1
@@ -290,7 +291,7 @@ Sub PropertiesGERG(ByVal T As Double, ByVal D As Double, x() As Double, ByRef P 
   H = RT * (1 + ar(0, 1) + a0(1) + ar(1, 0))
   S = R * (a0(1) + ar(1, 0) - a0(0) - ar(0, 0))
   Cv = -R * (a0(2) + ar(2, 0))
-  If D > 0 Then
+  If D > Epsilon Then
     Cp = Cv + T * (dPdT / D) ^ 2 / dPdD
     d2PdD2 = RT * (2 * ar(0, 1) + 4 * ar(0, 2) + ar(0, 3)) / D
     JT = (T / D * dPdT / dPdD - 1) / Cp / D  '=(dB/dT*T-B)/Cp for an ideal gas, but dB/dT is not known
@@ -341,10 +342,10 @@ Private Sub ReducingParametersGERG(x() As Double, ByRef Tr As Double, ByRef Dr A
   Vr = 0
   Tr = 0
   For i = 1 To NcGERG
-    If x(i) > 0 Then
+    If x(i) > Epsilon Then
       F = 1
       For j = i To NcGERG
-        If x(j) > 0 Then
+        If x(j) > Epsilon Then
           xij = F * (x(i) * x(j)) * (x(i) + x(j))
           Vr = Vr + xij * gvij(i, j) / (bvij(i, j) * x(i) + x(j))
           Tr = Tr + xij * gtij(i, j) / (btij(i, j) * x(i) + x(j))
@@ -353,7 +354,7 @@ Private Sub ReducingParametersGERG(x() As Double, ByRef Tr As Double, ByRef Dr A
       Next
     End If
   Next
-  If Vr > 0 Then Dr = 1 / Vr
+  If Vr > Epsilon Then Dr = 1 / Vr
   Drold = Dr
   Trold = Tr
 End Sub
@@ -380,16 +381,16 @@ Private Sub Alpha0GERG(ByVal T As Double, ByVal D As Double, x() As Double, a0()
   Dim em As Double, ep As Double, hcn As Double, hsn As Double
 
   a0(0) = 0: a0(1) = 0: a0(2) = 0
-  If D > 0 Then LogD = Log(D) Else LogD = Log(1E-20)
+  If D > Epsilon Then LogD = Log(D) Else LogD = Log(1E-20)
   LogT = Log(T)
   For i = 1 To NcGERG
-    If x(i) > 0 Then
+    If x(i) > Epsilon Then
       LogxD = LogD + Log(x(i))
       SumHyp0 = 0
       SumHyp1 = 0
       SumHyp2 = 0
       For j = 4 To 7
-        If th0i(i, j) > 0 Then
+        If th0i(i, j) > Epsilon Then
           th0T = th0i(i, j) / T
           ep = Exp(th0T)
           em = 1 / ep
@@ -462,7 +463,7 @@ Private Sub AlpharGERG(ByVal itau As Integer, ByVal idel As Integer, ByVal T As 
 
 'Calculate pure fluid contributions
   For i = 1 To NcGERG
-    If x(i) > 0 Then
+    If x(i) > Epsilon Then
       For k = 1 To kpol(i)
         ndt = x(i) * delp(doik(i, k)) * taup(i, k)
         ndtd = ndt * doik(i, k)
@@ -500,9 +501,9 @@ Private Sub AlpharGERG(ByVal itau As Integer, ByVal idel As Integer, ByVal T As 
 
 'Calculate mixture contributions
   For i = 1 To NcGERG - 1
-    If x(i) > 0 Then
+    If x(i) > Epsilon Then
       For j = i + 1 To NcGERG
-        If x(j) > 0 Then
+        If x(j) > Epsilon Then
           mn = mNumb(i, j)
           If mn >= 0 Then
             xijf = x(i) * x(j) * fij(i, j)
@@ -558,7 +559,7 @@ Private Sub tTermsGERG(ByVal lntau As Double, x() As Double)
     taup0(k) = Exp(toik(i, k) * lntau)
   Next
   For i = 1 To NcGERG
-    If x(i) > 0 Then
+    If x(i) > Epsilon Then
       If i > 4 And i <> 15 And i <> 18 And i <> 20 Then
         For k = 1 To kpol(i) + kexp(i)
           taup(i, k) = noik(i, k) * taup0(k)
@@ -572,9 +573,9 @@ Private Sub tTermsGERG(ByVal lntau As Double, x() As Double)
   Next
 
   For i = 1 To NcGERG - 1
-    If x(i) > 0 Then
+    If x(i) > Epsilon Then
       For j = i + 1 To NcGERG
-        If x(j) > 0 Then
+        If x(j) > Epsilon Then
           mn = mNumb(i, j)
           If mn >= 0 Then
             For k = 1 To kpolij(mn)
@@ -600,7 +601,7 @@ Sub PseudoCriticalPointGERG(x() As Double, ByRef Tcx As Double, ByRef Dcx As Dou
     Tcx = Tcx + x(i) * Tc(i)
     Vcx = Vcx + x(i) / Dc(i)
   Next
-  If Vcx > 0 Then Dcx = 1 / Vcx
+  If Vcx > Epsilon Then Dcx = 1 / Vcx
 End Sub
 
 
@@ -1276,10 +1277,10 @@ Sub SetupGERG()
   d0 = 101.325 / RGERG / T0
   For i = 1 To MaxFlds
     n1 = 0: n2 = 0
-    If th0i(i, 4) > 0 Then n2 = n2 - n0i(i, 4) * th0i(i, 4) / Tanh(th0i(i, 4) / T0): n1 = n1 - n0i(i, 4) * Log(Sinh(th0i(i, 4) / T0))
-    If th0i(i, 5) > 0 Then n2 = n2 + n0i(i, 5) * th0i(i, 5) * Tanh(th0i(i, 5) / T0): n1 = n1 + n0i(i, 5) * Log(Cosh(th0i(i, 5) / T0))
-    If th0i(i, 6) > 0 Then n2 = n2 - n0i(i, 6) * th0i(i, 6) / Tanh(th0i(i, 6) / T0): n1 = n1 - n0i(i, 6) * Log(Sinh(th0i(i, 6) / T0))
-    If th0i(i, 7) > 0 Then n2 = n2 + n0i(i, 7) * th0i(i, 7) * Tanh(th0i(i, 7) / T0): n1 = n1 + n0i(i, 7) * Log(Cosh(th0i(i, 7) / T0))
+    If th0i(i, 4) > Epsilon Then n2 = n2 - n0i(i, 4) * th0i(i, 4) / Tanh(th0i(i, 4) / T0): n1 = n1 - n0i(i, 4) * Log(Sinh(th0i(i, 4) / T0))
+    If th0i(i, 5) > Epsilon Then n2 = n2 + n0i(i, 5) * th0i(i, 5) * Tanh(th0i(i, 5) / T0): n1 = n1 + n0i(i, 5) * Log(Cosh(th0i(i, 5) / T0))
+    If th0i(i, 6) > Epsilon Then n2 = n2 - n0i(i, 6) * th0i(i, 6) / Tanh(th0i(i, 6) / T0): n1 = n1 - n0i(i, 6) * Log(Sinh(th0i(i, 6) / T0))
+    If th0i(i, 7) > Epsilon Then n2 = n2 + n0i(i, 7) * th0i(i, 7) * Tanh(th0i(i, 7) / T0): n1 = n1 + n0i(i, 7) * Log(Cosh(th0i(i, 7) / T0))
     n0i(i, 3) = n0i(i, 3) - 1
     n0i(i, 1) = n1 - n2 / T0 + n0i(i, 3) * (1 + Log(T0))
     n0i(i, 2) = n2 - n0i(i, 3) * T0

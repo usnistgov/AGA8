@@ -1,6 +1,6 @@
 c  Example program for calling routines for the GERG-2008 equation of state.
 
-      program Example
+      subroutine ExampleGerg
       implicit none
       integer ierr
       double precision x(21),Mm,T,P,D,pp
@@ -78,26 +78,9 @@ c  For T and P inputs, the DensityGERG routine must be called first to get D.
       end
 
 c-----------------------------------------------------------------------
-c    **********  This code is preliminary, and will be updated.  **********
-c    **********  Use only for beta testing.  **********
-c    **********  June 7, 2016  **********
-c
-c  Version 1.7 of routines for the calculation of thermodynamic properties from the
-c    AGA 8 Part 2 GERG-2008 equation of state.
-c
-c  06/19/2012 - Change kexp from 7 to 9 for water
-c  02/20/2013 - Remove one of the negative signs in the calculation of Cv
-c  03/20/2014 - Change n1 and n2 constants in the ideal gas terms to match the latest values
-c  03/10/2015 - Multiple changes to work with Excel, with new fluid order that matches other methods
-c  03/18/2015 - Change order of butane and isobutane, and the order of pentane and isopentane
-c  08/13/2015 - Change generalized equation array location from 0 to 10 to avoid arrays starting at 0
-c  08/13/2015 - Declare kexp, kpol, kpolij, kexpij as integers instead of doubles
-c  10/31/2015 - Change code to more closely match the DETAIL code
-c  11/17/2015 - Modify density search to find liquid phase roots
-c  12/17/2015 - Add subroutine tTermsGERG
-c  05/16/2016 - Fix error in the calculation of entropy
-c  05/16/2016 - Make minor final changes before publication
-c  05/25/2016 - Change the ideal gas coefficients so that the GERG and DETAIL use the same values
+c  Version 2.0 of routines for the calculation of thermodynamic
+c   properties from the AGA 8 Part 2 GERG-2008 equation of state.
+c   April, 2017
 c
 c  Written by Eric W. Lemmon
 c  Applied Chemicals and Materials Division
@@ -112,7 +95,7 @@ c  Jason Lu, Thermo Fisher Scientific
 c  Ian Bell, NIST
 c
 c  The publication for the AGA 8 equation of state is available from AGA
-c    and the Transmission Measurement Committee
+c    and the Transmission Measurement Committee.
 c
 c  The GERG-2008 equation of state was developed by Oliver Kunz and Wolfgang Wagner:
 c
@@ -129,10 +112,10 @@ c  http://www.gerg.eu/public/uploads/files/publications/technical_monographs/tm1
 c
 c  Subroutines contained here for property calculations:
 c  ***** Subroutine SetupGERG must be called once before calling other routines. ******
-c  Sub MolarMassGERG(x,Mm)
-c  Sub PressureGERG(T,D,x,P,Z)
-c  Sub DensityGERG(iFlag,T,P,x,D,ierr,herr)
-c  Sub PropertiesGERG(T,D,x,P,Z,dPdD,d2PdD2,d2PdTD,dPdT,U,H,S,Cv,Cp,W,G,JT,Kappa)
+c  Sub MolarMassGERG(x, Mm)
+c  Sub PressureGERG(T, D, x, P, Z)
+c  Sub DensityGERG(iFlag, T, P, x, D, ierr, herr)
+c  Sub PropertiesGERG(T, D, x, P, Z, dPdD, d2PdD2, d2PdTD, dPdT, U, H, S, Cv, Cp, W, G, JT, Kappa)
 c  Sub SetupGERG()
 c
 c  The compositions in the x() array use the following order and must be sent as mole fractions:
@@ -167,13 +150,13 @@ c-----------------------------------------------------------------------
 c  Calculate molar mass of the mixture with the compositions contained in the x() input array
 c
 c  Inputs:
-c   x() - composition (mole fraction)
+c     x() - Composition (mole fraction)
 c         Do not send mole percents or mass fractions in the x() array, otherwise the output will be incorrect.
 c         The sum of the compositions in the x() array must be equal to one.
 c         The order of the fluids in this array is given at the top of this code.
 c
 c  Outputs:
-c    Mm - molar mass (g/mol)
+c      Mm - molar mass (g/mol)
 
       include 'GERG2008.CMN'
       double precision x(MaxFlds),Mm
@@ -190,16 +173,16 @@ c  Calculate pressure as a function of temperature and density.  The derivative 
 c  for use in the iterative DensityGERG subroutine (and is only returned as a common variable).
 c
 c  Inputs:
-c     T - temperature (K)
-c     D - density (mol/l)
-c   x() - composition (mole fraction)
+c       T - Temperature (K)
+c       D - Density (mol/l)
+c     x() - Composition (mole fraction)
 c         Do not send mole percents or mass fractions in the x() array, otherwise the output will be incorrect.
 c         The sum of the compositions in the x() array must be equal to one.
 c
 c  Outputs:
-c     P - pressure (kPa)
-c     Z - compressibility factor
-c dPdDsave - d(P)/d(D) [kPa/(mol/l)]
+c       P - Pressure (kPa)
+c       Z - Compressibility factor
+c   dPdDsave - d(P)/d(D) [kPa/(mol/l)] (at constant temperature)
 
       include 'GERG2008.CMN'
       double precision x(MaxFlds),T,D,P,Z,ar(0:3,0:3)
@@ -224,16 +207,16 @@ c  It is up to the user to locate the phase boundary, and thus identify the phas
 c  If the state point is 2-phase, the output density will represent a metastable state.
 c
 c  Inputs:
-c   iFlag - set to 0 for strict pressure solver in gas phase without checks (fastest mode, but output state may not be stable single phase)
-c           set to 1 to make checks for possible 2-phase state (result may still not be stable single phase, but many unstable states will be identified)
-c           set to 2 to search for liquid phase (and make the same checks when iFlag=1)
-c       T - temperature (K)
-c       P - pressure (kPa)
-c     x() - composition (mole fraction)
+c   iFlag - Set to 0 for strict pressure solver in the gas phase without checks (fastest mode, but output state may not be stable single phase)
+c           Set to 1 to make checks for possible 2-phase states (result may still not be stable single phase, but many unstable states will be identified)
+c           Set to 2 to search for liquid phase (and make the same checks when iFlag=1)
+c       T - Temperature (K)
+c       P - Pressure (kPa)
+c     x() - Composition (mole fraction)
 c  (An initial guess for the density can be sent in D as the negative of the guess for roots that are in the liquid phase instead of using iFlag=2)
 c
 c  Outputs:
-c       D - density (mol/l)
+c       D - Density (mol/l)
 c    ierr - Error number (0 indicates no error)
 c    herr - Error message if ierr is not equal to zero
 
@@ -250,21 +233,18 @@ c    herr - Error message if ierr is not equal to zero
       herr=' '
       nFail=0
       iFail=0
-      If (P.eq.0.d0) Then
+      If (P.lt.Epsilon) Then
         D=0.d0
         RETURN
       endif
-      tolr=0.00000001d0
+      tolr=1.d-7
       Call PseudoCriticalPointGERG(x,Tcx,Dcx)
-
-      If (D.ge.0.d0) Then
+      If (D.gt.-Epsilon) Then
         D=P/RGERG/T                !Ideal gas estimate for vapor phase
         If (iFlag.eq.2) D=Dcx*3.d0 !Initial estimate for liquid phase
       Else
         D=Abs(D)                   !If D<0, then use as initial estimate
       End If
-      D=P/RGERG/T                 !Ideal gas estimate for vapor phase
-      If (iFlag.eq.2) D=Dcx*3.d0  !Initial estimate for liquid phase
       plog=Log(P)
       vlog=-Log(D)
       Do it=1,50
@@ -285,7 +265,7 @@ c    herr - Error message if ierr is not equal to zero
         End If
         D=Exp(-vlog)
         Call PressureGERG(T,D,x,P2,Z)
-        If (dPdDsave.lt.0.d0 .or. P2.le.0.d0) Then
+        If (dPdDsave.lt.Epsilon .or. P2.lt.Epsilon) Then
           !Current state is 2-phase, try locating a different state that is single phase
           vinc=0.1d0
           If (D.gt.Dcx) vinc=-0.1d0
@@ -311,7 +291,7 @@ c  See AGA 8 publication for further information.
         End If
       Enddo
 
-c  Iteration failed (above loop did find a solution or checks made below indicate possible 2-phase state)
+c  Iteration failed (above loop did not find a solution or checks made below indicate possible 2-phase state)
  10   Continue
       ierr=1
       herr=    'Calculation failed to converge in GERG method, ideal gas
@@ -340,27 +320,27 @@ c  If the density is not known, call subroutine DensityGERG first with the known
 c  Many of the formulas below do not appear in Part 2 of AGA 8, but rather in Part 1, which uses a dimensional Helmholtz equation with more direct formulas for quick calculation.
 c
 c  Inputs:
-c      T - temperature (K)
-c      D - density (mol/l)
-c    x() - composition (mole fraction)
+c       T - Temperature (K)
+c       D - Density (mol/l)
+c     x() - Composition (mole fraction)
 c
 c  Outputs:
-c      P - pressure (kPa)
-c      Z - compressibility factor
-c   dPdD - first derivative of pressure with respect to density [kPa/(mol/l)]
-c d2PdD2 - second derivative of pressure with respect to density [kPa/(mol/l)^2]
-c d2PdTD - second derivative of pressure with respect to temperature and density [kPa/(mol/l)/K]
-c   dPdT - first derivative of pressure with respect to temperature (kPa/K)
-c      U - internal energy (J/mol)
-c      H - enthalpy (J/mol)
-c      S - entropy (J/mol-K)
-c     Cv - isochoric heat capacity (J/mol-K)
-c     Cp - isobaric heat capacity (J/mol-K)
-c      W - speed of sound (m/s)
-c      G - Gibbs energy (J/mol)
-c     JT - Joule-Thomson coefficient (K/kPa)
-c  Kappa - Isentropic Exponent
-c      A - Helmholtz energy (J/mol)
+c       P - Pressure (kPa)
+c       Z - Compressibility factor
+c    dPdD - First derivative of pressure with respect to density [kPa/(mol/l)] at constant temperature
+c  d2PdD2 - Second derivative of pressure with respect to density [kPa/(mol/l)^2] at constant temperature
+c  d2PdTD - Second derivative of pressure with respect to temperature and density [kPa/(mol/l)/K]
+c    dPdT - First derivative of pressure with respect to temperature (kPa/K) at constant density
+c       U - Internal energy (J/mol)
+c       H - Enthalpy (J/mol)
+c       S - Entropy [J/(mol-K)]
+c      Cv - Isochoric heat capacity [J/(mol-K)]
+c      Cp - Isobaric heat capacity [J/(mol-K)]
+c       W - Speed of sound (m/s)
+c       G - Gibbs energy (J/mol)
+c      JT - Joule-Thomson coefficient (K/kPa)
+c   Kappa - Isentropic Exponent
+c       A - Helmholtz energy (J/mol)
 
       include 'GERG2008.CMN'
       double precision T,D,P,Z
@@ -391,7 +371,7 @@ c  Calculate the real gas Helmholtz energy, and its derivatives with respect to 
       H=RT*(1.d0+ar(0,1)+a0(1)+ar(1,0))
       S=R*(a0(1)+ar(1,0)-a0(0)-ar(0,0))
       Cv=-R*(a0(2)+ar(2,0))
-      If (D.gt.0.d0) Then
+      If (D.gt.Epsilon) Then
         Cp=Cv+T*(dPdT/D)**2/dPdD
         d2PdD2=RT*(2.d0*ar(0,1)+4.d0*ar(0,2)+ar(0,3))/D
         JT=(T/D*dPdT/dPdD-1.d0)/Cp/D    !=(dB/dT*T-B)/Cp for an ideal gas, but dB/dT is not known
@@ -417,11 +397,11 @@ c-----------------------------------------------------------------------
 c  Calculate reducing variables.  Only need to call this if the composition has changed.
 c
 c  Inputs:
-c   x() - composition (mole fraction)
+c     x() - Composition (mole fraction)
 c
 c  Outputs:
-c    Tr - reducing temperature (K)
-c    Dr - reducing density (mol/l)
+c      Tr - Reducing temperature (K)
+c      Dr - Reducing density (mol/l)
 
       include 'GERG2008.CMN'
       integer i,j,iCheck
@@ -430,7 +410,7 @@ c    Dr - reducing density (mol/l)
 c  Check to see if a component fraction has changed.  If x is the same as the previous call, then exit.
       iCheck=0
       Do i=1,NcGERG
-        If (Abs(x(i)-xold(i)).gt.0.00000001d0) iCheck=1
+        If (Abs(x(i)-xold(i)).gt.1.d-7) iCheck=1
         xold(i)=x(i)
       Enddo
       If (iCheck.eq.0) Then
@@ -446,10 +426,10 @@ c  Calculate reducing variables for T and D
       Vr=0.d0
       Tr=0.d0
       Do i=1,NcGERG
-        If (x(i).gt.0.d0) Then
+        If (x(i).gt.Epsilon) Then
           F=1.d0
           Do j=i,NcGERG
-            If (x(j).gt.0.d0) Then
+            If (x(j).gt.Epsilon) Then
               xij=F*(x(i)*x(j))*(x(i)+x(j))
               Vr=Vr+xij*gvij(i,j)/(bvij(i,j)*x(i)+x(j))
               Tr=Tr+xij*gtij(i,j)/(btij(i,j)*x(i)+x(j))
@@ -458,7 +438,7 @@ c  Calculate reducing variables for T and D
           Enddo
         End If
       Enddo
-      If (Vr.gt.0.d0) Dr=1.d0/Vr
+      If (Vr.gt.Epsilon) Dr=1.d0/Vr
       Drold=Dr
       Trold=Tr
       END
@@ -471,12 +451,12 @@ c  Calculate the ideal gas Helmholtz energy and its derivatives with respect to 
 c  This routine is not needed when only P (or Z) is calculated.
 c
 c  Inputs:
-c       T - temperature (K)
-c       D - density (mol/l)
-c     x() - composition (mole fraction)
+c       T - Temperature (K)
+c       D - Density (mol/l)
+c     x() - Composition (mole fraction)
 c
 c  Outputs:
-c   a0(0) - ideal gas Helmholtz energy (dimensionless [i.e., divided by RT])
+c   a0(0) - Ideal gas Helmholtz energy (dimensionless [i.e., divided by RT])
 c   a0(1) - tau*partial(a0)/partial(tau)
 c   a0(2) - tau^2*partial^2(a0)/partial(tau)^2
 
@@ -488,20 +468,20 @@ c   a0(2) - tau^2*partial^2(a0)/partial(tau)^2
       double precision em,ep,hcn,hsn
 
       a0=0.d0
-      If (D.gt.0.d0) Then
+      If (D.gt.Epsilon) Then
         LogD=Log(D)
       Else
         LogD=Log(1d-20)
       End If
       LogT=Log(T)
       Do i=1,NcGERG
-        If (x(i).gt.0.d0) Then
+        If (x(i).gt.Epsilon) Then
           LogxD=LogD+Log(x(i))
           SumHyp0=0.d0
           SumHyp1=0.d0
           SumHyp2=0.d0
           Do j=4,7
-            If (th0i(i,j).gt.0.d0) Then
+            If (th0i(i,j).gt.Epsilon) Then
               th0T=th0i(i,j)/T
               ep=Exp(th0T)
               em=1.d0/ep
@@ -535,13 +515,13 @@ c-----------------------------------------------------------------------
 c  Calculate dimensionless residual Helmholtz energy and its derivatives with respect to tau and delta.
 c
 c  Inputs:
-c iprop - set to 1 to return all derivatives or 0 to return only pressure related properties [ar(0,1) and ar(0,2)]
-c     T - temperature (K)
-c     D - density (mol/l)
-c   x() - composition (mole fraction)
+c   iprop - Set to 1 to return all derivatives or 0 to return only pressure related properties [ar(0,1) and ar(0,2)]
+c       T - Temperature (K)
+c       D - Density (mol/l)
+c     x() - Composition (mole fraction)
 c
 c  Outputs:
-c   ar(0,0) - residual Helmholtz energy (dimensionless, =a/RT)
+c   ar(0,0) - Residual Helmholtz energy (dimensionless, =a/RT)
 c   ar(0,1) -     del*partial  (ar)/partial(del)
 c   ar(0,2) -   del^2*partial^2(ar)/partial(del)^2
 c   ar(0,3) -   del^3*partial^3(ar)/partial(del)^3
@@ -568,14 +548,14 @@ c  Set up del, tau, log(tau), and the first 7 calculations for del^i
       Enddo
 
 c  If temperature has changed, calculate temperature dependent parts
-      If (Abs(T-Told).gt.0.00000001d0.or.Abs(Tr-Trold2).gt.0.00000001d0)
-     &    Call tTermsGERG(tau,lntau,x)
+      If (Abs(T-Told).gt.1.d-7 .or .Abs(Tr-Trold2).gt.1.d-7)
+     &    Call tTermsGERG(lntau,x)
       Told=T
       Trold2=Tr
 
 c  Calculate pure fluid contributions
       Do i=1,NcGERG
-        If (x(i).gt.0.d0) Then
+        If (x(i).gt.Epsilon) Then
           Do k=1,kpol(i)
             ndt=x(i)*delp(int(doik(i,k)))*taup(i,k)
             ndtd=ndt*doik(i,k)
@@ -614,9 +594,9 @@ c  Calculate pure fluid contributions
 
 c  Calculate mixture contributions
       Do i=1,NcGERG-1
-        If (x(i).gt.0.d0) Then
+        If (x(i).gt.Epsilon) Then
           Do j=i+1,NcGERG
-            If (x(j).gt.0.d0) Then
+            If (x(j).gt.Epsilon) Then
               mn=mNumb(i,j)
               If (mn.ge.0) Then
                 xijf=x(i)*x(j)*fij(i,j)
@@ -652,7 +632,8 @@ c  Calculate mixture contributions
                     ar(2,0)=ar(2,0)+ndtt*(tijk(mn,k)-1.d0)
                     ar(1,1)=ar(1,1)+ndtt*ex
                     ar(1,2)=ar(1,2)+ndtt*ex2
-                   !ar(0,3)=ar(0,3)+...       !The contribution from the Fij terms with an exponential piece is negligible for the 3rd derivative (<1 ppm)
+                    ar(0,3)=ar(0,3)+ndt*(ex*(ex2-2d0*(dijk(mn,k)-
+     &                      2.d0*cij0))+2.d0*dijk(mn,k))
                   End If
                 Enddo
               End If
@@ -664,20 +645,20 @@ c  Calculate mixture contributions
 
 c-----------------------------------------------------------------------
 
-      SUBROUTINE tTermsGERG(tau,lntau,x)
+      SUBROUTINE tTermsGERG(lntau,x)
 
 c  Calculate temperature dependent parts of the GERG-2008 equation of state
 
       include 'GERG2008.CMN'
       integer i,j,k,mn
-      double precision x(MaxFlds),tau,lntau,taup0(12)
+      double precision x(MaxFlds),lntau,taup0(12)
 
       i=5  !Use propane to get exponents for short form of EOS
       Do k=1,kpol(i)+kexp(i)
         taup0(k)=Exp(toik(i,k)*lntau)
       Enddo
       Do i=1,NcGERG
-        If (x(i).gt.0.d0) Then
+        If (x(i).gt.Epsilon) Then
           If (i.gt.4 .and. i.ne.15. .and. i.ne.18 .and. i.ne.20) then
             Do k=1,kpol(i)+kexp(i)
               taup(i,k)=noik(i,k)*taup0(k)
@@ -691,9 +672,9 @@ c  Calculate temperature dependent parts of the GERG-2008 equation of state
       Enddo
 
       Do i=1,NcGERG-1
-        If (x(i).gt.0.d0) Then
+        If (x(i).gt.Epsilon) Then
           Do j=i+1,NcGERG
-            If (x(j).gt.0.d0) Then
+            If (x(j).gt.Epsilon) Then
               mn=mNumb(i,j)
               If (mn.ge.0) Then
                 Do k=1,kpolij(mn)
@@ -722,7 +703,7 @@ c  Calculate a pseudo critical point as the mole fraction average of the critica
         Tcx=Tcx+x(i)*Tc(i)
         Vcx=Vcx+x(i)/Dc(i)
       Enddo
-      If (Vcx.gt.0.d0) Dcx=1.d0/Vcx
+      If (Vcx.gt.Epsilon) Dcx=1.d0/Vcx
       END
 
 c-----------------------------------------------------------------------
@@ -2319,19 +2300,19 @@ c  This is not called in the current code, but included below to show how the va
       Do i=1,MaxFlds
         n1=0.d0
         n2=0.d0
-        If (th0i(i,4).gt.0.d0) Then
+        If (th0i(i,4).gt.Epsilon) Then
           n2=n2-n0i(i,4)*th0i(i,4)/Tanh(th0i(i,4)/T0)
           n1=n1-n0i(i,4)*Log(Sinh(th0i(i,4)/T0))
         End If
-        If (th0i(i,5).gt.0.d0) Then
+        If (th0i(i,5).gt.Epsilon) Then
           n2=n2+n0i(i,5)*th0i(i,5)*Tanh(th0i(i,5)/T0)
           n1=n1+n0i(i,5)*Log(Cosh(th0i(i,5)/T0))
         End If
-        If (th0i(i,6).gt.0.d0) Then
+        If (th0i(i,6).gt.Epsilon) Then
           n2=n2-n0i(i,6)*th0i(i,6)/Tanh(th0i(i,6)/T0)
           n1=n1-n0i(i,6)*Log(Sinh(th0i(i,6)/T0))
         End If
-        If (th0i(i,7).gt.0.d0) Then
+        If (th0i(i,7).gt.Epsilon) Then
           n2=n2+n0i(i,7)*th0i(i,7)*Tanh(th0i(i,7)/T0)
           n1=n1+n0i(i,7)*Log(Cosh(th0i(i,7)/T0))
         End If

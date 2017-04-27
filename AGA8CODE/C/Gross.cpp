@@ -125,7 +125,7 @@ void PressureGross(const double T, const double D, const std::vector<double> &xG
 
     double B = 1e30, C = 1e30;
     Z = 1;
-    P = D*RGross*T*Z;
+    P = D*RGross*T;
     Bmix(T, xGrs, HCH, B, C, ierr, herr);
     if (ierr > 0) { return; }
     Z = 1 + B*D + C*pow(D, 2);
@@ -178,7 +178,7 @@ void DensityGross(const double T, const double P, const std::vector<double> &xGr
         D = exp(-vlog);
         PressureGross(T, D, xGrs, HCH, P2, Z, ierr, herr);
         if (ierr > 0){ return; }
-        if(dPdDsave < epsilon || P2 <= epsilon){
+        if(dPdDsave < epsilon || P2 < epsilon){
             vlog += 0.1;
         }
         else{
@@ -382,8 +382,8 @@ void GrossMethod1(const double Th, const double Td, const double Pd, std::vector
 
     ierr = 0;
     herr = "";
-    if (Gr <= epsilon){ierr = 1; herr = "Invalid input for relative density"; return;}
-    if (Hv <= epsilon){ierr = 2; herr = "Invalid input for heating value"; return;}
+    if (Gr < epsilon){ierr = 1; herr = "Invalid input for relative density"; return;}
+    if (Hv < epsilon){ierr = 2; herr = "Invalid input for heating value"; return;}
 
     xCO2 = xGrs[3];
     Zd = 1;
@@ -439,7 +439,7 @@ void GrossMethod2(const double Th, const double Td, const double Pd, std::vector
     double xCH, Z, Zold, Bref, Zref, MrCH, G1, G2, B, C, xN2, xCO2;
     ierr = 0;
     herr = "";
-    if (Gr <= epsilon){ ierr = 1; herr = "Invalid input for relative density"; return; }
+    if (Gr < epsilon){ ierr = 1; herr = "Invalid input for relative density"; return; }
 
     xN2 = xGrs[2];
     xCO2 = xGrs[3];

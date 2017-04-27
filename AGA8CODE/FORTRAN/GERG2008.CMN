@@ -1,14 +1,19 @@
 C     Variables containing the common parameters in the GERG-2008 equations
+
       implicit none
 
       common /GERG2008/
      &   Dc,Tc,MMiGERG,Vc3,Tc2,noik,toik,cijk,eijk,gijk,
      &   nijk,tijk,btij,bvij,gtij,gvij,fij,n0i,th0i,taup,taupijk,
-     &   Drold,Trold,Told,Trold2,xold,dPdDsave,RGERG,
+     &   xold,Drold,Trold,Told,Trold2,dPdDsave,RGERG,
      &   coik,doik,dijk,mNumb,kpol,kexp,kpolij,kexpij
 
+
+
       integer NcGERG,MaxFlds,MaxMdl,MaxTrmM,MaxTrmP
+      double precision Epsilon
       parameter (NcGERG=21,MaxFlds=21,MaxMdl=10,MaxTrmM=12,MaxTrmP=24)
+      parameter (Epsilon=1d-15)
 
       integer coik(MaxFlds,MaxTrmP),doik(MaxFlds,MaxTrmP)
       integer dijk(MaxMdl,MaxTrmM)
@@ -25,6 +30,6 @@ C     Variables containing the common parameters in the GERG-2008 equations
       double precision fij(MaxFlds,MaxFlds)
       double precision n0i(MaxFlds,7),th0i(MaxFlds,7)
       double precision taup(MaxFlds,MaxTrmP),taupijk(MaxFlds,MaxTrmM)
-      double precision dPdDsave !Calculated in the PressureGERG subroutine,but not included as an argument since it is only used internally in the density algorithm.
+      double precision dPdDsave !Calculated in the PressureGERG subroutine, but not included as an argument since it is only used internally in the density algorithm.
       double precision Drold,Trold,Trold2,Told,xold(MaxFlds)
       double precision RGERG

@@ -1,6 +1,6 @@
 c  Example program for calling routines for the GROSS equation of state.
 
-      program Example
+      subroutine ExampleGross
       implicit none
       integer ierr
       double precision x(21),Mm,T,P,D,Z,xGrs(3),s,pp
@@ -115,46 +115,38 @@ c  mole percent CO2, relative density, and volumetric heating value (MJ/m^3) at 
 
 
 c-----------------------------------------------------------------------
-
-c  **********  This code is preliminary, and will be updated.  **********
-c  **********  Use only for beta testing.  **********
-c  **********  June 7, 2016  **********
-
-c  Version 1.7 of routines for the calculation of thermodynamic properties from the
-c    AGA 8 Part 1 GROSS equation of state.
-
-c  06/19/2012 - Change kexp from 7 to 9 for water
-c  02/20/2013 - Remove one of the negative signs in the calculation of Cv
-c  03/20/2014 - Change n1 and n2 constants in the ideal gas terms to match the latest values
-c  03/10/2015 - Multiple changes to work with Excel, with new fluid order that matches other methods
-c  10/31/2015 - Change code to more closely match the DETAIL code
-c  05/16/2016 - Make minor final changes before publication
-
+c
+c  Version 2.0 of routines for the calculation of thermodynamic
+c   properties from the AGA 8 Part 1 GROSS equation of state.
+c   April, 2017
+c
 c  Written by Eric W. Lemmon
 c  Applied Chemicals and Materials Division
 c  National Institute of Standards and Technology (NIST)
 c  Boulder, Colorado, USA
 c  Eric.Lemmon@nist.gov
 c  303-497-7939
-
+c
 c  Other contributors:
 c  Volker Heinemann, RMG Messtechnik GmbH
 c  Jason Lu, Thermo Fisher Scientific
 c  Ian Bell, NIST
-
+c
 c  The publication for the AGA 8 equation of state is available from AGA
-c    and the Transmission Measurement Committee
-
+c    and the Transmission Measurement Committee.
+c
 c  Subroutines contained here for property calculations:
-c  Sub MolarMassGross(x,Mm)
-c  Sub PressureGross(T,D,xGrs,HCH,P,Z,ierr,herr)
-c  Sub DensityGross(T,P,xGrs,HCH,D,ierr,herr)
-c  Sub GrossHv(x,xGrs,HN,HCH)
-c  Sub GrossInputs(T,P,x,xGrs,Gr,HN,HCH,ierr,herr)
-c  Sub Bmix(T,xGrs,HCH,B,C,ierr,herr)
-c  Sub GrossMethod1(Th,Td,Pd,xGrs,Gr,Hv,Mm,HCH,HN,ierr,herr)
-c  Sub GrossMethod2(Th,Td,Pd,xGrs,Gr,Hv,Mm,HCH,HN,ierr,herr)
-
+c  ***** Subroutine SetupGross must be called once before calling other routines. ******
+c  Sub MolarMassGross(x, Mm)
+c  Sub PressureGross(T, D, xGrs, HCH, P, Z, ierr, herr)
+c  Sub DensityGross(T, P, xGrs, HCH, D, ierr, herr)
+c  Sub GrossHv(x, xGrs, HN, HCH)
+c  Sub GrossInputs(T, P, x, xGrs, Gr, HN, HCH, ierr, herr)
+c  Sub Bmix(T, xGrs, HCH, B, C, ierr, herr)
+c  Sub GrossMethod1(Th, Td, Pd, xGrs, Gr, Hv, Mm, HCH, HN, ierr, herr)
+c  Sub GrossMethod2(Th, Td, Pd, xGrs, Gr, Hv, Mm, HCH, HN, ierr, herr)
+c  Sub SetupGross()
+c
 c  The compositions in the x() array use the following order and must be sent as mole fractions:
 c      1 - Methane
 c      2 - Nitrogen
@@ -187,18 +179,16 @@ c-----------------------------------------------------------------------
 c  Calculate molar mass of the mixture with the compositions contained in the x() input array
 c
 c  Inputs:
-c   x() - composition (mole fraction)
+c   x() - Composition (mole fraction)
 c         Do not send mole percents or mass fractions in the x() array, otherwise the output will be incorrect.
 c         The sum of the compositions in the x() array must be equal to one.
 c         The order of the fluids in this array is given at the top of this code.
 c
 c  Outputs:
-c    Mm - molar mass (g/mol)
+c    Mm - Molar mass (g/mol)
 
       include 'GROSS.CMN'
-      integer i
       double precision x(MaxFlds),Mm
-
       Mm=SUM(x(1:NcGross)*MMiGross(1:NcGross))
       END
 
@@ -210,16 +200,17 @@ c  Calculate pressure as a function of temperature and density.  The derivative 
 c  for use in the iterative DensityGross subroutine (and is only returned as a common variable).
 c
 c  Inputs:
-c     T - temperature (K)
-c     D - density (mol/l)
-c  xGrs - compositions of the equivalent hydrocarbon, nitrogen, and CO2 (mole fractions)
-c   HCH - molar ideal gross heating value of the equivalent hydrocarbon (kJ/mol) at 298.15 K
+c     T - Temperature (K)
+c     D - Density (mol/l)
+c  xGrs - Compositions of the equivalent hydrocarbon, nitrogen, and CO2 (mole fractions)
+c   HCH - Molar ideal gross heating value of the equivalent hydrocarbon (kJ/mol) at 298.15 K
 c         ***Call subroutine GrossHv or GrossInputs first to obtain HCH.***
 c
 c  Outputs:
-c     P - pressure (kPa)
-c     Z - compressibility factor
-c  dPdDsave - d(P)/d(D) [kPa/(mol/l)]
+c     P - Pressure (kPa)
+c     Z - Compressibility factor
+c  dPdDsave - d(P)/d(D) [kPa/(mol/l)] (at constant temperature)
+c           - This variable is cached in the common variables for use in the iterative density solver, but not returned as an argument
 c  ierr - Error number (0 indicates no error)
 c  herr - Error message if ierr is not equal to zero
 
@@ -228,11 +219,17 @@ c  herr - Error message if ierr is not equal to zero
       double precision xGrs(3),T,D,HCH,P,Z,B,C
       character*255 herr
 
+      Z=1.d0
+      P=D*RGross*T
       Call Bmix(T,xGrs,HCH,B,C,ierr,herr)
-      If (ierr.ne.0) RETURN
+      If (ierr.gt.0) RETURN
       Z=1.d0+B*D+C*D**2
       P=D*RGross*T*Z
       dPdDsave=RGross*T*(1.d0+2.d0*B*D+3.d0*C*D**2)
+      if (P.lt.0.) then
+        ierr=-1
+        herr='Pressure is negative in the GROSS method.'
+      endif
       END
 
 c-----------------------------------------------------------------------
@@ -244,14 +241,14 @@ c  to find the correct state point.  Generally only 6 iterations at most are req
 c  If the iteration fails to converge, the ideal gas density and an error message are returned.
 c
 c  Inputs:
-c     T - temperature (K)
-c     P - pressure (kPa)
-c  xGrs - compositions of the equivalent hydrocarbon, nitrogen, and CO2 (mole fractions)
-c   HCH - molar ideal gross heating value of the equivalent hydrocarbon (kJ/mol) at 298.15 K
+c     T - Temperature (K)
+c     P - Pressure (kPa)
+c  xGrs - Compositions of the equivalent hydrocarbon, nitrogen, and CO2 (mole fractions)
+c   HCH - Molar ideal gross heating value of the equivalent hydrocarbon (kJ/mol) at 298.15 K
 c         ***Call subroutine GrossHv or GrossInputs first to obtain HCH.***
 c
 c  Outputs:
-c     D - density (mol/l)
+c     D - Density (mol/l)
 c  ierr - Error number (0 indicates no error)
 c  herr - Error message if ierr is not equal to zero
 
@@ -263,11 +260,11 @@ c  herr - Error message if ierr is not equal to zero
 
       ierr=0
       herr=' '
-      If (P.eq.0.d0) Then
+      If (P.lt.Epsilon) Then
         D=0.d0
         RETURN
       endif
-      tolr=0.00000001d0
+      tolr=1.d-7
       D=P/RGross/T       !Ideal gas estimate
       plog=Log(P)
       vlog=-Log(D)
@@ -275,8 +272,8 @@ c  herr - Error message if ierr is not equal to zero
         If (vlog.lt.-7.d0 .or. vlog.gt.100.d0) GoTo 10
         D=Exp(-vlog)
         Call PressureGross(T,D,xGrs,HCH,P2,Z,ierr,herr)
-        If (ierr.ne.0) RETURN
-        If (dPdDsave.lt.0.d0 .or. P2.le.0.d0) Then
+        If (ierr.gt.0) RETURN
+        If (dPdDsave.lt.Epsilon .or. P2.lt.Epsilon) Then
           vlog=vlog+0.1d0
         Else
 c  Find the next density with a first order Newton's type iterative scheme, with
@@ -286,6 +283,7 @@ c  See AGA 8 publication for further information.
           vdiff=(Log(P2)-plog)*P2/dpdlv
           vlog=vlog-vdiff
           If (Abs(vdiff).lt.tolr) Then
+            If (P2.lt.0.) GoTo 10
             D=Exp(-vlog)
             RETURN         !Iteration converged
           End If
@@ -293,9 +291,9 @@ c  See AGA 8 publication for further information.
       Enddo
 
  10   Continue
-      ierr=1
-      herr = 'Calculation failed to converge in GROSS method, ideal gas
-     &density returned.'
+      ierr=10
+      herr = 'Calculation failed to converge in the GROSS method, '//
+     &       'ideal gas density returned.'
       D=P/RGross/T
       END
 
@@ -307,12 +305,12 @@ c  Calculate ideal heating values based on composition.  The mole fractions in t
 c  just xCH, xN2, and xCO2.
 c
 c  Inputs:
-c   x() - molar compositions of all components in the mixture.  The order in this array is given at the top of this code.
+c   x() - Molar compositions of all components in the mixture.  The order in this array is given at the top of this code.
 c
 c  Outputs:
-c  xGrs - compositions of the equivalent hydrocarbon, nitrogen, and CO2 (mole fractions)
-c    HN - molar ideal gross heating value of the mixture (kJ/mol) at 298.15 K
-c   HCH - molar ideal gross heating value of the equivalent hydrocarbon (kJ/mol) at 298.15 K
+c  xGrs - Compositions of the equivalent hydrocarbon, nitrogen, and CO2 (mole fractions)
+c    HN - Molar ideal gross heating value of the mixture (kJ/mol) at 298.15 K
+c   HCH - Molar ideal gross heating value of the equivalent hydrocarbon (kJ/mol) at 298.15 K
 
       include 'GROSS.CMN'
       integer i
@@ -338,15 +336,15 @@ c  two values for use as inputs to Method 1 or Method 2, and not for the relativ
 c  All of the mole fractions in the mixture are required in this routine, not just xCH, xN2, and xCO2.
 c
 c  Inputs:
-c     T - temperature (K), generally a reference temperature for relative density
-c     P - pressure (kPa), generally a reference pressure for relative density
-c   x() - molar compositions of all components in the mixture.  The order in this array is given at the top of this code.
+c     T - Temperature (K), generally a reference temperature for relative density
+c     P - Pressure (kPa), generally a reference pressure for relative density
+c   x() - Molar compositions of all components in the mixture.  The order in this array is given at the top of this code.
 c
 c  Outputs:
-c  xGrs - compositions of the equivalent hydrocarbon, nitrogen, and CO2 (mole fractions)
-c    Gr - relative density at T and P
-c    HN - molar ideal gross heating value of the mixture (kJ/mol) at 298.15 K
-c   HCH - molar ideal gross heating value of the equivalent hydrocarbon (kJ/mol) at 298.15 K
+c  xGrs - Compositions of the equivalent hydrocarbon, nitrogen, and CO2 (mole fractions)
+c    Gr - Relative density at T and P
+c    HN - Molar ideal gross heating value of the mixture (kJ/mol) at 298.15 K
+c   HCH - Molar ideal gross heating value of the equivalent hydrocarbon (kJ/mol) at 298.15 K
 c  ierr - Error number (0 indicates no error)
 c  herr - Error message if ierr is not equal to zero
 
@@ -375,13 +373,13 @@ c-----------------------------------------------------------------------
 c  Calculate 2nd and 3rd virial coefficients for the mixture at T.
 c
 c  Inputs:
-c     T - temperature (K)
-c  xGrs - compositions of the equivalent hydrocarbon, nitrogen, and CO2 (mole fractions)
-c   HCH - molar ideal gross heating value of the equivalent hydrocarbon (kJ/mol) at 298.15 K
+c     T - Temperature (K)
+c  xGrs - Compositions of the equivalent hydrocarbon, nitrogen, and CO2 (mole fractions)
+c   HCH - Molar ideal gross heating value of the equivalent hydrocarbon (kJ/mol) at 298.15 K
 c
 c  Outputs:
-c     B - second virial coefficient (dm^3/mol)
-c     C - third virial coefficient (dm^6/mol^2)
+c     B - Second virial coefficient (dm^3/mol)
+c     C - Third virial coefficient (dm^6/mol^2)
 c  ierr - Error number (0 indicates no error)
 c  herr - Error message if ierr is not equal to zero
 
@@ -416,7 +414,7 @@ c  Bij values for use in calculating Bmix
       BB(1,1)=bCH(0)+bCH(1)*HCH+bCH(2)*HCH**2                             !B(CH-CH) for the equivalent hydrocarbon
       BB(1,2)=(0.72d0+0.00001875d0*(320.d0-T)**2)*(BB(1,1)+BB(2,2))/2.d0  !B(CH-N2)
       If (BB(1,1)*BB(3,3).lt.0.d0) Then
-        ierr=1
+        ierr=4
         herr='Invalid input in Bmix routine'
         RETURN
       endif
@@ -425,8 +423,8 @@ c  Bij values for use in calculating Bmix
 c  Cijk values for use in calculating Cmix
       onethrd=1.d0/3.d0
       CC(1,1,1)=cCH(0)+cCH(1)*HCH+cCH(2)*HCH**2                           !C(CH-CH-CH) for the equivalent hydrocarbon
-      If (CC(1,1,1).lt.0.d0) Then
-        ierr=1
+      If (CC(1,1,1).lt.0.d0 .or. CC(3,3,3).lt.0.d0) Then
+        ierr=5
         herr='Invalid input in Bmix routine'
         RETURN
       endif
@@ -467,18 +465,18 @@ c  Initialize variables required in the GROSS equation with Method 1 of the AGA 
 c  Method 1 requires inputs of volumetric gross heating value, relative density, and mole fraction of CO2.
 c
 c  Inputs:
-c    Th - reference temperature for heating value (K)
-c    Td - reference temperature for density (K)
-c    Pd - reference pressure for density (kPa)
-c  xGrs - array of size 3 with the molar composition of CO2 in the 3rd position.  xCH and xN2 are returned in this array.
-c    Gr - relative density at Td and Pd
-c    Hv - volumetric ideal gross heating value (MJ/m^3) at Th
+c    Th - Reference temperature for heating value (K)
+c    Td - Reference temperature for density (K)
+c    Pd - Reference pressure for density (kPa)
+c  xGrs - Array of size 3 with the molar composition of CO2 in the 3rd position.  xCH and xN2 are returned in this array.
+c    Gr - Relative density at Td and Pd
+c    Hv - Volumetric ideal gross heating value (MJ/m^3) at Th
 c
 c  Outputs:
-c  xGrs - compositions of the equivalent hydrocarbon, nitrogen, and CO2 (mole fractions)
-c    Mm - molar mass (g/mol)
-c   HCH - molar ideal gross heating value of the equivalent hydrocarbon (kJ/mol) at 298.15 K
-c    HN - molar ideal gross heating value of the mixture (kJ/mol) at 298.15 K
+c  xGrs - Compositions of the equivalent hydrocarbon, nitrogen, and CO2 (mole fractions)
+c    Mm - Molar mass (g/mol)
+c   HCH - Molar ideal gross heating value of the equivalent hydrocarbon (kJ/mol) at 298.15 K
+c    HN - Molar ideal gross heating value of the mixture (kJ/mol) at 298.15 K
 c  ierr - Error number (0 indicates no error)
 c  herr - Error message if ierr is not equal to zero
 
@@ -490,13 +488,13 @@ c  herr - Error message if ierr is not equal to zero
 
       ierr=0
       herr=' '
-      If (Gr.le.0.d0) Then
+      If (Gr.lt.Epsilon) Then
         ierr=1
         herr='Invalid input for relative density'
         RETURN
       endif
-      If (Hv.le.0.d0) Then
-        ierr=1
+      If (Hv.lt.Epsilon) Then
+        ierr=2
         herr='Invalid input for heating value'
         RETURN
       endif
@@ -514,7 +512,7 @@ c  herr - Error message if ierr is not equal to zero
         xCH=(Mm+(xCO2-1.d0)*mN2-xCO2*mCO2-G2*HN)/(G1-mN2)
         xN2=1.d0-xCH-xCO2
         If (xN2.lt.0.d0) Then
-          ierr=1
+          ierr=3
           herr='Negative nitrogen value in GROSS method 1 setup'
           RETURN
         endif
@@ -522,7 +520,7 @@ c  herr - Error message if ierr is not equal to zero
         xGrs(1)=xCH
         xGrs(2)=xN2
         Call Bmix(Td,xGrs,HCH,B,C,ierr,herr)
-        If (ierr.ne.0) RETURN
+        If (ierr.gt.0) RETURN
         Zd=1.d0+B*Pd/RGross/Td
         if (Abs(Zold-Zd).lt.0.00000000001d0) Exit
       Enddo
@@ -536,18 +534,18 @@ c  Initialize variables required in the GROSS equation with Method 2 of the AGA 
 c  Method 2 requires inputs of relative density and mole fractions of nitrogen and CO2.
 c
 c  Inputs:
-c    Th - reference temperature for heating value (K)
-c    Td - reference temperature for density (K)
-c    Pd - reference pressure for density (kPa)
-c  xGrs - array of size 3 with the molar composition of N2 in the 2nd position and CO2 in the 3rd position.  xCH is returned in this array.
-c    Gr - relative density at Td and Pd
+c    Th - Reference temperature for heating value (K)
+c    Td - Reference temperature for density (K)
+c    Pd - Reference pressure for density (kPa)
+c  xGrs - Array of size 3 with the molar composition of N2 in the 2nd position and CO2 in the 3rd position.  xCH is returned in this array.
+c    Gr - Relative density at Td and Pd
 c
 c  Outputs:
-c  xGrs - compositions of the equivalent hydrocarbon, nitrogen, and CO2 (mole fractions)
-c    Mm - molar mass (g/mol)
-c    Hv - volumetric ideal gross heating value (MJ/m^3) at Th
-c   HCH - molar ideal gross heating value of the equivalent hydrocarbon (kJ/mol) at 298.15 K
-c    HN - molar ideal gross heating value of the mixture (kJ/mol) at 298.15 K
+c  xGrs - Compositions of the equivalent hydrocarbon, nitrogen, and CO2 (mole fractions)
+c    Mm - Molar mass (g/mol)
+c    Hv - Volumetric ideal gross heating value (MJ/m^3) at Th
+c   HCH - Molar ideal gross heating value of the equivalent hydrocarbon (kJ/mol) at 298.15 K
+c    HN - Molar ideal gross heating value of the mixture (kJ/mol) at 298.15 K
 c  ierr - Error number (0 indicates no error)
 c  herr - Error message if ierr is not equal to zero
 
@@ -559,7 +557,7 @@ c  herr - Error message if ierr is not equal to zero
 
       ierr=0
       herr=' '
-      If (Gr.le.0.d0) Then
+      If (Gr.lt.Epsilon) Then
         ierr=1
         herr='Invalid input for relative density'
         RETURN
@@ -580,7 +578,7 @@ c  herr - Error message if ierr is not equal to zero
         MrCH=(Mm-xN2*mN2-xCO2*mCO2)/xCH
         HCH=(MrCH-G1)/G2
         Call Bmix(Td,xGrs,HCH,B,C,ierr,herr)
-        If (ierr.ne.0) RETURN
+        If (ierr.gt.0) RETURN
         Z=1.d0+B*Pd/RGross/Td
         if (Abs(Zold-Z).lt.0.00000000001d0) Exit
       Enddo

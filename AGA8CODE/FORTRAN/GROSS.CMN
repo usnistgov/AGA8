@@ -1,11 +1,13 @@
 c     Variables containing the common parameters in the GROSS equations
+
       implicit none
 
       common /GROSS/ xHN,MMiGross,b0,b1,b2,bCHx,cCHx,c0,c1,c2,
      &               RGross,mN2,mCO2,dPdDsave
 
       integer NcGross,MaxFlds
-      parameter (NcGross=21,MaxFlds=21)
+      double precision Epsilon
+      parameter (NcGross=21,MaxFlds=21,Epsilon=1d-15)
 
       double precision RGross,mN2,mCO2,dPdDsave
       double precision xHN(MaxFlds),MMiGross(MaxFlds)

@@ -1,6 +1,6 @@
 c  Example program for calling routines for the DETAIL equation of state.
 
-      program Example
+      subroutine Example
       implicit none
       integer ierr
       double precision x(21),Mm,T,P,D,pp
@@ -77,46 +77,34 @@ c  For T and P inputs, the DensityDetail routine must be called first to get D.
       end
 
 c-----------------------------------------------------------------------
-
-c  **********  This code is preliminary, and will be updated.  **********
-c  **********  Use only for beta testing.  **********
-c  **********  June 7, 2016  **********
-
-c  Version 1.7 of routines for the calculation of thermodynamic properties from the
-c    AGA 8 Part 1 DETAIL equation of state.
-
-c  08/27/2014 - Original version
-c  01/12/2015 - Reduce calls to stack overhead, check for x(i)=0 before making calculations (Jason Lu, Thermo Fisher Scientific)
-c  03/10/2015 - Multiple changes to work with Excel, with new fluid order that matches other methods
-c  03/18/2015 - Reorder fluids from the original 1994 work to that shown below
-c  10/30/2015 - Addition of comments and further simplification of code
-c  12/14/2015 - Set bn and kn as integers.  Change subroutine names from Pressure to PressureDetail, etc.
-c  05/16/2016 - Make minor final changes before publication
-c  05/25/2016 - Change the ideal gas coefficients so that the GERG and DETAIL use the same values
-
+c
+c  Version 2.0 of routines for the calculation of thermodynamic
+c   properties from the AGA 8 Part 1 DETAIL equation of state.
+c   April, 2017
+c
 c  Written by Eric W. Lemmon
 c  Applied Chemicals and Materials Division
 c  National Institute of Standards and Technology (NIST)
 c  Boulder, Colorado, USA
 c  Eric.Lemmon@nist.gov
 c  303-497-7939
-
+c
 c  Other contributors:
 c  Volker Heinemann, RMG Messtechnik GmbH
 c  Jason Lu, Thermo Fisher Scientific
 c  Ian Bell, NIST
-
+c
 c  The publication for the AGA 8 equation of state is available from AGA
-c    and the Transmission Measurement Committee
-
+c    and the Transmission Measurement Committee.
+c
 c  Subroutines contained here for property calculations:
 c  ***** Subroutine SetupDetail must be called once before calling other routines. ******
-c  Sub MolarMassDetail(x,Mm)
-c  Sub PressureDetail(T,D,x,P,Z)
-c  Sub DensityDetail(T,P,x,D,ierr,herr)
-c  Sub PropertiesDetail(T,D,x,P,Z,dPdD,d2PdD2,d2PdTD,dPdT,U,H,S,Cv,Cp,W,G,JT,Kappa)
+c  Sub MolarMassDetail(x, Mm)
+c  Sub PressureDetail(T, D, x, P, Z)
+c  Sub DensityDetail(T, P, x, D, ierr, herr)
+c  Sub PropertiesDetail(T, D, x, P, Z, dPdD, d2PdD2, d2PdTD, dPdT, U, H, S, Cv, Cp, W, G, JT, Kappa)
 c  Sub SetupDetail()
-
+c
 c  The compositions in the x() array use the following order and must be sent as mole fractions:
 c      1 - Methane
 c      2 - Nitrogen
@@ -149,13 +137,13 @@ c-----------------------------------------------------------------------
 c  Calculate molar mass of the mixture with the compositions contained in the x() input array
 c
 c  Inputs:
-c   x() - composition (mole fraction)
+c     x() - Composition (mole fraction)
 c         Do not send mole percents or mass fractions in the x() array, otherwise the output will be incorrect.
 c         The sum of the compositions in the x() array must be equal to one.
 c         The order of the fluids in this array is given at the top of this code.
 c
 c  Outputs:
-c    Mm - molar mass (g/mol)
+c      Mm - Molar mass (g/mol)
 
       include 'DETAIL.CMN'
       double precision x(MaxFlds),Mm
@@ -172,23 +160,24 @@ c  Calculate pressure as a function of temperature and density.  The derivative 
 c  for use in the iterative DensityDetail subroutine (and is only returned as a common variable).
 c
 c  Inputs:
-c     T - temperature (K)
-c     D - density (mol/l)
-c   x() - composition (mole fraction)
+c       T - Temperature (K)
+c       D - Density (mol/l)
+c     x() - Composition (mole fraction)
 c         Do not send mole percents or mass fractions in the x() array, otherwise the output will be incorrect.
 c         The sum of the compositions in the x() array must be equal to one.
 c
 c  Outputs:
-c     P - pressure (kPa)
-c     Z - compressibility factor
-c  dPdDsave - d(P)/d(D) [kPa/(mol/l)]
+c       P - Pressure (kPa)
+c       Z - Compressibility factor
+c    dPdDsave - d(P)/d(D) [kPa/(mol/l)] (at constant temperature)
+c             - This variable is cached in the common variables for use in the iterative density solver, but not returned as an argument
 
       include 'DETAIL.CMN'
       double precision T,D,x(MaxFlds),ar(0:3,0:3),P,Z
 
       if (Kij5(1,1).eq.1) Call SetupDetail
       Call xTermsDetail(x)
-      Call AlpharDetail(0,2,T,D,x,ar)
+      Call AlpharDetail(0,2,T,D,ar)
       Z=1.d0+ar(0,1)/RDetail/T         !ar(0,1) is the first derivative of alpha(r) with respect to density
       P=D*RDetail*T*Z
       dPdDsave=RDetail*T+2.d0*ar(0,1)+ar(0,2)  !d(P)/d(D) for use in density iteration
@@ -206,14 +195,14 @@ c  It is up to the user to locate the phase boundary, and thus identify the phas
 c  If the state point is 2-phase, the output density will represent a metastable state.
 c
 c  Inputs:
-c     T - temperature (K)
-c     P - pressure (kPa)
-c   x() - composition (mole fraction)
+c       T - Temperature (K)
+c       P - Pressure (kPa)
+c     x() - Composition (mole fraction)
 c
 c  Outputs:
-c     D - density (mol/l) (make D negative and send as an input to use as an initial guess)
-c  ierr - Error number (0 indicates no error)
-c  herr - Error message if ierr is not equal to zero
+c       D - Density (mol/l) (make D negative and send as an input to use as an initial guess)
+c    ierr - Error number (0 indicates no error)
+c    herr - Error message if ierr is not equal to zero
 
       include 'DETAIL.CMN'
       integer it,ierr
@@ -223,12 +212,12 @@ c  herr - Error message if ierr is not equal to zero
       if (Kij5(1,1).eq.1) Call SetupDetail
       ierr=0
       herr=' '
-      If (P.eq.0.d0) Then
+      If (ABS(P).lt.Epsilon) Then
         D=0.d0
         RETURN
       endif
-      tolr=0.00000001d0
-      If (D.ge.0.d0) Then
+      tolr=1.d-7
+      If (D.gt.-Epsilon) Then
         D=P/RDetail/T  !Ideal gas estimate
       Else
         D=Abs(D)           !If D<0 use as initial estimate
@@ -239,7 +228,7 @@ c  herr - Error message if ierr is not equal to zero
         If (vlog.lt.-7.d0 .or. vlog.gt.100.d0) GoTo 10
         D=Exp(-vlog)
         Call PressureDetail(T,D,x,P2,Z)
-        If (dPdDsave.lt.0.d0 .or. P2.le.0.d0) Then
+        If (dPdDsave.lt.Epsilon .or. P2.lt.Epsilon) Then
           vlog=vlog+0.1d0
         Else
 c  Find the next density with a first order Newton's type iterative scheme, with
@@ -272,23 +261,23 @@ c  MolarmassDetail, Alpha0Detail, and AlpharDetail.  If the density is not known
 c  with the known values of pressure and temperature.
 c
 c  Inputs:
-c     T - temperature (K)
-c     D - density (mol/l)
-c   x() - composition (mole fraction)
+c       T - Temperature (K)
+c       D - Density (mol/l)
+c     x() - Composition (mole fraction)
 c
 c  Outputs:
-c       P - pressure (kPa)
-c       Z - compressibility factor
-c    dPdD - first derivative of pressure with respect to density [kPa/(mol/l)]
-c  d2PdD2 - second derivative of pressure with respect to density [kPa/(mol/l)^2]
-c  d2PdTD - second derivative of pressure with respect to temperature and density [kPa/(mol/l)/K]
-c    dPdT - first derivative of pressure with respect to temperature (kPa/K)
-c       U - internal energy (J/mol)
-c       H - enthalpy (J/mol)
-c       S - entropy (J/mol-K)
-c      Cv - isochoric heat capacity (J/mol-K)
-c      Cp - isobaric heat capacity (J/mol-K)
-c       W - speed of sound (m/s)
+c       P - Pressure (kPa)
+c       Z - Compressibility factor
+c    dPdD - First derivative of pressure with respect to density at constant temperature [kPa/(mol/l)]
+c  d2PdD2 - Second derivative of pressure with respect to density at constant temperature [kPa/(mol/l)^2]
+c  d2PdTD - Second derivative of pressure with respect to temperature and density [kPa/(mol/l)/K] (currently not calculated)
+c    dPdT - First derivative of pressure with respect to temperature at constant density (kPa/K)
+c       U - Internal energy (J/mol)
+c       H - Enthalpy (J/mol)
+c       S - Entropy [J/(mol-K)]
+c      Cv - Isochoric heat capacity [J/(mol-K)]
+c      Cp - Isobaric heat capacity [J/(mol-K)]
+c       W - Speed of sound (m/s)
 c       G - Gibbs energy (J/mol)
 c      JT - Joule-Thomson coefficient (K/kPa)
 c   Kappa - Isentropic Exponent
@@ -307,7 +296,7 @@ c  Calculate the ideal gas Helmholtz energy, and its first and second derivative
       Call Alpha0Detail(T,D,x,a0)
 
 c  Calculate the real gas Helmholtz energy, and its derivatives with respect to temperature and/or density.
-      Call AlpharDetail(2,3,T,D,x,ar)
+      Call AlpharDetail(2,3,T,D,ar)
 
       R=RDetail
       RT=R*T
@@ -319,7 +308,7 @@ c  Calculate the real gas Helmholtz energy, and its derivatives with respect to 
       S=-a0(1)-ar(1,0)
       U=A+T*S
       Cv=-(a0(2)+ar(2,0))
-      If (D.gt.0.d0) Then
+      If (D.gt.Epsilon) Then
         H=U+P/D
         G=A+P/D
         Cp=Cv+T*(dPdT/D)**2/dPdD
@@ -336,13 +325,14 @@ c  Calculate the real gas Helmholtz energy, and its derivatives with respect to 
       If (W.lt.0.d0) W=0.d0
       W=Sqrt(W)
       Kappa=W**2*Mm/(RT*1000.d0*Z)
+      d2PdTD=0d0
       END
 
 
 c-----------------------------------------------------------------------
-
-c  The following routines are low-level routines that should not be called outside of this code.
-
+c
+c  The following routines are low-level routines that should not be called outside of this code.c
+c
 c-----------------------------------------------------------------------
 
       SUBROUTINE xTermsDetail(x)
@@ -350,7 +340,7 @@ c-----------------------------------------------------------------------
 c  Calculate terms dependent only on composition
 c
 c  Inputs:
-c   x() - composition (mole fraction)
+c     x() - Composition (mole fraction)
 
       include 'DETAIL.CMN'
       integer i,j,n,iCheck
@@ -359,7 +349,7 @@ c   x() - composition (mole fraction)
 c  Check to see if a component fraction has changed.  If x is the same as the previous call, then exit.
       iCheck=0
       Do i=1,NcDetail
-        If (Abs(x(i)-xold(i)).gt.0.00000001d0) iCheck=1
+        If (Abs(x(i)-xold(i)).gt.0.00000000001d0) iCheck=1
         xold(i)=x(i)
       Enddo
       If (iCheck.eq.0) RETURN
@@ -421,14 +411,14 @@ c  Calculate the ideal gas Helmholtz energy and its derivatives with respect to 
 c  This routine is not needed when only P (or Z) is calculated.
 c
 c  Inputs:
-c       T - temperature (K)
-c       D - density (mol/l)
-c     x() - composition (mole fraction)
+c       T - Temperature (K)
+c       D - Density (mol/l)
+c     x() - Composition (mole fraction)
 c
 c  Outputs:
-c   a0(0) - ideal gas Helmholtz energy (J/mol)
-c   a0(1) -   partial  (a0)/partial(T)
-c   a0(2) - T*partial^2(a0)/partial(T)^2
+c   a0(0) - Ideal gas Helmholtz energy (J/mol)
+c   a0(1) -   partial  (a0)/partial(T) [J/(mol-K)]
+c   a0(2) - T*partial^2(a0)/partial(T)^2 [J/(mol-K)]
 
       include 'DETAIL.CMN'
       integer i,j
@@ -438,7 +428,7 @@ c   a0(2) - T*partial^2(a0)/partial(T)^2
       double precision em,ep,hcn,hsn
 
       a0=0.d0
-      If (D.gt.0.d0) Then
+      If (D.gt.Epsilon) Then
         LogD=Log(D)
       Else
         LogD=Log(1d-20)
@@ -483,37 +473,37 @@ c   a0(2) - T*partial^2(a0)/partial(T)^2
 
 c-----------------------------------------------------------------------
 
-      SUBROUTINE AlpharDetail(itau,idel,T,D,x,ar)
+      SUBROUTINE AlpharDetail(itau,idel,T,D,ar)
 
 c  Calculate the derivatives of the residual Helmholtz energy with respect to T and D.
-c  itau and idel are inputs that contain the highest derivatives needed.
 c  Outputs are returned in the array ar.
 c  Subroutine xTerms must be called before this routine if x has changed
 
 c  Inputs:
-c       T - temperature (K)
-c       D - density (mol/l)
-c     x() - composition (mole fraction)
+c    itau - Set this to 1 to calculate "ar" derivatives with respect to T [i.e., ar(1,0), ar(1,1), and ar(2,0)], otherwise set it to 0.
+c    idel - Currently not used, but kept as an input for future use in specifing the highest density derivative needed.
+c       T - Temperature (K)
+c       D - Density (mol/l)
 c
 c  Outputs:
-c   ar(0,0) - residual Helmholtz energy (J/mol)
-c   ar(0,1) -   D*partial  (ar)/partial(D)
-c   ar(0,2) - D^2*partial^2(ar)/partial(D)^2
-c   ar(0,3) - D^3*partial^3(ar)/partial(D)^3
-c   ar(1,0) -     partial  (ar)/partial(T)
-c   ar(1,1) -   D*partial^2(ar)/partial(D)/partial(T)
-c   ar(2,0) -   T*partial^2(ar)/partial(T)^2
+c   ar(0,0) - Residual Helmholtz energy (J/mol)
+c   ar(0,1) -   D*partial  (ar)/partial(D) (J/mol)
+c   ar(0,2) - D^2*partial^2(ar)/partial(D)^2 (J/mol)
+c   ar(0,3) - D^3*partial^3(ar)/partial(D)^3 (J/mol)
+c   ar(1,0) -     partial  (ar)/partial(T) [J/(mol-K)]
+c   ar(1,1) -   D*partial^2(ar)/partial(D)/partial(T) [J/(mol-K)]
+c   ar(2,0) -   T*partial^2(ar)/partial(T)^2 [J/(mol-K)]
 
       include 'DETAIL.CMN'
-      integer i,j,n,itau,idel
-      double precision x(MaxFlds),ar(0:3,0:3),T,D
+      integer n,itau,idel
+      double precision ar(0:3,0:3),T,D
       double precision ckd,bkd,Dred,Sum,s0,s1,s2,s3,RT
       double precision Sum0(NTerms),SumB(NTerms),Dknn(0:9),Expn(0:4)
       double precision CoefD1(NTerms),CoefD2(NTerms),CoefD3(NTerms)
       double precision CoefT1(NTerms),CoefT2(NTerms)
 
       ar=0.d0
-      If (Abs(T-Told).gt.0.0000000001d0) Then
+      If (Abs(T-Told).gt.0.00000000001d0) Then
         Do n=1,58
           Tun(n)=T**(-un(n))
         Enddo
@@ -573,7 +563,7 @@ c  Temperature derivatives
           ar(1,0)=ar(1,0)-CoefT1(n)*s0
           ar(1,1)=ar(1,1)-CoefT1(n)*s1
           ar(2,0)=ar(2,0)+CoefT2(n)*s0
-c  The following are not used
+c  The following are not used, but fully functional
 c         ar(1,2)=ar(1,2)-CoefT1(n)*s2
 c         ar(1,3)=ar(1,3)-CoefT1(n)*s3
 c         ar(2,1)=ar(2,1)+CoefT2(n)*s1
