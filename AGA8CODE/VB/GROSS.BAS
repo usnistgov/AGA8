@@ -62,6 +62,7 @@
 Option Explicit
 Public RGross As Double
 Private Const NcGross As Integer = 21, MaxFlds As Integer = 21
+Private Const Epsilon As Double = 0.000000000000001  '1d-15
 Private mN2 As Double, mCO2 As Double, dPdDsave As Double
 Private xHN(MaxFlds) As Double, MMiGross(MaxFlds) As Double
 Private b0(3, 3) As Double, b1(3, 3) As Double, b2(3, 3) As Double, bCHx(2, 2) As Double, cCHx(2, 2) As Double
@@ -112,10 +113,14 @@ Sub PressureGross(ByVal T As Double, ByVal D As Double, xGrs() As Double, ByVal 
 
   Dim B As Double, C As Double
   Call Bmix(T, xGrs, HCH, B, C, ierr, herr)
-  If ierr <> 0 Then Exit Sub
+  If ierr > 0 Then Exit Sub
   Z = 1 + B * D + C * D ^ 2
   P = D * RGross * T * Z
   dPdDsave = RGross * T * (1 + 2 * B * D + 3 * C * D ^ 2)
+  If P < 0 Then
+    ierr = -1
+    herr = "Pressure is negative in the GROSS method."
+  End If
 End Sub
 
 Sub DensityGross(ByVal T As Double, ByVal P As Double, xGrs() As Double, ByVal HCH As Double, ByRef D As Double, ByRef ierr As Integer, ByRef herr As String)
@@ -142,7 +147,7 @@ Sub DensityGross(ByVal T As Double, ByVal P As Double, xGrs() As Double, ByVal H
 
   ierr = 0
   herr = ""
-  If P = 0 Then D = 0: Exit Sub
+  If P < Epsilon Then D = 0: Exit Sub
   tolr = 0.0000001
   D = P / RGross / T       'Ideal gas estimate
   plog = Log(P)
@@ -151,8 +156,8 @@ Sub DensityGross(ByVal T As Double, ByVal P As Double, xGrs() As Double, ByVal H
     If vlog < -7 Or vlog > 100 Then GoTo DError:
     D = Exp(-vlog)
     Call PressureGross(T, D, xGrs, HCH, P2, Z, ierr, herr)
-    If ierr <> 0 Then Exit Sub
-    If dPdDsave < 0 Or P2 <= 0 Then
+    If ierr > 0 Then Exit Sub
+    If dPdDsave < Epsilon Or P2 <= Epsilon Then
       vlog = vlog + 0.1
     Else
       'Find the next density with a first order Newton's type iterative scheme, with
@@ -162,6 +167,7 @@ Sub DensityGross(ByVal T As Double, ByVal P As Double, xGrs() As Double, ByVal H
       vdiff = (Log(P2) - plog) * P2 / dpdlv
       vlog = vlog - vdiff
       If Abs(vdiff) < tolr Then
+        If P2 < 0 Then GoTo DError:
         D = Exp(-vlog)
         Exit Sub         'Iteration converged
       End If
@@ -169,8 +175,8 @@ Sub DensityGross(ByVal T As Double, ByVal P As Double, xGrs() As Double, ByVal H
   Next
 
 DError:
-  ierr = 1
-  herr = "Calculation failed to converge in GROSS method, ideal gas density returned."
+  ierr = 10
+  herr = "Calculation failed to converge in the GROSS method, ideal gas density returned."
   D = P / RGross / T
 End Sub
 
@@ -276,13 +282,13 @@ Sub Bmix(ByVal T As Double, xGrs() As Double, ByVal HCH As Double, ByRef B As Do
   'Bij values for use in calculating Bmix
   BB(1, 1) = bCH(0) + bCH(1) * HCH + bCH(2) * HCH ^ 2                                          'B(CH-CH) for the equivalent hydrocarbon
   BB(1, 2) = (0.72 + 0.00001875 * (320 - T) ^ 2) * (BB(1, 1) + BB(2, 2)) / 2                   'B(CH-N2)
-  If BB(1, 1) * BB(3, 3) < 0 Then ierr = 1: herr = "Invalid input in Bmix routine": Exit Sub
+  If BB(1, 1) * BB(3, 3) < 0 Then ierr = 4: herr = "Invalid input in Bmix routine": Exit Sub
   BB(1, 3) = -0.865 * Sqr(BB(1, 1) * BB(3, 3))                                                 'B(CH-CO2)
 
   'Cijk values for use in calculating Cmix
   onethrd = 1 / 3
   CC(1, 1, 1) = cCH(0) + cCH(1) * HCH + cCH(2) * HCH ^ 2                                       'C(CH-CH-CH) for the equivalent hydrocarbon
-  If CC(1, 1, 1) < 0 Then ierr = 1: herr = "Invalid input in Bmix routine": Exit Sub
+  If CC(1, 1, 1) < 0 Or CC(3, 3, 3) < 0 Then ierr = 5: herr = "Invalid input in Bmix routine": Exit Sub
   CC(1, 1, 2) = (0.92 + 0.0013 * (T - 270)) * (CC(1, 1, 1) ^ 2 * CC(2, 2, 2)) ^ onethrd        'C(CH-CH-N2)
   CC(1, 2, 2) = (0.92 + 0.0013 * (T - 270)) * (CC(2, 2, 2) ^ 2 * CC(1, 1, 1)) ^ onethrd        'C(CH-N2-N2)
   CC(1, 1, 3) = 0.92 * (CC(1, 1, 1) ^ 2 * CC(3, 3, 3)) ^ onethrd                               'C(CH-CH-CO2)
@@ -337,8 +343,8 @@ Sub GrossMethod1(ByVal Th As Double, ByVal Td As Double, ByVal Pd As Double, xGr
   Dim G1 As Double, G2 As Double, Bref As Double, Zref As Double, B As Double, C As Double
   ierr = 0
   herr = ""
-  If Gr <= 0 Then ierr = 1: herr = "Invalid input for relative density": Exit Sub
-  If Hv <= 0 Then ierr = 1: herr = "Invalid input for heating value": Exit Sub
+  If Gr <= Epsilon Then ierr = 1: herr = "Invalid input for relative density": Exit Sub
+  If Hv <= Epsilon Then ierr = 2: herr = "Invalid input for heating value": Exit Sub
 
   xCO2 = xGrs(3)
   Zd = 1
@@ -352,12 +358,12 @@ Sub GrossMethod1(ByVal Th As Double, ByVal Td As Double, ByVal Pd As Double, xGr
     Mm = Gr * Zd * 28.9625 / Zref                                          'g/mol
     xCH = (Mm + (xCO2 - 1) * mN2 - xCO2 * mCO2 - G2 * HN) / (G1 - mN2)
     xN2 = 1 - xCH - xCO2
-    If xN2 < 0 Then ierr = 1: herr = "Negative nitrogen value in GROSS method 1 setup": Exit Sub
+    If xN2 < 0 Then ierr = 3: herr = "Negative nitrogen value in GROSS method 1 setup": Exit Sub
     HCH = HN / xCH
     xGrs(1) = xCH
     xGrs(2) = xN2
     Call Bmix(Td, xGrs, HCH, B, C, ierr, herr)
-    If ierr <> 0 Then Exit Sub
+    If ierr > 0 Then Exit Sub
     Zd = 1 + B * Pd / RGross / Td
     If Abs(Zold - Zd) < 0.0000001 Then Exit For
   Next
@@ -390,7 +396,7 @@ Sub GrossMethod2(ByVal Th As Double, ByVal Td As Double, ByVal Pd As Double, xGr
   Dim G1 As Double, G2 As Double, B As Double, C As Double, xN2 As Double, xCO2 As Double
   ierr = 0
   herr = ""
-  If Gr <= 0 Then ierr = 1: herr = "Invalid input for relative density": Exit Sub
+  If Gr <= Epsilon Then ierr = 1: herr = "Invalid input for relative density": Exit Sub
 
   xN2 = xGrs(2)
   xCO2 = xGrs(3)
@@ -407,7 +413,7 @@ Sub GrossMethod2(ByVal Th As Double, ByVal Td As Double, ByVal Pd As Double, xGr
     MrCH = (Mm - xN2 * mN2 - xCO2 * mCO2) / xCH
     HCH = (MrCH - G1) / G2
     Call Bmix(Td, xGrs, HCH, B, C, ierr, herr)
-    If ierr <> 0 Then Exit Sub
+    If ierr > 0 Then Exit Sub
     Z = 1 + B * Pd / RGross / Td
     If Abs(Zold - Z) < 0.0000001 Then Exit For
   Next
@@ -510,3 +516,5 @@ Sub SetupGross()
   mN2 = MMiGross(2)
   mCO2 = MMiGross(3)
 End Sub
+
+

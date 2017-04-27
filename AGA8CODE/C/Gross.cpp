@@ -74,6 +74,7 @@ void SetupGross();
 // Variables containing the common parameters in the GROSS equations
 static double RGross;
 static const int NcGross = 21, MaxFlds = 21;
+static const epsilon = 1e-15;
 static double mN2, mCO2, dPdDsave;
 static double  xHN[MaxFlds+1] , MMiGross[MaxFlds+1]; // +1 since C/C++ is 0-based indexing
 static double b0[4][4], b1[4][4], b2[4][4], bCHx[3][3], cCHx[3][3];
@@ -124,10 +125,14 @@ void PressureGross(const double T, const double D, const std::vector<double> &xG
 
     double B = 1e30, C = 1e30;
     Bmix(T, xGrs, HCH, B, C, ierr, herr);
-    if (ierr != 0) { return; }
+    if (ierr > 0) { return; }
     Z = 1 + B*D + C*pow(D, 2);
     P = D*RGross*T*Z;
     dPdDsave = RGross*T*(1 + 2*B*D + 3*C*D*D);
+    if (P < 0){
+        ierr = -1;
+        herr = "Pressure is negative in the GROSS method.";
+    }
 }
 
 void DensityGross(const double T, const double P, const std::vector<double> &xGrs, const double HCH, double &D, int &ierr, std::string &herr)
@@ -154,7 +159,7 @@ void DensityGross(const double T, const double P, const std::vector<double> &xGr
 
     ierr = 0;
     herr = "";
-    if (std::abs(P) < 1e-14){
+    if (P < epsilon){
         D = 0; return;
     } 
     tolr = 0.0000001;
@@ -169,8 +174,8 @@ void DensityGross(const double T, const double P, const std::vector<double> &xGr
         }
         D = exp(-vlog);
         PressureGross(T, D, xGrs, HCH, P2, Z, ierr, herr);
-        if (ierr != 0){ return; }
-        if(dPdDsave < 0 || P2 <= 0){
+        if (ierr > 0){ return; }
+        if(dPdDsave < epsilon || P2 <= epsilon){
             vlog += 0.1;
         }
         else{
@@ -181,14 +186,19 @@ void DensityGross(const double T, const double P, const std::vector<double> &xGr
             vdiff = (log(P2) - plog) * P2 / dpdlv;
             vlog = vlog - vdiff;
             if (std::abs(vdiff) < tolr){
+                if (P2 < 0){
+                    ierr = 10;
+                    herr = "Calculation failed to converge in the GROSS method, ideal gas density returned.";
+                    D = P/RGross/T;
+                }
                 // Iteration converged
                 D = exp(-vlog);
                 return;
             }
         }
     }
-    ierr = 1;
-    herr = "Calculation failed to converge in GROSS method, ideal gas density returned.";
+    ierr = 10;
+    herr = "Calculation failed to converge in the GROSS method, ideal gas density returned.";
     D = P/RGross/T;
 }
 
@@ -301,7 +311,7 @@ void Bmix(const double T, const std::vector<double> &xGrs, const double HCH, dou
     BB[1][1] = bCH[0] + bCH[1]*HCH + bCH[2]*pow(HCH, 2); // B(CH-CH) for the equivalent hydrocarbon
     BB[1][2] = (0.72 + 0.00001875 * pow(320 - T, 2))*(BB[1][1] + BB[2][2])/2.0; // B(CH-N2)
     if (BB[1][1]*BB[3][3] < 0){
-        ierr = 1; herr = "Invalid input in Bmix routine";
+        ierr = 4; herr = "Invalid input in Bmix routine";
         return;
     }
     BB[1][3] = -0.865 * sqrt(BB[1][1] * BB[3][3]); // B(CH-CO2)
@@ -309,7 +319,7 @@ void Bmix(const double T, const std::vector<double> &xGrs, const double HCH, dou
     // Cijk values for use in calculating Cmix
     CC[1][1][1] = cCH[0] + cCH[1] * HCH + cCH[2] * pow(HCH, 2); // C(CH-CH-CH) for the equivalent hydrocarbon
     if (CC[1][1][1] < 0 || CC[3][3][3] < 0){
-        ierr = 1; herr = "Invalid input in Bmix routine";
+        ierr = 5; herr = "Invalid input in Bmix routine";
         return;
     }
     CC[1][1][2] = (0.92 + 0.0013 * (T - 270)) * pow(pow(CC[1][1][1], 2) * CC[2][2][2], onethrd); // C(CH-CH-N2)
@@ -368,8 +378,8 @@ void GrossMethod1(const double Th, const double Td, const double Pd, std::vector
 
     ierr = 0;
     herr = "";
-    if (Gr <= 0){ierr = 1; herr = "Invalid input for relative density"; return;}
-    if (Hv <= 0){ierr = 1; herr = "Invalid input for heating value"; return;}
+    if (Gr <= epsilon){ierr = 1; herr = "Invalid input for relative density"; return;}
+    if (Hv <= epsilon){ierr = 2; herr = "Invalid input for heating value"; return;}
 
     xCO2 = xGrs[3];
     Zd = 1;
@@ -384,14 +394,14 @@ void GrossMethod1(const double Th, const double Td, const double Pd, std::vector
         xCH = (Mm + (xCO2 - 1) * mN2 - xCO2 * mCO2 - G2 * HN) / (G1 - mN2);
         xN2 = 1 - xCH - xCO2;
         if (xN2 < 0){
-            ierr = 1; herr = "Negative nitrogen value in GROSS method 1 setup";
+            ierr = 3; herr = "Negative nitrogen value in GROSS method 1 setup";
             return;
         }
         HCH = HN / xCH;
         xGrs[1] = xCH;
         xGrs[2] = xN2;
         Bmix(Td, xGrs, HCH, B, C, ierr, herr);
-        if (ierr != 0){
+        if (ierr > 0){
             return;
         } 
         Zd = 1 + B*Pd/RGross/Td;
@@ -425,7 +435,7 @@ void GrossMethod2(const double Th, const double Td, const double Pd, std::vector
     double xCH, Z, Zold, Bref, Zref, MrCH, G1, G2, B, C, xN2, xCO2;
     ierr = 0;
     herr = "";
-    if (Gr <= 0){ ierr = 1; herr = "Invalid input for relative density"; return; }
+    if (Gr <= epsilon){ ierr = 1; herr = "Invalid input for relative density"; return; }
 
     xN2 = xGrs[2];
     xCO2 = xGrs[3];
@@ -442,7 +452,7 @@ void GrossMethod2(const double Th, const double Td, const double Pd, std::vector
         MrCH = (Mm - xN2 * mN2 - xCO2 * mCO2)/xCH;
         HCH = (MrCH - G1) / G2;
         Bmix(Td, xGrs, HCH, B, C, ierr, herr);
-        if (ierr != 0){ return; }
+        if (ierr > 0){ return; }
         Z = 1 + B * Pd / RGross / Td;
         if (std::abs(Zold - Z) < 0.0000001){ break; };
     }
