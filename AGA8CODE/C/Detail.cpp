@@ -516,7 +516,7 @@ void SetupDetail()
     int sn[NTerms+1], wn[NTerms+1];
     double Ei[MaxFlds+1], Ki[MaxFlds+1], Si[MaxFlds+1], Wi[MaxFlds+1], Bsnij;
     double Kij[MaxFlds+1][MaxFlds+1], Gij[MaxFlds+1][MaxFlds+1], Eij[MaxFlds+1][MaxFlds+1], Uij[MaxFlds+1][MaxFlds+1];
-    double T0, d0;
+    double d0;
 
     RDetail = 8.31451;
 
@@ -946,7 +946,6 @@ void SetupDetail()
         }
     }
     // Ideal gas terms
-    T0 = 298.15;
     d0 = 101.325/RDetail/298.15;
     for (int i=1; i <= MaxFlds; ++i){
       n0i[i][3] = n0i[i][3] - 1;

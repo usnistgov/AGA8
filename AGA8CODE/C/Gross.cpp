@@ -557,7 +557,7 @@ int main(){
     int ierr = 0;
     std::string herr;
 
-    double T = 300, P = 10000, Td = 273.15, Th = 298.15, Pd = 101.325, D = 6.35826, pp = -1, Hv = -1, Hv2 = -1, Gr, HN, HCH, Z;
+    double T = 300, P = 10000, Td = 273.15, Th = 298.15, Pd = 101.325, D = 6.35826, pp = -1, Hv = -1, Hv2 = -1, Gr, HN, HCH, Z=-1;
     printf("Inputs-----\n");
     printf("Temperature [K]:                    300.0000000000000 != %0.16g\n",T);
     printf("Pressure [kPa]:                     10000.00000000000 != %0.16g\n",P);
