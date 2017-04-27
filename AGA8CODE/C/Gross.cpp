@@ -74,7 +74,7 @@ void SetupGross();
 // Variables containing the common parameters in the GROSS equations
 static double RGross;
 static const int NcGross = 21, MaxFlds = 21;
-static const epsilon = 1e-15;
+static const double epsilon = 1e-15;
 static double mN2, mCO2, dPdDsave;
 static double  xHN[MaxFlds+1] , MMiGross[MaxFlds+1]; // +1 since C/C++ is 0-based indexing
 static double b0[4][4], b1[4][4], b2[4][4], bCHx[3][3], cCHx[3][3];
