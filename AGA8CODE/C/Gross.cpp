@@ -124,6 +124,8 @@ void PressureGross(const double T, const double D, const std::vector<double> &xG
     //            - This variable is cached in the common variables for use in the iterative density solver, but not returned as an argument.
 
     double B = 1e30, C = 1e30;
+    Z = 1;
+    P = D*RGross*T*Z;
     Bmix(T, xGrs, HCH, B, C, ierr, herr);
     if (ierr > 0) { return; }
     Z = 1 + B*D + C*pow(D, 2);
@@ -171,6 +173,7 @@ void DensityGross(const double T, const double P, const std::vector<double> &xGr
             ierr = 1;
             herr = "Calculation failed to converge in GROSS method, ideal gas density returned.";
             D = P/RGross/T;
+            return;
         }
         D = exp(-vlog);
         PressureGross(T, D, xGrs, HCH, P2, Z, ierr, herr);
@@ -190,6 +193,7 @@ void DensityGross(const double T, const double P, const std::vector<double> &xGr
                     ierr = 10;
                     herr = "Calculation failed to converge in the GROSS method, ideal gas density returned.";
                     D = P/RGross/T;
+                    return;
                 }
                 // Iteration converged
                 D = exp(-vlog);
