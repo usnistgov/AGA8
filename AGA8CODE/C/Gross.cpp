@@ -187,6 +187,9 @@ void DensityGross(const double T, const double P, const std::vector<double> &xGr
             }
         }
     }
+    ierr = 1;
+    herr = "Calculation failed to converge in GROSS method, ideal gas density returned.";
+    D = P/RGross/T;
 }
 
 void GrossHv(const std::vector<double> &x, std::vector<double> &xGrs, double &HN, double &HCH)

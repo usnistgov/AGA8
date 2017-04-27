@@ -271,6 +271,10 @@ void DensityGERG(const int iFlag, const double T, const double P, const std::vec
             }
         }
     }
+    // Iteration failed (above loop did not find a solution or checks made below indicate possible 2-phase state)
+    ierr = 1;
+    herr = "Calculation failed to converge in GERG method, ideal gas density returned.";
+    D = P / RGERG / T;
 }
 
 void PropertiesGERG(const double T, const double D, const std::vector<double> &x, double &P, double &Z, double &dPdD, double &d2PdD2, double &d2PdTD, double &dPdT, double &U, double &H, double &S, double &Cv, double &Cp, double &W, double &G, double &JT, double &Kappa, double &A)

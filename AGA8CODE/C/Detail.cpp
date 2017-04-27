@@ -201,6 +201,9 @@ void DensityDetail(const double T, const double P, const std::vector<double> &x,
             }
         }
     }
+    ierr = 1; herr = "Calculation failed to converge in DETAIL method, ideal gas density returned.";
+    D = P / RDetail / T;
+    return;
 }
 
 void PropertiesDetail(const double T, const double D, const std::vector<double> &x, double &P, double &Z, double &dPdD, double &d2PdD2, double &d2PdTD, double &dPdT, double &U, double &H, double &S, double &Cv, double &Cp, double &W, double &G, double &JT, double &Kappa)
