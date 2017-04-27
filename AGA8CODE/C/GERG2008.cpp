@@ -1,3 +1,4 @@
+
 #include "GERG2008.h"
 // We add both math headers to placate some non-standards-compliant compilers
 #include <math.h>
@@ -659,7 +660,7 @@ void SetupGERG()
   // Some values are modified for calculations that do not depend on T, D, and x in order to speed up the program.
 
   double o13, bijk[MaxMdl+1][MaxTrmM+1], Rs, Rsr;
-  double n1, n2, T0, d0;
+  double T0, d0;
 
   RGERG = 8.314472;
   Rs = 8.31451;

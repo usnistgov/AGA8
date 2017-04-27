@@ -1,4 +1,4 @@
-
+ 
 
 #include "Detail.h"
 // We add both math headers to placate some non-standards-compliant compilers
@@ -516,7 +516,7 @@ void SetupDetail()
     int sn[NTerms+1], wn[NTerms+1];
     double Ei[MaxFlds+1], Ki[MaxFlds+1], Si[MaxFlds+1], Wi[MaxFlds+1], Bsnij;
     double Kij[MaxFlds+1][MaxFlds+1], Gij[MaxFlds+1][MaxFlds+1], Eij[MaxFlds+1][MaxFlds+1], Uij[MaxFlds+1][MaxFlds+1];
-    double n1, n2, T0, d0;
+    double T0, d0;
 
     RDetail = 8.31451;
 
