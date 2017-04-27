@@ -203,7 +203,7 @@ void GrossHv(const std::vector<double> &x, std::vector<double> &xGrs, double &HN
     //  xGrs - Compositions of the equivalent hydrocarbon, nitrogen, and CO2 (mole fractions)
     //    HN - Molar ideal gross heating value of the mixture (kJ/mol) at 298.15 K
     //   HCH - Molar ideal gross heating value of the equivalent hydrocarbon (kJ/mol) at 298.15 K
-
+    xGrs.resize(4);
     xGrs[1] = 1 - x[2] - x[3];
     xGrs[2] = x[2];
     xGrs[3] = x[3];
@@ -305,7 +305,7 @@ void Bmix(const double T, const std::vector<double> &xGrs, const double HCH, dou
 
     // Cijk values for use in calculating Cmix
     CC[1][1][1] = cCH[0] + cCH[1] * HCH + cCH[2] * pow(HCH, 2); // C(CH-CH-CH) for the equivalent hydrocarbon
-    if (CC[1][1][1] < 0){
+    if (CC[1][1][1] < 0 || CC[3][3][3] < 0){
         ierr = 1; herr = "Invalid input in Bmix routine";
         return;
     }
