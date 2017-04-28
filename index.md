@@ -9,7 +9,7 @@ title: AGA8 Supplemental Material
 
 * ``AGA8.xls`` – This Excel spreadsheet can be used to calculate thermodynamic properties of natural gas at any composition, temperature, and pressure, or to determine the differences between calculated values from the DETAIL, GROSS, and GERG-2008 equations of state. 
 
-To access this file, use the link: [Link to Excel spreadsheet]({{ site.url }}/AGA8/downloads/AGA8.xls) .  If you have difficulties, right-click on the link, then select ``Save As...``, or equivalent in your browser.
+To access this file, use the link: [Link to Excel spreadsheet]({{ site.url }}/AGA8/downloads/AGA8.XLS) .  If you have difficulties, right-click on the link, then select ``Save As...``, or equivalent in your browser.
 
 ## Sample Code
 
@@ -20,7 +20,7 @@ This zipped file contains three subdirectories, each containing identical code o
 * ``Fortran`` directory – Fortran code implementing the AGA 8 Part 1 and 2 equations. The *.CMN files are ‘include’ files that contain all of the common blocks. 
 * ``VB`` directory – VB code implementing the AGA 8 Part 1 and 2 equations. The VB code is identical to that in the AGA8.xls file. 
 
-To access this file, use the link: [Link to AGA8 sample code]({{ site.url }}/AGA8/downloads/AGA8Code.zip) .  If you have difficulties, right-click on the link, then select ``Save As...``, or equivalent in your browser.
+To access this file, use the link: [Link to AGA8 sample code]({{ site.url }}/AGA8/downloads/AGA8CODE.ZIP) .  If you have difficulties, right-click on the link, then select ``Save As...``, or equivalent in your browser.
 
 ## Test data
 
@@ -31,7 +31,10 @@ This zipped file contains test data obtained from evaluation of the models compr
 * ``Deviation Calculator.xls`` – Calculates the deviation at any temperature and pressure between the DETAIL and GERG-2008 equations of state. The calculations will identify if the point is within the 2-phase or liquid. This file requires that the Refprop program from NIST be installed on the machine performing the calculations (which is used to determine the phase of each point). The spreadsheet also contains the data from the NG Compositions.xls file for comparisons of a large range of gas mixtures. The ``AGA8.xls`` file in the AGA8CODE directory can also calculate deviations between the different models, including the GROSS model that is not available here, but it does not locate the phase boundaries. For states known to be single phase, the ``AGA8.xls`` file is the best method for calculating deviations, and does not require the Refprop program. 
 * ``Tables.xls`` – Contains the calculations used to generate the tables in Appendix B of the main document, plus calculations to verify that the tables in the 1994 version are duplicated correctly in the 2016 revision. 
 
+**The following link is not yet active, please watch this space for the updated link in the next few days**
+
 To access this file, use the link: [Link to test data]({{ site.url }}/AGA8/downloads/SampleData.zip) .  If you have difficulties, right-click on the link, then select ``Save As...``, or equivalent in your browser.
 
+Last updated on {{ page.date }}
 
 [Go to the source of this file](https://github.com/usnistgov/AGA8/blob/nist-pages/index.md)
