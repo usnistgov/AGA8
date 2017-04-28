@@ -10,7 +10,7 @@ A zipped file is available at the below URL containing the supplementary materia
 **THE FOLLOWING LINKS ARE NOT YET ACTIVE, WILL BE ACTIVATED WHEN AGA8 IS RELEASED**:
 
 **Official release zip file**: [Link to zip file](https://github.com/usnistgov/AGA8/archive/AGA8release.zip)
-**Excel spreadsheet**: [Link to Excel spreadsheet]({{ site.url }}/downloads/sample.txt)
+**Excel spreadsheet**: [Link to Excel spreadsheet]({{ site.url }}/AGA8/downloads/sample.txt)
 
 If you have difficulties, right-click on the link, then select ``Save As...``, or equivalent in your browser.
 
