@@ -431,7 +431,7 @@ c   a0(2) - T*partial^2(a0)/partial(T)^2 [J/(mol-K)]
       If (D.gt.Epsilon) Then
         LogD=Log(D)
       Else
-        LogD=Log(1d-20)
+        LogD=Log(Epsilon)
       End If
       LogT=Log(T)
       Do i=1,NcDetail

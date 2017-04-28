@@ -381,7 +381,7 @@ Private Sub Alpha0GERG(ByVal T As Double, ByVal D As Double, x() As Double, a0()
   Dim em As Double, ep As Double, hcn As Double, hsn As Double
 
   a0(0) = 0: a0(1) = 0: a0(2) = 0
-  If D > Epsilon Then LogD = Log(D) Else LogD = Log(1E-20)
+  If D > Epsilon Then LogD = Log(D) Else LogD = Log(Epsilon)
   LogT = Log(T)
   For i = 1 To NcGERG
     If x(i) > Epsilon Then

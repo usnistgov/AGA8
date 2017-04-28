@@ -471,7 +471,7 @@ c   a0(2) - tau^2*partial^2(a0)/partial(tau)^2
       If (D.gt.Epsilon) Then
         LogD=Log(D)
       Else
-        LogD=Log(1d-20)
+        LogD=Log(Epsilon)
       End If
       LogT=Log(T)
       Do i=1,NcGERG
