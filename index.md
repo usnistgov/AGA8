@@ -35,6 +35,6 @@ This zipped file contains test data obtained from evaluation of the models compr
 
 To access this file, use the link: [Link to test data]({{ site.url }}/AGA8/downloads/SampleData.zip) .  If you have difficulties, right-click on the link, then select ``Save As...``, or equivalent in your browser.
 
-Page was last updated on {{ page.date | date_to_string }}
+Page was last updated on April 28. 2017
 
 [Go to the source of this file](https://github.com/usnistgov/AGA8/blob/nist-pages/index.md)
