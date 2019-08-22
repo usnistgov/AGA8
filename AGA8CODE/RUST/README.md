@@ -36,3 +36,6 @@ private static extern double aga8_2017(double[] composition, double pressure,
 Console.WriteLine(aga8_2017(comp, 50000.0, 400.0, 0);
 ```
 
+## Contact
+For questions on the Rust impementation, please contact roy.vegard.ovesen@gmail.com
+
