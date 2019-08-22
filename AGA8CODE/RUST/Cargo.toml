@@ -6,6 +6,6 @@ edition = "2018"
 
 [lib]
 name = "aga8_2017"
-crate-type = ["dylib"]
+crate-type = ["rlib", "staticlib", "cdylib"]
 
 [dependencies]
