@@ -1,0 +1,11 @@
+[package]
+name = "aga8_2017"
+version = "0.1.0"
+authors = ["Roy Vegard Ovesen <roy.vegard.ovesen@gmail.com>"]
+edition = "2018"
+
+[lib]
+name = "aga8_2017"
+crate-type = ["rlib", "staticlib", "cdylib"]
+
+[dependencies]
