@@ -605,8 +605,8 @@ impl AGA8Detail {
     pub fn molar_mass_detail(&mut self) -> f64 {
 
         let mut mm = 0.0;
-        for i in 0..NC_DETAIL {
-            mm += self.x[i] * MMI_DETAIL[i];
+        for (i, item) in MMI_DETAIL.iter().enumerate() {
+            mm += self.x[i] * item;
         }
         self.mm = mm;
         mm
@@ -654,7 +654,7 @@ impl AGA8Detail {
                 f += xi2 * FI[i];
 
                 for n in 0..18 {
-                    self.bs[n] = self.bs[n] + xi2 * self.bsnij2[i][i][n];   // Pure fluid contributions to second virial coefficient
+                    self.bs[n] += xi2 * self.bsnij2[i][i][n];   // Pure fluid contributions to second virial coefficient
                 }
             }
         }
@@ -667,12 +667,12 @@ impl AGA8Detail {
                 for j in i+1..NC_DETAIL {
                     if self.x[j] > 0.0 {
                         xij = 2.0 * self.x[i] * self.x[j];
-                        self.k3 = self.k3 + xij * self.kij5[i][j];
-                        u = u + xij * self.uij5[i][j];
-                        g = g + xij * self.gij5[i][j];
+                        self.k3 += xij * self.kij5[i][j];
+                        u += xij * self.uij5[i][j];
+                        g += xij * self.gij5[i][j];
 
                         for n in 0..18 {
-                            self.bs[n] = self.bs[n] + xij * self.bsnij2[i][j][n];     // Second virial coefficients of mixture
+                            self.bs[n] += xij * self.bsnij2[i][j][n];     // Second virial coefficients of mixture
                         }
                     }
                 }
@@ -685,9 +685,9 @@ impl AGA8Detail {
         q2 = f64::powi(q, 2);
         for n in 12..58 {
             self.csn[n] = AN[n] * f64::powf(u, UN[n]);
-            if GN[n] == 1 { self.csn[n] = self.csn[n] * g; }
-            if QN[n] == 1 { self.csn[n] = self.csn[n] * q2; }
-            if FN[n] == 1 { self.csn[n] = self.csn[n] * f; }
+            if GN[n] == 1 { self.csn[n] *= g; }
+            if QN[n] == 1 { self.csn[n] *= q2; }
+            if FN[n] == 1 { self.csn[n] *= f; }
         }
     }
 
@@ -760,8 +760,8 @@ impl AGA8Detail {
             }
         }
         self.a0[0] = self.a0[0] * RDETAIL * self.t;
-        self.a0[1] = self.a0[1] * RDETAIL;
-        self.a0[2] = self.a0[2] * RDETAIL;
+        self.a0[1] *= RDETAIL;
+        self.a0[2] *= RDETAIL;
     }
 
     fn alphar(&mut self, itau: i32, _idel: i32) {
@@ -814,8 +814,8 @@ impl AGA8Detail {
             }
         }
         if f64::abs(self.t - self.told) > 0.000_000_1 {
-            for n in 0..58 {
-                self.tun[n] = f64::powf(self.t, -UN[n]);
+            for (i, item) in UN.iter().enumerate() {
+                self.tun[i] = f64::powf(self.t, -item);
             }
         }
         self.told = self.t;
@@ -869,15 +869,15 @@ impl AGA8Detail {
             s1 = sum0[n] * coefd1[n] + sumb[n];
             s2 = sum0[n] * coefd2[n];
             s3 = sum0[n] * coefd3[n];
-            self.ar[0][0] = self.ar[0][0] + rt * s0;
-            self.ar[0][1] = self.ar[0][1] + rt * s1;
-            self.ar[0][2] = self.ar[0][2] + rt * s2;
-            self.ar[0][3] = self.ar[0][3] + rt * s3;
+            self.ar[0][0] += rt * s0;
+            self.ar[0][1] += rt * s1;
+            self.ar[0][2] += rt * s2;
+            self.ar[0][3] += rt * s3;
             // Temperature derivatives
             if itau > 0 {
-                self.ar[1][0] = self.ar[1][0] - coeft1[n] * s0;
-                self.ar[1][1] = self.ar[1][1] - coeft1[n] * s1;
-                self.ar[2][0] = self.ar[2][0] + coeft2[n] * s0;
+                self.ar[1][1] -= coeft1[n] * s1;
+                self.ar[1][0] -= coeft1[n] * s0;
+                self.ar[2][0] += coeft2[n] * s0;
                 //The following are not used, but fully functional
                 //ar(1, 2) = ar(1, 2) - CoefT1(n) * s2;
                 //ar(1, 3) = ar(1, 3) - CoefT1(n) * s3;
@@ -937,7 +937,7 @@ impl AGA8Detail {
                 // See AGA 8 publication for further information.
                 dpdlv = -self.d * self.dp_dd_save;     // d(p)/d[log(v)]
                 vdiff = (f64::ln(p2) - plog) * p2 / dpdlv;
-                vlog = vlog - vdiff;
+                vlog -= vdiff;
                 if f64::abs(vdiff) < tolr {
                     self.d = f64::exp(-vlog);
                     return self.d;               // Iteration converged
