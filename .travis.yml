@@ -1,0 +1,3 @@
+language: rust
+
+before_script: cd AGA8CODE/RUST
