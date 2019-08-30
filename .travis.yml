@@ -1,8 +1,10 @@
 matrix:
   include:
   - language: rust
+    name: "Rust version"
     before_script: cd AGA8CODE/RUST
 
   - language: cpp
+    name: "C++ version"
     before_script: cd AGA8CODE/C && mkdir -p build && cd build
     script: cmake .. && cmake --build . && ctest
