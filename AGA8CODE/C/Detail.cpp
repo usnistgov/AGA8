@@ -5,7 +5,7 @@
 #include <math.h>
 #include <cmath>
 #include <iostream>
-#include <cstdint>
+#include <cstdlib>
 
 //  **********  This code is preliminary, and will be updated.  **********
 //  **********  Use only for beta testing.  **********
