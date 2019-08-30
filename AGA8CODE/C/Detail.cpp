@@ -5,6 +5,7 @@
 #include <math.h>
 #include <cmath>
 #include <iostream>
+#include <cstdint>
 
 //  **********  This code is preliminary, and will be updated.  **********
 //  **********  Use only for beta testing.  **********
@@ -106,7 +107,7 @@ void MolarMassDetail(const std::vector<double> &x, double &Mm)
     //     Mm - Molar mass (g/mol)
 
     Mm = 0;
-    for(int i = 1; i <= NcDetail; ++i){
+    for(std::size_t i = 1; i <= NcDetail; ++i){
         Mm += x[i]*MMiDetail[i];
     }
 }
@@ -289,7 +290,7 @@ static void xTermsDetail(const std::vector<double> &x)
 
     // Check to see if a component fraction has changed.  If x is the same as the previous call, then exit.
     icheck = 0;
-    for (int i = 1; i <= NcDetail; ++i){
+    for (std::size_t i = 1; i <= NcDetail; ++i){
         if (std::abs(x[i] - xold[i]) > 0.0000001) { icheck = 1; }
         xold[i] = x[i];
     }
@@ -299,7 +300,7 @@ static void xTermsDetail(const std::vector<double> &x)
     for (int n = 1; n <= 18; ++n) {Bs[n] = 0; }
 
     // Calculate pure fluid contributions
-    for (int i = 1; i <= NcDetail; ++i){
+    for (std::size_t i = 1; i <= NcDetail; ++i){
         if (x[i] > 0 ) {
             xi2 = pow(x[i], 2);
             K3 += x[i] * Ki25[i];   // K, U, and G are the sums of a pure fluid contribution and a
@@ -316,9 +317,9 @@ static void xTermsDetail(const std::vector<double> &x)
     U = pow(U, 2);
 
     // Binary pair contributions
-    for (int i = 1; i <= NcDetail - 1; ++i){
+    for (std::size_t i = 1; i <= NcDetail - 1; ++i){
         if (x[i] > 0) {
-            for (int j = i + 1; j <= NcDetail; ++j){
+            for (std::size_t j = i + 1; j <= NcDetail; ++j){
                 if (x[j] > 0) {
                     xij = 2 * x[i] * x[j];
                     K3 = K3 + xij * Kij5[i][j];
@@ -367,7 +368,7 @@ static void Alpha0Detail(const double T, const double D, const std::vector<doubl
     a0[0] = 0; a0[1] = 0; a0[2] = 0;
     if (D > epsilon) { LogD = log(D); } else {LogD = log(epsilon);}
     LogT = log(T);
-    for (int i = 1; i <= NcDetail; ++i) {
+    for (std::size_t i = 1; i <= NcDetail; ++i) {
         if (x[i] > 0) {
             LogxD = LogD + log(x[i]);
             SumHyp0 = 0;
