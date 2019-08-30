@@ -7,6 +7,7 @@
 #include <math.h>
 #include <cmath>
 #include <iostream>
+#include <cstdlib>
 
 // Version 2.0 of routines for the calculation of thermodynamic
 // properties from the AGA 8 Part 1 GROSS equation of state.
@@ -96,7 +97,7 @@ void MolarMassGross(const std::vector<double> &x, double &Mm)
 //     Mm - Molar mass (g/mol)
 
   Mm = 0;
-  for(int i = 1; i <= NcGross; ++i){
+  for(std::size_t i = 1; i <= NcGross; ++i){
     Mm += x[i] * MMiGross[i];
   }
 }
@@ -225,7 +226,7 @@ void GrossHv(const std::vector<double> &x, std::vector<double> &xGrs, double &HN
     xGrs[2] = x[2];
     xGrs[3] = x[3];
     HN = 0;
-    for(int i = 1; i <= NcGross; ++i){
+    for(std::size_t i = 1; i <= NcGross; ++i){
         HN += x[i]*xHN[i];
     }
     HCH = 0;
@@ -333,15 +334,15 @@ void Bmix(const double T, const std::vector<double> &xGrs, const double HCH, dou
     CC[1][2][3] = 1.1 * pow(CC[1][1][1] * CC[2][2][2] * CC[3][3][3], onethrd); // C(CH-N2-CO2)
 
     // Calculate Bmix and Cmix
-    for (int i = 1; i <= 3; ++i){
-        for(int j = i; j <= 3; ++j){
+    for (std::size_t i = 1; i <= 3; ++i){
+        for(std::size_t j = i; j <= 3; ++j){
             if (i == j){
                 B += BB[i][i]*pow(xGrs[i], 2);
             }
             else{
                 B += 2*BB[i][j]*xGrs[i]*xGrs[j];
             }
-            for(int k = j; k <= 3; ++k){
+            for(std::size_t k = j; k <= 3; ++k){
                 if (i == j && j == k) {
                     C += CC[i][i][i]*pow(xGrs[i], 3);
                 }
