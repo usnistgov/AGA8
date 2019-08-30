@@ -93,6 +93,8 @@ static double n0i[MaxFlds+1][7+1], th0i[MaxFlds+1][7+1];
 static double MMiDetail[MaxFlds+1], K3, xold[MaxFlds+1];
 static double dPdDsave; //Calculated in the Pressure subroutine, but not included as an argument since it is only used internally in the density algorithm.
 
+inline double sq(double x) { return x*x; }
+
 void MolarMassDetail(const std::vector<double> &x, double &Mm)
 {
     // Calculate molar mass of the mixture with the compositions contained in the x() input array
@@ -258,7 +260,7 @@ void PropertiesDetail(const double T, const double D, const std::vector<double> 
     if (D > epsilon) {
         H = U + P / D;
         G = A + P / D;
-        Cp = Cv + T * pow(dPdT / D, 2) / dPdD;
+        Cp = Cv + T * sq(dPdT / D) / dPdD;
         d2PdD2 = (2 * ar[0][1] + 4 * ar[0][2] + ar[0][3]) / D;
         JT = (T / D * dPdT / dPdD - 1) / Cp / D;
     }
@@ -302,7 +304,7 @@ static void xTermsDetail(const std::vector<double> &x)
     // Calculate pure fluid contributions
     for (std::size_t i = 1; i <= NcDetail; ++i){
         if (x[i] > 0 ) {
-            xi2 = pow(x[i], 2);
+            xi2 = sq(x[i]);
             K3 += x[i] * Ki25[i];   // K, U, and G are the sums of a pure fluid contribution and a
             U += x[i] * Ei25[i];    // binary pair contribution
             G += x[i] * Gi[i];
@@ -313,8 +315,8 @@ static void xTermsDetail(const std::vector<double> &x)
             }
         }
     }
-    K3 = pow(K3, 2);
-    U = pow(U, 2);
+    K3 = sq(K3);
+    U = sq(U);
 
     // Binary pair contributions
     for (std::size_t i = 1; i <= NcDetail - 1; ++i){
@@ -336,7 +338,7 @@ static void xTermsDetail(const std::vector<double> &x)
     U = pow(U, 0.2);
 
     // Third virial and higher coefficients
-    Q2 = pow(Q, 2);
+    Q2 = sq(Q);
     for (int n = 13; n <= 58; ++n){
         Csn[n] = an[n] * pow(U, un[n]);
         if (gn[n] == 1) { Csn[n] = Csn[n] * G; }
@@ -385,13 +387,13 @@ static void Alpha0Detail(const double T, const double D, const std::vector<doubl
                         LogHyp = log(std::abs(hsn));
                         SumHyp0 += n0i[i][j] * LogHyp;
                         SumHyp1 += n0i[i][j] * (LogHyp - th0T * hcn / hsn);
-                        SumHyp2 += n0i[i][j] * pow(th0T / hsn, 2);
+                        SumHyp2 += n0i[i][j] * sq(th0T / hsn);
                     }
                     else{
                         LogHyp = log(std::abs(hcn));
                         SumHyp0 += - n0i[i][j] * LogHyp;
                         SumHyp1 += - n0i[i][j] * (LogHyp - th0T * hsn / hcn);
-                        SumHyp2 += + n0i[i][j] * pow(th0T / hcn, 2);
+                        SumHyp2 += + n0i[i][j] * sq(th0T / hcn);
                     }
                 }
             }        
