@@ -1,3 +1,8 @@
-language: rust
+matrix:
+  include:
+  - language: rust
+    before_script: cd AGA8CODE/RUST
 
-before_script: cd AGA8CODE/RUST
+  - language: cpp
+    before_script: cd AGA8CODE/C && mkdir -p build && cd build
+    script: cmake .. && cmake --build . && ctest
