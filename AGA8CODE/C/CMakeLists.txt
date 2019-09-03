@@ -10,4 +10,6 @@ target_link_libraries(detail_test detail)
 
 include(CTest)
 # does the application even run
-add_test(DetailRuns detail_test)
+add_test(NAME DetailRuns
+    COMMAND detail_test
+    )
