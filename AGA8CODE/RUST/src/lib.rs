@@ -445,6 +445,7 @@ const TH0I: [[f64; 7]; MAXFLDS] = [
     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, ],
 ];
 
+/// Struct doc
 
 pub struct AGA8Detail {
     /// Calculated in the Pressure subroutine,
@@ -888,22 +889,13 @@ impl AGA8Detail {
         }
     }
 
+    /// Calculate density as a function of temperature and pressure.  This is an iterative routine that calls PressureDetail
+    /// to find the correct state point.  Generally only 6 iterations at most are required.
+    /// If the iteration fails to converge, the ideal gas density and an error message are returned.
+    /// No checks are made to determine the phase boundary, which would have guaranteed that the output is in the gas phase.
+    /// It is up to the user to locate the phase boundary, and thus identify the phase of the T and P inputs.
+    /// If the state point is 2-phase, the output density will represent a metastable state.
     pub fn density_detail(&mut self) -> f64 {
-        // Calculate density as a function of temperature and pressure.  This is an iterative routine that calls PressureDetail
-        // to find the correct state point.  Generally only 6 iterations at most are required.
-        // If the iteration fails to converge, the ideal gas density and an error message are returned.
-        // No checks are made to determine the phase boundary, which would have guaranteed that the output is in the gas phase.
-        // It is up to the user to locate the phase boundary, and thus identify the phase of the T and P inputs.
-        // If the state point is 2-phase, the output density will represent a metastable state.
-
-        // Inputs:
-        //      T - Temperature (K)
-        //      P - Pressure (kPa)
-        //    x() - Composition (mole fraction)
-
-        // Outputs:
-        //      D - Density (mol/l) (make D negative and send as an input to use as an initial guess)
-
         let plog: f64;
         let mut vlog: f64;
         let mut dpdlv: f64;
@@ -949,23 +941,9 @@ impl AGA8Detail {
         self.d
     }
 
+    /// Calculate pressure as a function of temperature and density.  The derivative d(P)/d(D) is also calculated
+    /// for use in the iterative DensityDetail subroutine (and is only returned as a common variable).
     pub fn pressure_detail(&mut self) -> f64 {
-        // Calculate pressure as a function of temperature and density.  The derivative d(P)/d(D) is also calculated
-        // for use in the iterative DensityDetail subroutine (and is only returned as a common variable).
-
-        // Inputs:
-        //      T - Temperature (K)
-        //      D - Density (mol/l)
-        //    x() - Composition (mole fraction)
-        //          Do not send mole percents or mass fractions in the x() array, otherwise the output will be incorrect.
-        //          The sum of the compositions in the x() array must be equal to one.
-
-        // Outputs:
-        //      P - Pressure (kPa)
-        //      Z - Compressibility factor
-        //   dPdDsave - d(P)/d(D) [kPa/(mol/l)] (at constant temperature)
-        //            - This variable is cached in the common variables for use in the iterative density solver, but not returned as an argument.
-
         self.x_terms();
         self.alphar(0, 2);
         self.z = 1.0 + self.ar[0][1] / RDETAIL / self.t; // ar(0,1) is the first derivative of alpha(r) with respect to density
@@ -974,39 +952,14 @@ impl AGA8Detail {
         p
     }
 
+    /// Calculate thermodynamic properties as a function of temperature and density.  Calls are made to the subroutines
+    /// Molarmass, Alpha0Detail, and AlpharDetail.  If the density is not known, call subroutine DensityDetail first
+    /// with the known values of pressure and temperature.
     pub fn properties_detail(&mut self) {
-        // Calculate thermodynamic properties as a function of temperature and density.  Calls are made to the subroutines
-        // Molarmass, Alpha0Detail, and AlpharDetail.  If the density is not known, call subroutine DensityDetail first
-        // with the known values of pressure and temperature.
-
-        // Inputs:
-        //      T - Temperature (K)
-        //      D - Density (mol/l)
-        //    x() - Composition (mole fraction)
-
-        // Outputs:
-        //      P - Pressure (kPa)
-        //      Z - Compressibility factor
-        //   dPdD - First derivative of pressure with respect to density at constant temperature [kPa/(mol/l)]
-        // d2PdD2 - Second derivative of pressure with respect to density at constant temperature [kPa/(mol/l)^2]
-        // d2PdTD - Second derivative of pressure with respect to temperature and density [kPa/(mol/l)/K] (currently not calculated)
-        //   dPdT - First derivative of pressure with respect to temperature at constant density (kPa/K)
-        //      U - Internal energy (J/mol)
-        //      H - Enthalpy (J/mol)
-        //      S - Entropy [J/(mol-K)]
-        //     Cv - Isochoric heat capacity [J/(mol-K)]
-        //     Cp - Isobaric heat capacity [J/(mol-K)]
-        //      W - Speed of sound (m/s)
-        //      G - Gibbs energy (J/mol)
-        //     JT - Joule-Thomson coefficient (K/kPa)
-        //  Kappa - Isentropic Exponent
-
-        //double a0[2+1], ar[3+1][3+1], Mm, A, R, RT;
         let mm: f64;
         let a: f64;
         let r: f64;
         let rt: f64;
-
 
         mm = self.molar_mass_detail();
         self.x_terms();
