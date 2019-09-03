@@ -30,14 +30,14 @@ int main()
     double mm_reference    = 20.54333051;
     double D_reference     = 12.80792403648801;
     double P_reference     = 50000.0;
-    double Z_reference     = 2.173801364147326;
+    double Z_reference     = 1.173801364147326;
     double dPdD_reference  = 6971.387690924090;
     double dPdD2_reference = 1118.803636639520;
     double dPdT_reference  = 235.6641493068212;
     double U_reference     = -2739.134175817231;
     double H_reference     = 1164.699096269404;
     double s_reference     = -38.54882684677111;
-    double Cv_reference    = 42.12076154430332;
+    double Cv_reference    = 39.12076154430332;
     double Cp_reference    = 58.54617672380667;
     double W_reference     = 712.6393684057903;
     double G_reference     = 16584.22983497785;

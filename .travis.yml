@@ -7,4 +7,4 @@ matrix:
   - language: cpp
     name: "C++ version"
     before_script: cd AGA8CODE/C && mkdir -p build && cd build
-    script: cmake .. && cmake --build . && ctest --verbose
+    script: cmake .. && cmake --build . && ctest --output-on-failure
