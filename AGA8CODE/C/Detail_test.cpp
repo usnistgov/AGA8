@@ -1,4 +1,6 @@
 #include <cmath>
+#include <math.h>
+#include <cstdio>
 #include "Detail.h"
 
 int main()
