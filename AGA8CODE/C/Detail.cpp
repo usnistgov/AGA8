@@ -5,6 +5,7 @@
 #include <math.h>
 #include <cmath>
 #include <iostream>
+#include <cstdlib>
 
 //  **********  This code is preliminary, and will be updated.  **********
 //  **********  Use only for beta testing.  **********
@@ -92,9 +93,7 @@ static double n0i[MaxFlds+1][7+1], th0i[MaxFlds+1][7+1];
 static double MMiDetail[MaxFlds+1], K3, xold[MaxFlds+1];
 static double dPdDsave; //Calculated in the Pressure subroutine, but not included as an argument since it is only used internally in the density algorithm.
 
-inline double Tanh(double xx){ return (exp(xx) - exp(-xx)) / (exp(xx) + exp(-xx)); }
-inline double Sinh(double xx){ return (exp(xx) - exp(-xx)) / 2; }
-inline double Cosh(double xx){ return (exp(xx) + exp(-xx)) / 2; }
+inline double sq(double x) { return x*x; }
 
 void MolarMassDetail(const std::vector<double> &x, double &Mm)
 {
@@ -110,7 +109,7 @@ void MolarMassDetail(const std::vector<double> &x, double &Mm)
     //     Mm - Molar mass (g/mol)
 
     Mm = 0;
-    for(int i = 1; i <= NcDetail; ++i){
+    for(std::size_t i = 1; i <= NcDetail; ++i){
         Mm += x[i]*MMiDetail[i];
     }
 }
@@ -261,7 +260,7 @@ void PropertiesDetail(const double T, const double D, const std::vector<double> 
     if (D > epsilon) {
         H = U + P / D;
         G = A + P / D;
-        Cp = Cv + T * pow(dPdT / D, 2) / dPdD;
+        Cp = Cv + T * sq(dPdT / D) / dPdD;
         d2PdD2 = (2 * ar[0][1] + 4 * ar[0][2] + ar[0][3]) / D;
         JT = (T / D * dPdT / dPdD - 1) / Cp / D;
     }
@@ -293,7 +292,7 @@ static void xTermsDetail(const std::vector<double> &x)
 
     // Check to see if a component fraction has changed.  If x is the same as the previous call, then exit.
     icheck = 0;
-    for (int i = 1; i <= NcDetail; ++i){
+    for (std::size_t i = 1; i <= NcDetail; ++i){
         if (std::abs(x[i] - xold[i]) > 0.0000001) { icheck = 1; }
         xold[i] = x[i];
     }
@@ -303,9 +302,9 @@ static void xTermsDetail(const std::vector<double> &x)
     for (int n = 1; n <= 18; ++n) {Bs[n] = 0; }
 
     // Calculate pure fluid contributions
-    for (int i = 1; i <= NcDetail; ++i){
+    for (std::size_t i = 1; i <= NcDetail; ++i){
         if (x[i] > 0 ) {
-            xi2 = pow(x[i], 2);
+            xi2 = sq(x[i]);
             K3 += x[i] * Ki25[i];   // K, U, and G are the sums of a pure fluid contribution and a
             U += x[i] * Ei25[i];    // binary pair contribution
             G += x[i] * Gi[i];
@@ -316,13 +315,13 @@ static void xTermsDetail(const std::vector<double> &x)
             }
         }
     }
-    K3 = pow(K3, 2);
-    U = pow(U, 2);
+    K3 = sq(K3);
+    U = sq(U);
 
     // Binary pair contributions
-    for (int i = 1; i <= NcDetail - 1; ++i){
+    for (std::size_t i = 1; i <= NcDetail - 1; ++i){
         if (x[i] > 0) {
-            for (int j = i + 1; j <= NcDetail; ++j){
+            for (std::size_t j = i + 1; j <= NcDetail; ++j){
                 if (x[j] > 0) {
                     xij = 2 * x[i] * x[j];
                     K3 = K3 + xij * Kij5[i][j];
@@ -339,7 +338,7 @@ static void xTermsDetail(const std::vector<double> &x)
     U = pow(U, 0.2);
 
     // Third virial and higher coefficients
-    Q2 = pow(Q, 2);
+    Q2 = sq(Q);
     for (int n = 13; n <= 58; ++n){
         Csn[n] = an[n] * pow(U, un[n]);
         if (gn[n] == 1) { Csn[n] = Csn[n] * G; }
@@ -371,7 +370,7 @@ static void Alpha0Detail(const double T, const double D, const std::vector<doubl
     a0[0] = 0; a0[1] = 0; a0[2] = 0;
     if (D > epsilon) { LogD = log(D); } else {LogD = log(epsilon);}
     LogT = log(T);
-    for (int i = 1; i <= NcDetail; ++i) {
+    for (std::size_t i = 1; i <= NcDetail; ++i) {
         if (x[i] > 0) {
             LogxD = LogD + log(x[i]);
             SumHyp0 = 0;
@@ -388,13 +387,13 @@ static void Alpha0Detail(const double T, const double D, const std::vector<doubl
                         LogHyp = log(std::abs(hsn));
                         SumHyp0 += n0i[i][j] * LogHyp;
                         SumHyp1 += n0i[i][j] * (LogHyp - th0T * hcn / hsn);
-                        SumHyp2 += n0i[i][j] * pow(th0T / hsn, 2);
+                        SumHyp2 += n0i[i][j] * sq(th0T / hsn);
                     }
                     else{
                         LogHyp = log(std::abs(hcn));
                         SumHyp0 += - n0i[i][j] * LogHyp;
                         SumHyp1 += - n0i[i][j] * (LogHyp - th0T * hsn / hcn);
-                        SumHyp2 += + n0i[i][j] * pow(th0T / hcn, 2);
+                        SumHyp2 += + n0i[i][j] * sq(th0T / hcn);
                     }
                 }
             }        
@@ -963,10 +962,10 @@ void SetupDetail()
     // d0 = 101.325 / RDetail / T0;
     // for (int i=1; i <= MaxFlds; ++i){
     //   n1 = 0; n2 = 0;
-    //   if (th0i[i][4] > 0) {n2 = n2 - n0i[i][4] * th0i[i][4] / Tanh(th0i[i][4] / T0); n1 = n1 - n0i[i][4] * log(Sinh(th0i[i][4] / T0));}
-    //   if (th0i[i][5] > 0) {n2 = n2 + n0i[i][5] * th0i[i][5] * Tanh(th0i[i][5] / T0); n1 = n1 + n0i[i][5] * log(Cosh(th0i[i][5] / T0));}
-    //   if (th0i[i][6] > 0) {n2 = n2 - n0i[i][6] * th0i[i][6] / Tanh(th0i[i][6] / T0); n1 = n1 - n0i[i][6] * log(Sinh(th0i[i][6] / T0));}
-    //   if (th0i[i][7] > 0) {n2 = n2 + n0i[i][7] * th0i[i][7] * Tanh(th0i[i][7] / T0); n1 = n1 + n0i[i][7] * log(Cosh(th0i[i][7] / T0));}
+    //   if (th0i[i][4] > 0) {n2 = n2 - n0i[i][4] * th0i[i][4] / tanh(th0i[i][4] / T0); n1 = n1 - n0i[i][4] * log(sinh(th0i[i][4] / T0));}
+    //   if (th0i[i][5] > 0) {n2 = n2 + n0i[i][5] * th0i[i][5] * tanh(th0i[i][5] / T0); n1 = n1 + n0i[i][5] * log(cosh(th0i[i][5] / T0));}
+    //   if (th0i[i][6] > 0) {n2 = n2 - n0i[i][6] * th0i[i][6] / tanh(th0i[i][6] / T0); n1 = n1 - n0i[i][6] * log(sinh(th0i[i][6] / T0));}
+    //   if (th0i[i][7] > 0) {n2 = n2 + n0i[i][7] * th0i[i][7] * tanh(th0i[i][7] / T0); n1 = n1 + n0i[i][7] * log(cosh(th0i[i][7] / T0));}
     //   n0i[i][2] = n2 - n0i[i][3] * T0;
     //   n0i[i][3] = n0i[i][3] - 1;
     //   n0i[i][1] = n1 - n2 / T0 + n0i[i][3] * (1 + log(T0)) - log(d0);
