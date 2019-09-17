@@ -1,5 +1,7 @@
 //! AGA8 calculations
 
+use std::slice;
+
 const NC_DETAIL: usize = 21;
 const MAXFLDS: usize  = 21;
 const NTERMS: usize   = 58;
@@ -1002,55 +1004,58 @@ impl AGA8Detail {
     }
 }
 
+#[repr(C)]
+pub struct Aga8_Result {
+    d: f64, // Molar concentration [mol/l]
+    mm: f64,
+    z: f64,
+    dp_dd: f64,
+    d2p_dd2: f64,
+    dp_dt: f64,
+    u: f64,
+    h: f64,
+    s: f64,
+    cv: f64,
+    cp: f64,
+    w: f64,
+    g: f64,
+    jt: f64,
+    kappa: f64,
+}
+
+/// composition must be an array of 21 elements.
 #[no_mangle]
-pub extern "C" fn aga8_2017(composition: [f64; MAXFLDS], pressure: f64, temperature: f64, result: i32) -> f64 {
+pub extern "C" fn aga8_2017(composition: *const f64, pressure: f64, temperature: f64) -> Aga8_Result {
+    let array = unsafe {
+        assert!(!composition.is_null());
+        slice::from_raw_parts(composition, MAXFLDS)
+    };
+
     let mut aga8_test: AGA8Detail = AGA8Detail::default();
     aga8_test.setup();
-    aga8_test.x = composition;
-        // 0.996_953_100, // Methane
-        // 0.002_016_000, // Nitrogen
-        // 0.000_093_700, // Carbon dioxide
-        // 0.000_767_100, // Ethane
-        // 0.000_067_900, // Propane
-        // 0.000_019_700, // Isobutane
-        // 0.000_006_800, // n-Butane
-        // 0.000_015_600, // Isopentane
-        // 0.000_000_000, // n-Pentane
-        // 0.000_000_000, // Hexane
-        // 0.000_000_000, // Heptane
-        // 0.000_000_000, // Octane
-        // 0.000_000_000, // Nonane
-        // 0.000_000_000, // Decane
-        // 0.000_000_000, // Hydrogen
-        // 0.000_000_000, // Oxygen
-        // 0.000_000_000, // Carbon monoxide
-        // 0.000_000_000, // Water
-        // 0.000_000_000, // Hydrogen sulfide
-        // 0.000_060_100, // Helium
-        // 0.000_000_000, // Argon
+
+    aga8_test.x[0..MAXFLDS].clone_from_slice(&array[..]);
 
     aga8_test.t = temperature;
     aga8_test.p = pressure;
     aga8_test.density_detail();
     aga8_test.properties_detail();
 
-    match result {
-        0  => aga8_test.d, // Molar concentration [mol/l]
-        1  => aga8_test.mm,
-        2  => aga8_test.z,
-        3  => aga8_test.dp_dd,
-        4  => aga8_test.d2p_dd2,
-        5  => aga8_test.dp_dt,
-        6  => aga8_test.u,
-        7  => aga8_test.h,
-        8  => aga8_test.s,
-        9  => aga8_test.cv,
-        10 => aga8_test.cp,
-        11 => aga8_test.w,
-        12 => aga8_test.g,
-        13 => aga8_test.jt,
-        14 => aga8_test.kappa,
-        15 => aga8_test.d * aga8_test.mm, // Density [kg/m³]
-        _  => aga8_test.d,
+    Aga8_Result {
+        d: aga8_test.d, // Molar concentration [mol/l]
+        mm: aga8_test.mm,
+        z: aga8_test.z,
+        dp_dd: aga8_test.dp_dd,
+        d2p_dd2: aga8_test.d2p_dd2,
+        dp_dt: aga8_test.dp_dt,
+        u: aga8_test.u,
+        h: aga8_test.h,
+        s: aga8_test.s,
+        cv: aga8_test.cv,
+        cp: aga8_test.cp,
+        w: aga8_test.w,
+        g: aga8_test.g,
+        jt: aga8_test.jt,
+        kappa: aga8_test.kappa,
     }
 }
