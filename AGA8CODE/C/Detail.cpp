@@ -1,4 +1,4 @@
- 
+
 
 #include "Detail.h"
 // We add both math headers to placate some non-standards-compliant compilers
