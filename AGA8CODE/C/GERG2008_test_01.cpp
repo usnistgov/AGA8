@@ -12,21 +12,14 @@ int main()
     const int NcGERG = 21;
     std::vector<double> x(_x, _x+NcGERG), xGrs(4,0);
     x.insert(x.begin(), 0.0);
-    
     double mm = 0;
     MolarMassGERG(x, mm);
 
     int ierr = 0;
     std::string herr;
-
     double T = 400, P = 50000, D = 6.36570, Z = 0;
-
     double dPdD, dPdD2, d2PdTD, dPdT, U, H, S, Cv, Cp, W, G, JT, Kappa, A;
-
-    // void DensityGERG(const int iFlag, const double T, const double P, const std::vector<double> &x, double &D, int &ierr, std::string &herr)
     DensityGERG(0, T, P, x, D, ierr, herr);
-
-    // Sub PropertiesGERG(T, D, x, P, Z, dPdD, dPdD2, d2PdTD, dPdT, U, H, S, Cv, Cp, W, G, JT, Kappa)
     PropertiesGERG(T, D, x, P, Z, dPdD, dPdD2, d2PdTD, dPdT, U, H, S,
         Cv, Cp, W, G, JT, Kappa, A);
 

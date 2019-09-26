@@ -12,13 +12,11 @@ int main()
     const int NcDetail = 21;
     std::vector<double> x(_x, _x+NcDetail), xGrs(4,0);
     x.insert(x.begin(), 0.0);
-
     double mm = 0;
     MolarMassDetail(x, mm);
 
     int ierr = 0;
     std::string herr;
-
     double T = 400, P = 50000, D = 1e10;
     DensityDetail(T, P, x, D, ierr, herr);
 
