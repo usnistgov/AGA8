@@ -61,7 +61,7 @@ int main()
             P_reference, P);
         return_value = 1;
     }
-    if (fabs(Z_reference - Z) > 0.1)
+    if (fabs(Z_reference - Z) > 0.01)
     {
         printf("Compressibility factor:             %0.16g != %0.16g\n",
             Z_reference, Z);
@@ -90,19 +90,19 @@ int main()
             HCH_reference, HCH);
         return_value = 1;
     }
-    if (fabs(xGrs_reference[1] - xGrs[1]) > 0.1)
+    if (fabs(xGrs_reference[1] - xGrs[1]) > 0.001)
     {
         printf("HCH (kJ/mol, 25 C):                 %0.16g != %0.16g\n",
             xGrs_reference[1], xGrs[1]);
         return_value = 1;
     }
-    if (fabs(xGrs_reference[2] - xGrs[2]) > 0.1)
+    if (fabs(xGrs_reference[2] - xGrs[2]) > 0.001)
     {
         printf("nitrogen mole fraction:             %0.16g != %0.16g\n",
             xGrs_reference[2], xGrs[2]);
         return_value = 1;
     }
-    if (fabs(xGrs_reference[3] - xGrs[3]) > 0.1)
+    if (fabs(xGrs_reference[3] - xGrs[3]) > 0.001)
     {
         printf("CO2 mole fraction:                  %0.16g != %0.16g\n",
             xGrs_reference[3], xGrs[3]);
