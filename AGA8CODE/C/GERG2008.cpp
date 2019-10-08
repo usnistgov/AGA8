@@ -5,8 +5,6 @@
 #include <cmath>
 #include <iostream>
 
-//   **********  This code is preliminary, and will be updated.  **********
-//   **********  Use only for beta testing.  **********
 //   **********  June 7, 2016  **********
 
 // Version 2.0 of routines for the calculation of thermodynamic
@@ -44,7 +42,7 @@
 // Kunz, O., Klimeck, R., Wagner, W., and Jaeschke, M.
 // The GERG-2004 Wide-Range Equation of State for Natural Gases and Other Mixtures
 // GERG Technical Monograph 15
-// Fortschr.-Ber. VDI, Reihe 6, Nr. 557, VDI Verlag, Düsseldorf, 2007.
+// Fortschr.-Ber. VDI, Reihe 6, Nr. 557, VDI Verlag, DÃ¼sseldorf, 2007.
 // http://www.gerg.eu/public/uploads/files/publications/technical_monographs/tm15_04.pdf
 
 // Subroutines contained here for property calculations:
