@@ -557,6 +557,10 @@ impl Default for AGA8Detail {
 }
 
 impl AGA8Detail {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
     /// Initialize all the constants and parameters in the DETAIL model.
     /// 
     /// Some values are modified for calculations that do not depend
@@ -1031,7 +1035,7 @@ pub extern "C" fn aga8_2017(composition: *const f64, pressure: f64, temperature:
         slice::from_raw_parts(composition, MAXFLDS)
     };
 
-    let mut aga8_test: AGA8Detail = AGA8Detail::default();
+    let mut aga8_test: AGA8Detail = AGA8Detail::new();
     aga8_test.setup();
 
     aga8_test.x[0..MAXFLDS].clone_from_slice(&array[..]);
@@ -1062,7 +1066,7 @@ pub extern "C" fn aga8_2017(composition: *const f64, pressure: f64, temperature:
 
 #[no_mangle]
 pub extern "C" fn aga8_new() -> *mut AGA8Detail {
-    Box::into_raw(Box::new(AGA8Detail::default()))
+    Box::into_raw(Box::new(AGA8Detail::new()))
 }
 
 #[no_mangle]
