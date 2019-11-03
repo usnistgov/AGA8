@@ -569,7 +569,7 @@ impl Default for Gerg2008 {
 impl Gerg2008 {
     pub fn molarmass(&mut self) {
         self.mm = 0.0;
-        for i in 1..NC_GERG+1 {
+        for i in 1..=NC_GERG {
             self.mm += self.x[i] * MMI_GERG[i];
         }
     }
@@ -630,8 +630,8 @@ impl Gerg2008 {
                 // Current state is 2-phase, try locating a different state that is single phase
                 let mut vinc = 0.1;
                 if self.d > dcx { vinc = -0.1; }
-                if it > 5 { vinc = vinc / 2.0; }
-                if it > 10 && it < 20 { vinc = vinc / 5.0; }
+                if it > 5 { vinc /= 2.0; }
+                if it > 10 && it < 20 { vinc /= 5.0; }
                 vlog += vinc;
             } else {
                 // Find the next density with a first order Newton's type iterative scheme, with
@@ -710,7 +710,7 @@ impl Gerg2008 {
         let mut icheck: i32 = 0;
 
         // Check to see if a component fraction has changed.  If x is the same as the previous call, then exit.
-        for i in 1..NC_GERG+1 {
+        for i in 1..=NC_GERG {
             if f64::abs(self.x[i] - self.xold[i]) > 0.0000001 { icheck = 1; }
             self.xold[i] = self.x[i];
         }
@@ -721,14 +721,14 @@ impl Gerg2008 {
         self.trold2 = 0.0;
 
         // Calculate reducing variables for T and D
-        for i in 1..NC_GERG+1 {
+        for i in 1..=NC_GERG {
             if self.x[i] > EPSILON {
                 f = 1.0;
-                for j in i..NC_GERG+1 {
+                for j in i..=NC_GERG {
                     if self.x[j] > EPSILON {
                         xij = f * (self.x[i] * self.x[j]) * (self.x[i] + self.x[j]);
-                        vr = vr + xij * GVIJ[i][j] / (BVIJ[i][j] * self.x[i] + self.x[j]);
-                        tr = tr + xij * GTIJ[i][j] / (BTIJ[i][j] * self.x[i] + self.x[j]);
+                        vr += xij * GVIJ[i][j] / (BVIJ[i][j] * self.x[i] + self.x[j]);
+                        tr += xij * GTIJ[i][j] / (BTIJ[i][j] * self.x[i] + self.x[j]);
                         f = 2.0;
                     }
                 }
@@ -761,7 +761,7 @@ impl Gerg2008 {
             logd = f64::ln(EPSILON);
         }
         logt = f64::ln(self.t);
-        for i in 1..NC_GERG+1 {
+        for i in 1..=NC_GERG {
             if self.x[i] > EPSILON {
                 logxd = logd + f64::ln(self.x[i]);
                 sumhyp0 = 0.0;
@@ -776,15 +776,15 @@ impl Gerg2008 {
                         hcn = (ep + em) / 2.0;
                         if j == 4 || j == 6 {
                             loghyp = f64::ln(f64::abs(hsn));
-                            sumhyp0 = sumhyp0 + N0I[i][j] * loghyp;
-                            sumhyp1 = sumhyp1 + N0I[i][j] * th0t * hcn / hsn;
-                            sumhyp2 = sumhyp2 + N0I[i][j] * (th0t / hsn)* (th0t / hsn);
+                            sumhyp0 += N0I[i][j] * loghyp;
+                            sumhyp1 += N0I[i][j] * th0t * hcn / hsn;
+                            sumhyp2 += N0I[i][j] * (th0t / hsn)* (th0t / hsn);
                         }
                         else {
                             loghyp = f64::ln(f64::abs(hcn));
-                            sumhyp0 = sumhyp0 - N0I[i][j] * loghyp;
-                            sumhyp1 = sumhyp1 - N0I[i][j] * th0t * hsn / hcn;
-                            sumhyp2 = sumhyp2 + N0I[i][j] * (th0t / hcn) * (th0t / hcn);
+                            sumhyp0 -= N0I[i][j] * loghyp;
+                            sumhyp1 -= N0I[i][j] * th0t * hsn / hcn;
+                            sumhyp2 += N0I[i][j] * (th0t / hcn) * (th0t / hcn);
                         }
                     }
                 }
@@ -834,9 +834,9 @@ impl Gerg2008 {
         self.trold2 = tr;
 
         // Calculate pure fluid contributions
-        for i in 1..NC_GERG+1 {
+        for i in 1..=NC_GERG {
             if self.x[i] > EPSILON {
-                for k in 1..KPOL[i]+1 {
+                for k in 1..=KPOL[i] {
                     ndt = self.x[i] * delp[DOIK[i][k]] * self.taup[i][k];
                     ndtd = ndt * DOIK[i][k] as f64;
                     self.ar[0][1] += ndtd;
@@ -851,7 +851,7 @@ impl Gerg2008 {
                         self.ar[0][3] += ndtd * (DOIK[i][k] as f64 - 1.0) * (DOIK[i][k] as f64 - 2.0);
                     }
                 }
-                for k in 1 + KPOL[i]..(KPOL[i] + KEXP[i] + 1) {
+                for k in 1 + KPOL[i]..=KPOL[i] + KEXP[i] {
                     ndt = self.x[i] * delp[DOIK[i][k]] * self.taup[i][k]*expd[COIK[i][k]];
                     ex = COIK[i][k] as f64 * delp[COIK[i][k]];
                     ex2 = DOIK[i][k] as f64 - ex;
@@ -872,14 +872,14 @@ impl Gerg2008 {
         }
 
         // Calculate mixture contributions
-        for i in 1..NC_GERG+1 {
+        for i in 1..=NC_GERG {
             if self.x[i] > EPSILON {
-                for j in i + 1..NC_GERG+1 {
+                for j in i + 1..=NC_GERG {
                     if self.x[j] > EPSILON {
                         let mn = MNUMB[i][j];
                         if mn > 0 {
                             xijf = self.x[i] * self.x[j] * FIJ[i][j];
-                            for k in 1..KPOLIJ[mn]+1 {
+                            for k in 1..=KPOLIJ[mn] {
                                 ndt = xijf * delp[DIJK[mn][k]] * self.taupijk[mn][k];
                                 ndtd = ndt * DIJK[mn][k] as f64;
                                 self.ar[0][1] += ndtd;
@@ -894,7 +894,7 @@ impl Gerg2008 {
                                     self.ar[0][3] += ndtd * (DIJK[mn][k] as f64 - 1.0) * (DIJK[mn][k] as f64 - 2.0);
                                 }
                             }
-                            for k in 1 + KPOLIJ[mn]..KPOLIJ[mn] + KEXPIJ[mn] + 1 {
+                            for k in 1 + KPOLIJ[mn]..=KPOLIJ[mn] + KEXPIJ[mn] {
                                 cij0 = CIJK[mn][k] * delp[2];
                                 eij0 = EIJK[mn][k] * del;
                                 ndt = xijf * NIJK[mn][k] * delp[DIJK[mn][k]] * f64::exp(cij0 + eij0 + GIJK[mn][k] + TIJK[mn][k] * lntau);
@@ -924,10 +924,10 @@ impl Gerg2008 {
         let mut taup0: [f64; 12+1] = [0.0; 12+1];
 
         //i = 5;  // Use propane to get exponents for short form of EOS
-        for k in 1..KPOL[i] + KEXP[i] + 1 {
+        for k in 1..=KPOL[i] + KEXP[i] {
             taup0[k] = f64::exp(TOIK[i][k] * lntau);
         }
-        for i in 1..NC_GERG+1 {
+        for i in 1..=NC_GERG {
             if self.x[i] > EPSILON {
                 if i > 4 && i != 15 && i != 18 && i != 20 {
                     for k in 0..KPOL[i] + KEXP[i] {
@@ -942,13 +942,13 @@ impl Gerg2008 {
             }
         }
 
-        for i in 1..NC_GERG+1 {
+        for i in 1..=NC_GERG {
             if self.x[i] > EPSILON {
-                for j in i + 1..NC_GERG+1 {
+                for j in i + 1..=NC_GERG {
                     if self.x[j] > EPSILON {
                         let mn = MNUMB[i][j];
                         if mn > 0 {
-                            for k in 1..KPOLIJ[mn]+1 {
+                            for k in 1..=KPOLIJ[mn] {
                                 self.taupijk[mn][k] = NIJK[mn][k] * f64::exp(TIJK[mn][k] * lntau);
                             }
                         }
@@ -963,9 +963,9 @@ impl Gerg2008 {
         let mut tcx = 0.0;
         let mut vcx: f64 = 0.0;
 
-        for i in 1..NC_GERG+1 {
-            tcx = tcx + self.x[i] * TC[i];
-            vcx = vcx + self.x[i] / DC[i];
+        for i in 1..=NC_GERG {
+            tcx += self.x[i] * TC[i];
+            vcx += self.x[i] / DC[i];
         }
         if vcx > EPSILON {
             dcx = 1.0 / vcx;
