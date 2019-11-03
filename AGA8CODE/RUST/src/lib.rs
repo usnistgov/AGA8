@@ -57,3 +57,40 @@ pub extern "C" fn aga8_2017(composition: [f64; 21], pressure: f64, temperature: 
         _  => aga8_test.d,
     }
 }
+
+#[no_mangle]
+pub extern "C" fn gerg_2008(composition: [f64; 21], pressure: f64, temperature: f64, result: i32) -> f64 {
+    let mut gerg_test: Gerg2008 = Gerg2008::default();
+    let mut comp: [f64; 21+1] = [0.0; 21+1];
+    //let mut comp: Vec<f64> = Vec::new();
+    //comp.push(0.0);
+    for i in 1..comp.len() {
+        comp[i] = composition[i-1];
+    }
+
+    gerg_test.x = comp;
+    gerg_test.t = temperature;
+    gerg_test.p = pressure;
+    gerg_test.density(0);
+    gerg_test.properties();
+
+    match result {
+        0  => gerg_test.d,
+        1  => gerg_test.mm,
+        2  => gerg_test.z,
+        3  => gerg_test.dp_dd,
+        4  => gerg_test.d2p_dd2,
+        5  => gerg_test.dp_dt,
+        6  => gerg_test.u,
+        7  => gerg_test.h,
+        8  => gerg_test.s,
+        9  => gerg_test.cv,
+        10 => gerg_test.cp,
+        11 => gerg_test.w,
+        12 => gerg_test.g,
+        13 => gerg_test.jt,
+        14 => gerg_test.kappa,
+        15 => gerg_test.d * gerg_test.mm, // Density [kg/m³]
+        _  => gerg_test.d,
+    }
+}
