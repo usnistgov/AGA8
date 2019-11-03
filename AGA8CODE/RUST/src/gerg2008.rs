@@ -1,759 +1,13 @@
-
-// #include "GERG2008.h"
-// We add both math headers to placate some non-standards-compliant compilers
-// #include <math.h>
-// #include <cmath>
-// #include <iostream>
-
-//   **********  June 7, 2016  **********
-
-// Version 2.0 of routines for the calculation of thermodynamic
-// properties from the AGA 8 Part 2 GERG-2008 equation of state.
-// April, 2017
-
-// Written by Eric W. Lemmon
-// Applied Chemicals and Materials Division
-// National Institute of Standards and Technology (NIST)
-// Boulder, Colorado, USA
-// Eric.Lemmon@nist.gov
-// 303-497-7939
-
-// C++ translation by Ian H. Bell
-// Applied Chemicals and Materials Division
-// National Institute of Standards and Technology (NIST)
-// Boulder, Colorado, USA
-// ian.bell@nist.gov
-
-// Other contributors:
-// Volker Heinemann, RMG Messtechnik GmbH
-// Jason Lu, Thermo Fisher Scientific
-// Ian Bell, NIST
-
-// The publication for the AGA 8 equation of state is available from AGA
-//   and the Transmission Measurement Committee.
-
-// The GERG-2008 equation of state was developed by Oliver Kunz and Wolfgang Wagner;
-
-// Kunz, O. and Wagner, W.
-// The GERG-2008 Wide-Range Equation of State for Natural Gases and Other Mixtures;
-// An Expansion of GERG-2004
-// J. Chem. Eng. Data, 57(11):3032-3091, 2012.
-
-// Kunz, O., Klimeck, R., Wagner, W., and Jaeschke, M.
-// The GERG-2004 Wide-Range Equation of State for Natural Gases and Other Mixtures
-// GERG Technical Monograph 15
-// Fortschr.-Ber. VDI, Reihe 6, Nr. 557, VDI Verlag, Düsseldorf, 2007.
-// http://www.gerg.eu/public/uploads/files/publications/technical_monographs/tm15_04.pdf
-
-// Subroutines contained here for property calculations:
-// ***** Subroutine SetupGERG must be called once before calling other routines. ******
-// Sub MolarMassGERG(x, Mm)
-// Sub PressureGERG(T, D, x, P, Z)
-// Sub DensityGERG(iFlag, T, P, x, D, ierr, herr)
-// Sub PropertiesGERG(T, D, x, P, Z, dPdD, d2PdD2, d2PdTD, dPdT, U, H, S, Cv, Cp, W, G, JT, Kappa)
-// Sub SetupGERG()
-
-// The compositions in the x() array use the following order and must be sent as mole fractions:
-//     1 - Methane
-//     2 - Nitrogen
-//     3 - Carbon dioxide
-//     4 - Ethane
-//     5 - Propane
-//     6 - Isobutane
-//     7 - n-Butane
-//     8 - Isopentane
-//     9 - n-Pentane
-//    10 - n-Hexane
-//    11 - n-Heptane
-//    12 - n-Octane
-//    13 - n-Nonane
-//    14 - n-Decane
-//    15 - Hydrogen
-//    16 - Oxygen
-//    17 - Carbon monoxide
-//    18 - Water
-//    19 - Hydrogen sulfide
-//    20 - Helium
-//    21 - Argon
-
-// For example, a mixture (in moles) of 94% methane, 5% CO2, and 1% helium would be (in mole fractions):
-// x(1)=0.94, x(3)=0.05, x(20)=0.01
-
-// Function prototypes (not exported)
-// static void Alpha0GERG(const double T, const double D, const std::vector<double> &x, double a0[3]);
-// static void AlpharGERG(const int itau, const int idelta, const double T, const double D, const std::vector<double> &x, double ar[4][4]);
-// static void PseudoCriticalPointGERG(const std::vector<double> &x, double &Tcx, double &Dcx);
-// static void tTermsGERG(const double lntau, const std::vector<double> &x);
-
-// // Variables containing the common parameters in the GERG-2008 equations
-// static double RGERG;
-// static const int NcGERG = 21, MaxFlds = 21, MaxMdl = 10, MaxTrmM = 12, MaxTrmP = 24;
+const RGERG: f64 = 8.314_472;
 const NC_GERG: usize = 21;
 const MAXFLDS: usize = 21;
 const MAXMDL: usize = 10;
 const MAXTRMM: usize = 12;
 const MAXTRMP: usize = 24;
-// static const double epsilon = 1e-15;
 const EPSILON: f64 = 1.0e-15;
-// static int coik[MaxFlds+1][MaxTrmP+1], doik[MaxFlds+1][MaxTrmP+1], dijk[MaxMdl+1][MaxTrmM+1];
-// static double Drold, Trold, Told, Trold2, xold[MaxFlds+1];
-// static int mNumb[MaxFlds+1][MaxFlds+1], kpol[MaxFlds+1], kexp[MaxFlds+1], kpolij[MaxMdl+1], kexpij[MaxMdl+1];
-// static double Dc[MaxFlds+1], Tc[MaxFlds+1], MMiGERG[MaxFlds+1], Vc3[MaxFlds+1], Tc2[MaxFlds+1];
-// static double noik[MaxFlds+1][MaxTrmP+1], toik[MaxFlds+1][MaxTrmP+1];
-// static double cijk[MaxMdl+1][MaxTrmM+1];
-// static double eijk[MaxMdl+1][MaxTrmM+1], gijk[MaxMdl+1][MaxTrmM+1], nijk[MaxMdl+1][MaxTrmM+1], tijk[MaxMdl+1][MaxTrmM+1];
-// static double btij[MaxFlds+1][MaxFlds+1], bvij[MaxFlds+1][MaxFlds+1], gtij[MaxFlds+1][MaxFlds+1], gvij[MaxFlds+1][MaxFlds+1];
-// static double fij[MaxFlds+1][MaxFlds+1], th0i[MaxFlds+1][7+1], n0i[MaxFlds+1][7+1];
-// static double taup[MaxFlds+1][MaxTrmP+1], taupijk[MaxFlds+1][MaxTrmM+1];
-// static double dPdDsave; //Calculated in the PressureGERG subroutine, but not included as an argument since it is only used internally in the density algorithm.
-
-// inline double Tanh(double xx){ return (exp(xx) - exp(-xx)) / (exp(xx) + exp(-xx)); }
-// inline double Sinh(double xx){ return (exp(xx) - exp(-xx)) / 2; }
-// inline double Cosh(double xx){ return (exp(xx) + exp(-xx)) / 2; }
-
-
-
-pub struct Gerg2008 {
-    pub dp_dd: f64,
-    pub d2p_dd2: f64,
-    pub d2p_dtd: f64,
-    pub dp_dt: f64,
-    pub u: f64,
-    pub h: f64,
-    pub s: f64,
-    pub cv: f64,
-    pub cp: f64,
-    pub w: f64,
-    pub g: f64,
-    pub jt: f64,
-    pub kappa: f64,
-    pub a: f64,
-    pub mm: f64,
-    pub t: f64,
-    pub p: f64,
-    pub d: f64,
-    pub z: f64,
-    pub x: [f64; NC_GERG],
-}
-
-impl Default for Gerg2008 {
-    fn default() -> Self {
-        Gerg2008 {
-            dp_dd: 0.0,
-            d2p_dd2: 0.0,
-            d2p_dtd: 0.0,
-            dp_dt: 0.0,
-            u: 0.0,
-            h: 0.0,
-            s: 0.0,
-            cv: 0.0,
-            cp: 0.0,
-            w: 0.0,
-            g: 0.0,
-            jt: 0.0,
-            kappa: 0.0,
-            a: 0.0,
-            mm: 0.0,
-            t: 0.0,
-            p: 0.0,
-            d: 0.0,
-            z: 0.0,
-            x: [0.0; NC_GERG],
-        }
-    }
-}
-
-impl Gerg2008 {
-    pub fn setup(&mut self) {
-        unimplemented!();
-    }
-
-    pub fn molarmass(&mut self) {
-        unimplemented!();
-    }
-
-    pub fn density(&mut self) {
-        unimplemented!();
-    }
-
-    pub fn properties(&mut self) {
-        unimplemented!();
-    }
-}
-
-
-// void MolarMassGERG(const std::vector<double> &x, double &Mm)
-// {
-//     // Sub MolarMassGERG(x, Mm)
-
-//     // Calculate molar mass of the mixture with the compositions contained in the x() input array
-
-//     // Inputs:
-//     //    x() - Ccomposition (mole fraction)
-//     //          Do not send mole percents or mass fractions in the x() array, otherwise the output will be incorrect.
-//     //          The sum of the compositions in the x() array must be equal to one.
-//     //          The order of the fluids in this array is given at the top of this module.
-
-//     // Outputs:
-//     //     Mm - Molar mass (g/mol)
-
-//     Mm = 0;
-//     for (int i = 1; i <= NcGERG; ++i){
-//         Mm += x[i] * MMiGERG[i];
-//     }
-// }
-
-// void PressureGERG(const double T, const double D, const std::vector<double> &x, double &P, double &Z)
-// {
-//     // Sub PressureGERG(T, D, x, P, Z)
-
-//     // Calculate pressure as a function of temperature and density.  The derivative d(P)/d(D) is also calculated
-//     // for use in the iterative DensityGERG subroutine (and is only returned as a common variable).
-
-//     // Inputs:
-//     //      T - Temperature (K)
-//     //      D - Density (mol/l)
-//     //    x() - Composition (mole fraction)
-//     //          Do not send mole percents or mass fractions in the x() array, otherwise the output will be incorrect.
-//     //          The sum of the compositions in the x() array must be equal to one.
-
-//     // Outputs:
-//     //      P - Pressure (kPa)
-//     //      Z - Compressibility factor
-//     // dPdDsave - d(P)/d(D) [kPa/(mol/l)]
-//     //          - This variable is cached in the common variables for use in the iterative density solver, but not returned as an argument.
-
-//     double ar[4][4];
-//     AlpharGERG(0, 0, T, D,x,ar);
-
-//     Z = 1 + ar[0][1];
-//     P = D * RGERG * T * Z;
-//     dPdDsave = RGERG * T * (1 + 2 * ar[0][1] + ar[0][2]);
-// }
-
-// void DensityGERG(const int iFlag, const double T, const double P, const std::vector<double> &x, double &D, int &ierr, std::string &herr)
-// {
-//     // Sub DensityGERG(iFlag T, P, x, D, ierr, herr)
-
-//     // Calculate density as a function of temperature and pressure.  This is an iterative routine that calls PressureGERG
-//     // to find the correct state point.  Generally only 6 iterations at most are required.
-//     // If the iteration fails to converge, the ideal gas density and an error message are returned.
-//     // No checks are made to determine the phase boundary, which would have guaranteed that the output is in the gas phase (or liquid phase when iFlag=2).
-//     // It is up to the user to locate the phase boundary, and thus identify the phase of the T and P inputs.
-//     // If the state point is 2-phase, the output density will represent a metastable state.
-
-//     // Inputs:
-//     //  iFlag - Set to 0 for strict pressure solver in the gas phase without checks (fastest mode, but output state may not be stable single phase)
-//     //          Set to 1 to make checks for possible 2-phase states (result may still not be stable single phase, but many unstable states will be identified)
-//     //          Set to 2 to search for liquid phase (and make the same checks when iFlag=1)
-//     //      T - Temperature (K)
-//     //      P - Pressure (kPa)
-//     //    x() - Composition (mole fraction)
-//     // (An initial guess for the density can be sent in D as the negative of the guess for roots that are in the liquid phase instead of using iFlag=2)
-
-//     // Outputs:
-//     //      D - Density (mol/l)
-//     //          For the liquid phase, an initial value can be sent to the routine to avoid
-//     //          a solution in the metastable or gas phases.
-//     //          The initial value should be sent as a negative number.
-//     //   ierr - Error number (0 indicates no error)
-//     //   herr - Error message if ierr is not equal to zero
-
-//     int nFail, iFail;
-//     double plog, vlog, P2, Z, dpdlv, vdiff, tolr, vinc;
-//     double Tcx, Dcx;
-    
-//     double dPdD, d2PdD2, d2PdTD, dPdT, U, H, S, A;
-//     double Cv, Cp, W, G, JT, Kappa, PP;
-
-//     ierr = 0;
-//     herr = "";
-//     nFail = 0;
-//     iFail = 0;
-//     if (P < epsilon) { D = 0; return; }
-//     tolr = 0.0000001;
-//     PseudoCriticalPointGERG(x, Tcx, Dcx);
-
-//     if (D > -epsilon){
-//         D = P / RGERG / T;                // Ideal gas estimate for vapor phase
-//         if (iFlag == 2){ D = Dcx*3; }     // Initial estimate for liquid phase
-//     }
-//     else{
-//         D = std::abs(D);                  // If D<0, then use as initial estimate
-//     }
-  
-//     plog = log(P);
-//     vlog = -log(D);
-//     for (int it = 1; it <= 50; ++it){
-//         if (vlog < -7 || vlog > 100 || it == 20 || it == 30 || it == 40 || iFail == 1){
-//             //Current state is bad or iteration is taking too long.  Restart with completely different initial state
-//             iFail = 0;
-//             if (nFail > 2) { 
-//                 // Iteration failed (above loop did not find a solution or checks made below indicate possible 2-phase state)
-//                 ierr = 1;
-//                 herr = "Calculation failed to converge in GERG method, ideal gas density returned.";
-//                 D = P / RGERG / T;
-//             }
-//             nFail++;
-//             if (nFail == 1){
-//                 D = Dcx * 3; // If vapor phase search fails, look for root in liquid region
-//             }
-//             else if (nFail == 2) {
-//                 D = Dcx * 2.5; // If liquid phase search fails, look for root between liquid and critical regions
-//             }
-//             else if (nFail == 3) {
-//                 D = Dcx * 2; // If search fails, look for root in critical region
-//             }
-//             vlog = -log(D);
-//         }
-//         D = exp(-vlog);
-//         PressureGERG(T, D, x, P2, Z);
-//         if (dPdDsave < epsilon || P2 < epsilon){
-//             // Current state is 2-phase, try locating a different state that is single phase
-//             vinc = 0.1;
-//             if (D > Dcx) { vinc = -0.1; }
-//             if (it > 5) { vinc = vinc / 2; }
-//             if (it > 10 && it < 20) { vinc = vinc / 5; }
-//             vlog += vinc;
-//         }
-//         else{
-//             // Find the next density with a first order Newton's type iterative scheme, with
-//             // log(P) as the known variable and log(v) as the unknown property.
-//             // See AGA 8 publication for further information.
-//             dpdlv = -D * dPdDsave;     // d(p)/d[log(v)]
-//             vdiff = (log(P2) - plog) * P2 / dpdlv; 
-//             vlog += - vdiff;
-//             if (std::abs(vdiff) < tolr) {
-//                 // Check to see if state is possibly 2-phase, and if so restart
-//                 if (dPdDsave < 0){
-//                     iFail = 1;
-//                 }
-//                 else{
-//                     D = exp(-vlog);
-
-//                     // If requested, check to see if point is possibly 2-phase
-//                     if (iFlag > 0){
-//                         PropertiesGERG(T, D, x, PP, Z, dPdD, d2PdD2, d2PdTD, dPdT, U, H, S, Cv, Cp, W, G, JT, Kappa, A);
-//                         if ((PP <= 0 || dPdD <= 0 || d2PdTD <= 0) || (Cv <= 0 || Cp <= 0 || W <= 0)) {
-//                             // Iteration failed (above loop did find a solution or checks made below indicate possible 2-phase state)
-//                             ierr = 1;
-//                             herr = "Calculation failed to converge in GERG method, ideal gas density returned.";
-//                             D = P / RGERG / T;
-//                         }
-//                         return;
-//                   }
-//                   return;               // Iteration converged
-//                 }
-//             }
-//         }
-//     }
-//     // Iteration failed (above loop did not find a solution or checks made below indicate possible 2-phase state)
-//     ierr = 1;
-//     herr = "Calculation failed to converge in GERG method, ideal gas density returned.";
-//     D = P / RGERG / T;
-// }
-
-// void PropertiesGERG(const double T, const double D, const std::vector<double> &x, double &P, double &Z, double &dPdD, double &d2PdD2, double &d2PdTD, double &dPdT, double &U, double &H, double &S, double &Cv, double &Cp, double &W, double &G, double &JT, double &Kappa, double &A)
-// {
-//     // Sub PropertiesGERG(T, D, x, P, Z, dPdD, d2PdD2, d2PdTD, dPdT, U, H, S, Cv, Cp, W, G, JT, Kappa, A)
-
-//     // Calculate thermodynamic properties as a function of temperature and density.  Calls are made to the subroutines
-//     // ReducingParametersGERG, IdealGERG, and ResidualGERG.  If the density is not known, call subroutine DENSITY first
-//     // with the known values of pressure and temperature.
-
-//     // Inputs:
-//     //      T - Temperature (K)
-//     //      D - Density (mol/l)
-//     //    x() - Composition (mole fraction)
-
-//     // Outputs:
-//     //      P - Pressure (kPa)
-//     //      Z - Compressibility factor
-//     //   dPdD - First derivative of pressure with respect to density at constant temperature [kPa/(mol/l)]
-//     // d2PdD2 - Second derivative of pressure with respect to density at constant temperature [kPa/(mol/l)^2]
-//     // d2PdTD - Second derivative of pressure with respect to temperature and density [kPa/(mol/l)/K]    
-//     //   dPdT - First derivative of pressure with respect to temperature at constant density (kPa/K)
-//     //      U - Internal energy (J/mol)
-//     //      H - Enthalpy (J/mol)
-//     //      S - Entropy [J/(mol-K)]
-//     //     Cv - Isochoric heat capacity [J/(mol-K)]
-//     //     Cp - Isobaric heat capacity [J/(mol-K)]
-//     //      W - Speed of sound (m/s)
-//     //      G - Gibbs energy (J/mol)
-//     //     JT - Joule-Thomson coefficient (K/kPa)
-//     //  Kappa - Isentropic Exponent
-//     //      A - Helmholtz energy (J/mol)
-
-//     double a0[2+1], ar[3+1][3+1], Mm, R, RT;
-
-//     // Calculate molar mass
-//     MolarMassGERG(x, Mm);
-
-//     // Calculate the ideal gas Helmholtz energy, and its first and second derivatives with respect to temperature.
-//     Alpha0GERG(T, D, x, a0);
-
-//     // Calculate the real gas Helmholtz energy, and its derivatives with respect to temperature and/or density.
-//     AlpharGERG(1, 0, T, D, x, ar);
-
-//     R = RGERG;
-//     RT = R * T;
-//     Z = 1 + ar[0][1];
-//     P = D * RT * Z;
-//     dPdD = RT * (1 + 2 * ar[0][1] + ar[0][2]);
-//     dPdT = D * R * (1 + ar[0][1] - ar[1][1]);
-//     d2PdTD = R * (1 + 2 * ar[0][1] + ar[0][2] - 2 * ar[1][1] - ar[1][2]);
-//     A = a0[0] + ar[0][0];
-//     G = RT * (1 + ar[0][1] + a0[0] + ar[0][0]);
-//     U = RT * (a0[1] + ar[1][0]);
-//     H = RT * (1 + ar[0][1] + a0[1] + ar[1][0]);
-//     S = R * (a0[1] + ar[1][0] - a0[0] - ar[0][0]);
-//     Cv = -R * (a0[2] + ar[2][0]);
-//     if (D > epsilon){
-//         Cp = Cv + T * (dPdT / D) * (dPdT / D) / dPdD;
-//         d2PdD2 = RT * (2 * ar[0][1] + 4 * ar[0][2] + ar[0][3]) / D;
-//         JT = (T / D * dPdT / dPdD - 1) / Cp / D; //  '=(dB/dT*T-B)/Cp for an ideal gas, but dB/dT is not known
-//     }
-//     else{
-//         Cp = Cv + R;
-//         d2PdD2 = 0;
-//         JT = 1E+20;
-//     }
-//     W = 1000 * Cp / Cv * dPdD / Mm;
-//     if (W < 0) { W = 0; }
-//     W = sqrt(W);
-//     Kappa = pow(W, 2) * Mm / (RT * 1000 * Z);
-// }
-
-
-// // The following routines are low-level routines that should not be called outside of this code.
-// static void ReducingParametersGERG(const std::vector<double> &x, double &Tr, double &Dr)
-// {
-//     // Private Sub ReducingParametersGERG(x, Tr, Dr)
-
-//     // Calculate reducing variables.  Only need to call this if the composition has changed.
-
-//     // Inputs:
-//     //    x() - Composition (mole fraction)
-
-//     // Outputs:
-//     //     Tr - Reducing temperature (K)
-//     //     Dr - Reducing density (mol/l)
-
-//   double Vr, xij, F;
-//   int icheck;
-
-//   // Check to see if a component fraction has changed.  If x is the same as the previous call, then exit.
-//   icheck = 0;
-//   for (int i = 1; i <= NcGERG; ++i){
-//     if (std::abs(x[i] - xold[i]) > 0.0000001){ icheck = 1; }
-//     xold[i] = x[i];
-//   }
-//   if (icheck == 0){
-//     Dr = Drold;
-//     Tr = Trold;
-//     return;
-//   }
-//   Told = 0;
-//   Trold2 = 0;
-
-//   // Calculate reducing variables for T and D
-//   Dr = 0;
-//   Vr = 0;
-//   Tr = 0;
-//   for (int i = 1; i <= NcGERG; ++i){
-//     if (x[i] > epsilon){
-//       F = 1;
-//       for (int j = i; j <= NcGERG; ++j){
-//         if (x[j] > epsilon){
-//           xij = F * (x[i] * x[j]) * (x[i] + x[j]);
-//           Vr = Vr + xij * gvij[i][j] / (bvij[i][j] * x[i] + x[j]);
-//           Tr = Tr + xij * gtij[i][j] / (btij[i][j] * x[i] + x[j]);
-//           F = 2;
-//         }
-//       }
-//     }
-//   }
-//   if (Vr > epsilon){ Dr = 1 / Vr; }
-//   Drold = Dr;
-//   Trold = Tr;
-// }
-
-// static void Alpha0GERG(const double T, const double D, const std::vector<double> &x, double a0[3])
-// {
-//     // Private Sub Alpha0GERG(T, D, x, a0)
-
-//     // Calculate the ideal gas Helmholtz energy and its derivatives with respect to tau and delta.
-//     // This routine is not needed when only P (or Z) is calculated.
-
-//     // Inputs:
-//     //      T - Temperature (K)
-//     //      D - Density (mol/l)
-//     //    x() - Composition (mole fraction)
-
-//     // Outputs:
-//     //  a0(0) - Ideal gas Helmholtz energy (all dimensionless [i.e., divided by RT])
-//     //  a0(1) - tau*partial(a0)/partial(tau)
-//     //  a0(2) - tau^2*partial^2(a0)/partial(tau)^2
-
-//   double LogT, LogD, LogHyp, th0T, LogxD;
-//   double SumHyp0, SumHyp1, SumHyp2;
-//   double em, ep, hcn, hsn;
-
-//   a0[0] = 0; a0[1] = 0; a0[2] = 0;
-//   if (D > epsilon) {LogD = log(D);} else {LogD = log(epsilon);}
-//   LogT = log(T);
-//   for (int i = 1; i <= NcGERG; ++i){
-//     if (x[i] > epsilon){
-//       LogxD = LogD + log(x[i]);
-//       SumHyp0 = 0;
-//       SumHyp1 = 0;
-//       SumHyp2 = 0;
-//       for (int j = 4; j <= 7; ++j){
-//         if (th0i[i][j] > epsilon){
-//           th0T = th0i[i][j] / T;
-//           ep = exp(th0T);
-//           em = 1 / ep;
-//           hsn = (ep - em) / 2;
-//           hcn = (ep + em) / 2;
-//           if (j == 4 || j == 6){
-//             LogHyp = log(std::abs(hsn));
-//             SumHyp0 = SumHyp0 + n0i[i][j] * LogHyp;
-//             SumHyp1 = SumHyp1 + n0i[i][j] * th0T * hcn / hsn;
-//             SumHyp2 = SumHyp2 + n0i[i][j] * (th0T / hsn)* (th0T / hsn);
-//             }
-//           else{
-//             LogHyp = log(std::abs(hcn));
-//             SumHyp0 = SumHyp0 - n0i[i][j] * LogHyp;
-//             SumHyp1 = SumHyp1 - n0i[i][j] * th0T * hsn / hcn;
-//             SumHyp2 = SumHyp2 + n0i[i][j] * (th0T / hcn) * (th0T / hcn);
-//           }
-//         }
-//       }
-//       a0[0] += +x[i] * (LogxD + n0i[i][1] + n0i[i][2] / T - n0i[i][3] * LogT + SumHyp0);
-//       a0[1] += +x[i] * (n0i[i][3] + n0i[i][2] / T + SumHyp1);
-//       a0[2] += -x[i] * (n0i[i][3] + SumHyp2);
-//     }
-//   }
-// }
-
-// static void AlpharGERG(const int itau, const int idelta, const double T, const double D, const std::vector<double> &x, double ar[4][4])
-// {
-//     // Private Sub AlpharGERG(itau, idelta, T, D, x, ar)
-
-//     // Calculate dimensionless residual Helmholtz energy and its derivatives with respect to tau and delta.
-
-//     // Inputs:
-//     //   itau - Set this to 1 to calculate "ar" derivatives with respect to tau [i.e., ar(1,0), ar(1,1), and ar(2,0)], otherwise set it to 0.
-//     // idelta - Currently not used, but kept as an input for future use in specifing the highest density derivative needed.
-//     //  iprop - Set to 1 to return all derivatives or 0 to return only pressure related properties [ar(0,1) and ar(0,2)]
-//     //      T - Temperature (K)
-//     //      D - Density (mol/l)
-//     //    x() - Composition (mole fraction)
-
-//     // Outputs:
-//     //  ar(0,0) - Residual Helmholtz energy (dimensionless, =a/RT)
-//     //  ar(0,1) -     delta*partial  (ar)/partial(delta)
-//     //  ar(0,2) -   delta^2*partial^2(ar)/partial(delta)^2
-//     //  ar(0,3) -   delta^3*partial^3(ar)/partial(delta)^3
-//     //  ar(1,0) -     tau*partial  (ar)/partial(tau)
-//     //  ar(1,1) - tau*delta*partial^2(ar)/partial(tau)/partial(delta)
-//     //  ar(2,0) -   tau^2*partial^2(ar)/partial(tau)^2
-
-//     int mn;
-//     double Tr, Dr, del, tau;
-//     double lntau, ex, ex2, ex3, cij0, eij0;
-//     double delp[7+1], Expd[7+1], ndt, ndtd, ndtt, xijf;
-
-//     for (int i = 0; i <= 3; ++i){ for (int j = 0; j <= 3; ++j){ ar[i][j] = 0; } }
-
-//     //Set up del, tau, log(tau), and the first 7 calculations for del^i
-//     ReducingParametersGERG(x, Tr, Dr);
-//     del = D / Dr;
-//     tau = Tr / T;
-//     lntau = log(tau);
-//     delp[1] = del;
-//     Expd[1] = exp(-delp[1]);
-//     for (int i = 2; i <= 7; ++i){
-//         delp[i] = delp[i - 1] * del;
-//         Expd[i] = exp(-delp[i]);
-//     }
-
-//     // If temperature has changed, calculate temperature dependent parts
-//     if (std::abs(T - Told) > 0.0000001 || std::abs(Tr - Trold2) > 0.0000001) { 
-// 		  tTermsGERG(lntau, x); 
-//     }
-//     Told = T;
-//     Trold2 = Tr;
-
-//     // Calculate pure fluid contributions
-//     for (int i = 1; i <= NcGERG; ++i){
-//         if (x[i] > epsilon){
-//             for (int k = 1; k <= kpol[i]; ++k){
-//                 ndt = x[i] * delp[doik[i][k]] * taup[i][k];
-//                 ndtd = ndt * doik[i][k];
-//                 ar[0][1] += ndtd;
-//                 ar[0][2] += ndtd * (doik[i][k] - 1);
-//                 if (itau > 0){
-//                     ndtt = ndt * toik[i][k];
-//                     ar[0][0] += ndt;
-//                     ar[1][0] += ndtt;
-//                     ar[2][0] += ndtt * (toik[i][k] - 1);
-//                     ar[1][1] += ndtt * doik[i][k];
-//                     ar[1][2] += ndtt * doik[i][k] * (doik[i][k] - 1);
-//                     ar[0][3] += ndtd * (doik[i][k] - 1) * (doik[i][k] - 2);
-//                 }
-//             }
-//             for (int k = 1 + kpol[i]; k <= kpol[i] + kexp[i]; ++k){
-//                 ndt = x[i] * delp[doik[i][k]] * taup[i][k]*Expd[coik[i][k]];
-//                 ex = coik[i][k] * delp[coik[i][k]];
-//                 ex2 = doik[i][k] - ex;
-//                 ex3 = ex2 * (ex2 - 1);
-//                 ar[0][1] += ndt * ex2;
-//                 ar[0][2] += ndt * (ex3 - coik[i][k] * ex);
-//                 if (itau > 0){
-//                     ndtt = ndt * toik[i][k];
-//                     ar[0][0] += ndt;
-//                     ar[1][0] += ndtt;
-//                     ar[2][0] += ndtt * (toik[i][k] - 1);
-//                     ar[1][1] += ndtt * ex2;
-//                     ar[1][2] += ndtt * (ex3 - coik[i][k] * ex);
-//                     ar[0][3] += ndt * (ex3 * (ex2 - 2) - ex * (3 * ex2 - 3 + coik[i][k]) * coik[i][k]);
-//                 }
-//             }
-//         }
-//     }
-
-//     // Calculate mixture contributions
-//     for (int i = 1; i <= NcGERG - 1; ++i){
-//         if (x[i] > epsilon){
-//             for (int j = i + 1; j <= NcGERG; ++j){
-//                 if (x[j] > epsilon){
-//                     mn = mNumb[i][j];
-//                     if (mn >= 0){
-//                         xijf = x[i] * x[j] * fij[i][j];
-//                         for (int k = 1; k <= kpolij[mn]; ++k){
-//                             ndt = xijf * delp[dijk[mn][k]] * taupijk[mn][k];
-//                             ndtd = ndt * dijk[mn][k];
-//                             ar[0][1] += ndtd;
-//                             ar[0][2] += ndtd * (dijk[mn][k] - 1);
-//                             if (itau > 0){
-//                                 ndtt = ndt * tijk[mn][k];
-//                                 ar[0][0] += ndt;
-//                                 ar[1][0] += ndtt;
-//                                 ar[2][0] += ndtt * (tijk[mn][k] - 1);
-//                                 ar[1][1] += ndtt * dijk[mn][k];
-//                                 ar[1][2] += ndtt * dijk[mn][k] * (dijk[mn][k] - 1);
-//                                 ar[0][3] += ndtd * (dijk[mn][k] - 1) * (dijk[mn][k] - 2);
-//                             }
-//                         }
-//                         for (int k = 1 + kpolij[mn]; k <= kpolij[mn] + kexpij[mn]; ++k){
-//                             cij0 = cijk[mn][k] * delp[2];
-//                             eij0 = eijk[mn][k] * del;
-//                             ndt = xijf * nijk[mn][k] * delp[dijk[mn][k]] * exp(cij0 + eij0 + gijk[mn][k] + tijk[mn][k] * lntau);
-//                             ex = dijk[mn][k] + 2 * cij0 + eij0;
-//                             ex2 = (ex * ex - dijk[mn][k] + 2 * cij0);
-//                             ar[0][1] += ndt * ex;
-//                             ar[0][2] += ndt * ex2;
-//                             if(itau > 0){
-//                                 ndtt = ndt * tijk[mn][k];
-//                                 ar[0][0] += ndt;
-//                                 ar[1][0] += ndtt;
-//                                 ar[2][0] += ndtt * (tijk[mn][k] - 1);
-//                                 ar[1][1] += ndtt * ex;
-//                                 ar[1][2] += ndtt * ex2;
-//                                 ar[0][3] += ndt * (ex * (ex2 - 2 * (dijk[mn][k] - 2 * cij0)) + 2 * dijk[mn][k]);
-//                             }
-//                         }
-//                     }
-//                 }
-//             }
-//         }
-//     }
-// }
-
-// static void tTermsGERG(const double lntau, const std::vector<double> &x)
-// {
-//     // Private Sub tTermsGERG(lntau, x)
-
-//     // Calculate temperature dependent parts of the GERG-2008 equation of state
-  
-//     int i, mn;
-//     double taup0[12+1];
-  
-//     i = 5;  // Use propane to get exponents for short form of EOS
-//     for (int k = 1; k <= kpol[i] + kexp[i]; ++k){
-//         taup0[k] = exp(toik[i][k] * lntau);
-//     }
-//     for (int i = 1; i <= NcGERG; ++i){
-//         if (x[i] > epsilon){
-//             if (i > 4 && i != 15 && i != 18 && i != 20 ) {
-//                 for (int k = 1; k <= kpol[i] + kexp[i]; ++k){
-//                     taup[i][k] = noik[i][k] * taup0[k];
-//                 }
-//             }
-//             else{
-//                 for (int k = 1; k <= kpol[i] + kexp[i]; ++k){
-//                     taup[i][k] = noik[i][k] * exp(toik[i][k] * lntau);
-//                 }
-//             }
-//         }
-//     }
-
-//     for (int i = 1; i <= NcGERG - 1; ++i) {
-//         if (x[i] > epsilon){
-//             for (int j = i + 1; j <= NcGERG; ++j) {
-//                 if (x[j] > epsilon) {
-//                     mn = mNumb[i][j];
-//                     if (mn >= 0) {
-//                         for (int k = 1; k <= kpolij[mn]; ++k) {
-//                             taupijk[mn][k] = nijk[mn][k] * exp(tijk[mn][k] * lntau);
-//                         }
-//                     }
-//                 }
-//             }
-//         }
-//     }
-// }
-
-
-// static void PseudoCriticalPointGERG(const std::vector<double> &x, double &Tcx, double &Dcx)
-// {
-//     // PseudoCriticalPointGERG(x, Tcx, Dcx)
-
-//     // Calculate a pseudo critical point as the mole fraction average of the critical temperatures and critical volumes
-
-//     double Vcx;
-//     Tcx = 0;
-//     Vcx = 0;
-//     Dcx = 0;
-//     for (int i = 1; i <= NcGERG; ++i){
-//         Tcx = Tcx + x[i] * Tc[i];
-//         Vcx = Vcx + x[i] / Dc[i];
-//     }
-//     if (Vcx > epsilon){ Dcx = 1 / Vcx; }
-// }
-
-// // The following routine must be called once before any other routine.
-// void SetupGERG()
-// {
-//   // Initialize all the constants and parameters in the GERG-2008 model.
-//   // Some values are modified for calculations that do not depend on T, D, and x in order to speed up the program.
-
-//   double o13, bijk[MaxMdl+1][MaxTrmM+1], Rs, Rsr;
-//   double T0, d0;
-
-//   RGERG = 8.314472;
-//   Rs = 8.31451;
-//   Rsr = Rs / RGERG;
-//   o13 = 1.0 / 3.0;
-
-//   for (int i = 1; i <= MaxFlds; ++i){
-//     xold[i] = 0;
-//   }
-//   Told = 0;
 
 // Molar masses [g/mol]
-const MMI_GERG: [f64; MAXFLDS] = [
+const MMI_GERG: [f64; MAXFLDS+1] = [0.0,
     16.042_46,    // Methane
     28.013_4,     // Nitrogen
     44.009_5,     // Carbon dioxide
@@ -777,46 +31,24 @@ const MMI_GERG: [f64; MAXFLDS] = [
     39.948,     // Argon
 ];
 
-  // Number of polynomial and exponential terms
-//   for(int i = 1; i <= MaxFlds; ++i){
-//     kpol[i] = 6;
-//     kexp[i] = 6;
-//   }
-
-const kpol: [i32; MAXFLDS] = [
+const KPOL: [usize; MAXFLDS+1] = [0,
     6, 6, 4, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 5, 6, 6, 7, 6, 4, 6,
 ];
 
-const kexp: [i32: MAXFLDS] = [
+const KEXP: [usize; MAXFLDS+1] = [0,
     18, 18, 18, 18, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 9, 6, 6, 9, 6, 8, 6,
 ];
 
-const kpolij: [i32: MAXMDL] = [
+const KPOLIJ: [usize; MAXMDL+1] = [0,
     2, 5, 2, 3, 2, 3, 4, 6, 6, 10,
 ];
 
-const kexpij: [i32: MAXMDL] = [
+const KEXPIJ: [usize; MAXMDL+1] = [0,
     10, 4, 7, 3, 4, 3, 0, 6, 6, 0,
 ];
 
-//   kexp[1] = 18;
-//   kexp[2] = 18;
-//   kexp[4] = 18;
-//   kpol[3] = 4;    kexp[3] = 18;
-//   kpol[15] = 5;   kexp[15] = 9;
-//   kpol[18] = 7;   kexp[18] = 9;
-//   kpol[20] = 4;   kexp[20] = 8;
-//   kpolij[1] = 2;  kexpij[1] = 10;
-//   kpolij[2] = 5;  kexpij[2] = 4;
-//   kpolij[3] = 2;  kexpij[3] = 7;
-//   kpolij[4] = 3;  kexpij[4] = 3;
-//   kpolij[5] = 2;  kexpij[5] = 4;
-//   kpolij[6] = 3;  kexpij[6] = 3;
-//   kpolij[7] = 4;  kexpij[7] = 0;
-//   kpolij[10] = 10; kexpij[10] = 0;
-
 // Critical densities [mol/l]
-const Dc: [f64: MAXFLDS] = [
+const DC: [f64; MAXFLDS+1] = [0.0,
     10.139_342_719,
     11.183_9,
     10.624_978_698,
@@ -841,7 +73,7 @@ const Dc: [f64: MAXFLDS] = [
 ];
 
 // Critical temperatures [K]
-const Tc: [f64: MAXFLDS] = [
+const TC: [f64; MAXFLDS+1] = [0.0,
     190.564,
     126.192,
     304.1282,
@@ -865,808 +97,921 @@ const Tc: [f64: MAXFLDS] = [
     150.687,
 ];
 
-// Exponents in pure fluid equations
-  for(int i = 1; i <= MaxFlds; ++i){
-    Vc3[i] = 1 / pow(Dc[i], o13) / 2;
-    Tc2[i] = sqrt(Tc[i]);
-    coik[i][1] = 0;  doik[i][1] = 1;  toik[i][1] = 0.25;
-    coik[i][2] = 0;  doik[i][2] = 1;  toik[i][2] = 1.125;
-    coik[i][3] = 0;  doik[i][3] = 1;  toik[i][3] = 1.5;
-    coik[i][4] = 0;  doik[i][4] = 2;  toik[i][4] = 1.375;
-    coik[i][5] = 0;  doik[i][5] = 3;  toik[i][5] = 0.25;
-    coik[i][6] = 0;  doik[i][6] = 7;  toik[i][6] = 0.875;
-    coik[i][7] = 1;  doik[i][7] = 2;  toik[i][7] = 0.625;
-    coik[i][8] = 1;  doik[i][8] = 5;  toik[i][8] = 1.75;
-    coik[i][9] = 2;  doik[i][9] = 1;  toik[i][9] = 3.625;
-    coik[i][10] = 2; doik[i][10] = 4; toik[i][10] = 3.625;
-    coik[i][11] = 3; doik[i][11] = 3; toik[i][11] = 14.5;
-    coik[i][12] = 3; doik[i][12] = 4; toik[i][12] = 12;
-  }
+const NOIK: [[f64; MAXTRMP+1]; MAXFLDS+1] = [
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.5733570423916200, -1.676068752373000, 0.2340529183491600, -0.2194737634344100, 0.01636920140412800, 0.01500440638928000, 0.09899048949291800, 0.5838277092905499, -0.7478686756039000, 0.3003330285797400, 0.2098554380656800, -0.01859015113306100, -0.1578255833904900, 0.1271673522079100, -0.03201974389434600, -0.06804972936453600, 0.02429141285373600, 0.005144045163944400, -0.01908494973353200, 0.005522967724129100, -0.004419739297608500, 0.04006141670842900, -0.03375208590757500, -0.002512765821335700, ],
+    [0.000000000000000, 0.5988971180120100, -1.694155748073100, 0.2457973619171800, -0.2372245675517500, 0.01795491871514100, 0.01459287572021500, 0.1000806593620600, 0.7315711538553200, -0.8837227233636600, 0.3188766024670800, 0.2076649172879900, -0.01937931545415800, -0.1693664155498300, 0.1354684604170100, -0.03306671209530700, -0.06069081701855700, 0.01279754829287100, 0.005874366410729900, -0.01845195197196900, 0.004722662204247200, -0.005202407968059900, 0.04356350595663500, -0.03625169075093900, -0.002897402686654300, ],
+    [0.000000000000000, 0.5264656480465300, -1.499572504259200, 0.2732978673378200, 0.1294950002278600, 0.1540408834184100, -0.5818695094681400, -0.1802249483829600, -0.09538990407281200, -0.008048681931767899, -0.03554775127309000, -0.2807901488240500, -0.08243589008167700, 0.01083242797900600, -0.006707399316109700, -0.004682790760052400, -0.02835991183217700, 0.01950017474409800, -0.2160913750716600, 0.4377279492697200, -0.2213079011359300, 0.01519018995733100, -0.01538094895330000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.6359678045071400, -1.737798178545900, 0.2891406092627200, -0.3371427684569400, 0.02240596469956100, 0.01571542488691300, 0.1145063425374500, 1.061204937974500, -1.285522443942300, 0.3941463077765200, 0.3139092468204100, -0.02159227711724700, -0.2172366656490500, -0.2899957443948900, 0.4232117302573200, 0.04643410025926000, -0.1313839832974100, 0.01149285036436800, -0.03338768842990900, 0.01518317158364400, -0.004761080564765700, 0.04691716627788500, -0.03940175580464900, -0.003256995624761100, ],
+    [0.000000000000000, 1.040397310735800, -2.831840408140300, 0.8439380960629400, -0.07655959185002301, 0.09469737305728000, 0.0002479647549700600, 0.2774376042287000, -0.04384600064837700, -0.2699106478435000, -0.06931341308986000, -0.02963214598165300, 0.01404012675138000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 1.042933158910000, -2.818427254889200, 0.8617623239785001, -0.1061361945248700, 0.09861574930213400, 0.0002394820868232200, 0.3033000485695000, -0.04159815613509900, -0.2999193747005800, -0.08036934276410899, -0.02976137325115100, 0.01305963030314000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 1.062627741145500, -2.862095182835000, 0.8873823340377700, -0.1257058115534500, 0.1028630870810600, 0.0002535804060265400, 0.3232520023398200, -0.03795076105743200, -0.3253480201445200, -0.07905096905101100, -0.02063672054777500, 0.005705380933475000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 1.096300000000000, -3.040200000000000, 1.031700000000000, -0.1541000000000000, 0.1153500000000000, 0.0002980900000000000, 0.3957100000000000, -0.04588100000000000, -0.3580400000000000, -0.1010700000000000, -0.03548400000000000, 0.01815600000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 1.096864309800100, -2.998888829806100, 0.9951688679921200, -0.1617070855853900, 0.1133446007277500, 0.0002676059515074800, 0.4097988198693100, -0.04087642308307500, -0.3816948246944700, -0.1093195684399300, -0.03207322332799000, 0.01687701621697500, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 1.055323801366100, -2.612061589062900, 0.7661388296726001, -0.2977032062245900, 0.1187990773335800, 0.0002792286106261700, 0.4634758984410500, 0.01143319698029700, -0.4825696873813100, -0.09375055892465900, -0.006727324715599400, -0.005114158358542800, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 1.054374764526200, -2.650068150614400, 0.8173004782754300, -0.3045139125342800, 0.1225386871080000, 0.0002726647274392800, 0.4986582568167000, -0.0007143281508417599, -0.5423689552545000, -0.1380182161075600, -0.006159528738001100, 0.0004860251039302200, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 1.072254487563300, -2.463295117200300, 0.6538667405492800, -0.3632497408562800, 0.1271326962676400, 0.0003071357277793000, 0.5265685698754000, 0.01936286285765300, -0.5893942684915500, -0.1406996399193400, -0.007896633050003600, 0.003303659796810900, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 1.115100000000000, -2.702000000000000, 0.8341600000000000, -0.3882800000000000, 0.1376000000000000, 0.0002818500000000000, 0.6203700000000000, 0.01584700000000000, -0.6172600000000000, -0.1504300000000000, -0.01298200000000000, 0.004432500000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 1.046100000000000, -2.480700000000000, 0.7437200000000000, -0.5257900000000000, 0.1531500000000000, 0.0003286500000000000, 0.8417800000000000, 0.05542400000000000, -0.7355500000000000, -0.1850700000000000, -0.02077500000000000, 0.01233500000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 5.357992845125200, -6.205025253059500, 0.1383024132708600, -0.07139795489612900, 0.01547405395973300, -0.1497680640577100, -0.02636872398845100, 0.05668130315606600, -0.06006395803043600, -0.4504394202713200, 0.4247884024450000, -0.02199764082713900, -0.01049952137453000, -0.002895590286681600, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.8887828636970100, -2.487943331214800, 0.5975019077588600, 0.009650181706188100, 0.07197042871277000, 0.0002233744300019500, 0.1855868639147400, -0.03812936803576000, -0.1535224538300600, -0.02672681491091900, -0.02567529867712700, 0.009571430212366800, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.9055400000000000, -2.451500000000000, 0.5314900000000000, 0.02417300000000000, 0.07215600000000000, 0.0001881800000000000, 0.1940500000000000, -0.04326800000000000, -0.1277800000000000, -0.02789600000000000, -0.03415400000000000, 0.01632900000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.8272840874958600, -1.860222041658400, -1.119900961374400, 0.1563575397605600, 0.8737584485902500, -0.3667440371573100, 0.05398789343243600, 1.095769021449900, 0.05321303782856300, 0.01305053393082500, -0.4107952043447600, 0.1463744334412000, -0.05572683862371900, -0.01120177414380000, -0.006606275806809900, 0.004691852200453800, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.8764100000000000, -2.036700000000000, 0.2163400000000000, -0.05019900000000000, 0.06699400000000000, 0.0001907600000000000, 0.2022700000000000, -0.004534800000000000, -0.2223000000000000, -0.03471400000000000, -0.01488500000000000, 0.007415400000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, -0.4557902400673700, 1.251639075492500, -1.543823165062100, 0.02046748970722100, -0.3447621238078100, -0.02085845951278700, 0.01622741471177800, -0.05747181820089200, 0.01946241643071500, -0.03329568012302000, -0.01086357737236700, -0.02217336524595400, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.8509571480396900, -2.400322294348000, 0.5412784147646600, 0.01691977069253800, 0.06882596501903500, 0.0002142803281533800, 0.1742989532199200, -0.03365449560419400, -0.1352679985769100, -0.01638735079155200, -0.02498766685147500, 0.008876920481570899, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+];
 
-//   for (int i = 1; i <= 4; ++i){
-//     if (i != 3){
-//       coik[i][1] = 0;  doik[i][1] = 1;  toik[i][1] = 0.125;
-//       coik[i][2] = 0;  doik[i][2] = 1;  toik[i][2] = 1.125;
-//       coik[i][3] = 0;  doik[i][3] = 2;  toik[i][3] = 0.375;
-//       coik[i][4] = 0;  doik[i][4] = 2;  toik[i][4] = 1.125;
-//       coik[i][5] = 0;  doik[i][5] = 4;  toik[i][5] = 0.625;
-//       coik[i][6] = 0;  doik[i][6] = 4;  toik[i][6] = 1.5;
-//       coik[i][7] = 1;  doik[i][7] = 1;  toik[i][7] = 0.625;
-//       coik[i][8] = 1;  doik[i][8] = 1;  toik[i][8] = 2.625;
-//       coik[i][9] = 1;  doik[i][9] = 1;  toik[i][9] = 2.75;
-//       coik[i][10] = 1; doik[i][10] = 2; toik[i][10] = 2.125;
-//       coik[i][11] = 1; doik[i][11] = 3; toik[i][11] = 2;
-//       coik[i][12] = 1; doik[i][12] = 6; toik[i][12] = 1.75;
-//       coik[i][13] = 2; doik[i][13] = 2; toik[i][13] = 4.5;
-//       coik[i][14] = 2; doik[i][14] = 3; toik[i][14] = 4.75;
-//       coik[i][15] = 2; doik[i][15] = 3; toik[i][15] = 5;
-//       coik[i][16] = 2; doik[i][16] = 4; toik[i][16] = 4;
-//       coik[i][17] = 2; doik[i][17] = 4; toik[i][17] = 4.5;
-//       coik[i][18] = 3; doik[i][18] = 2; toik[i][18] = 7.5;
-//       coik[i][19] = 3; doik[i][19] = 3; toik[i][19] = 14;
-//       coik[i][20] = 3; doik[i][20] = 4; toik[i][20] = 11.5;
-//       coik[i][21] = 6; doik[i][21] = 5; toik[i][21] = 26;
-//       coik[i][22] = 6; doik[i][22] = 6; toik[i][22] = 28;
-//       coik[i][23] = 6; doik[i][23] = 6; toik[i][23] = 30;
-//       coik[i][24] = 6; doik[i][24] = 7; toik[i][24] = 16;
-//     }
-//   }
+const COIK: [[usize; MAXTRMP+1]; MAXFLDS+1] = [
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 6, 6, 6, 6, ],
+    [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 6, 6, 6, 6, ],
+    [0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 3, 3, 3, 5, 5, 5, 6, 6, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 6, 6, 6, 6, ],
+    [0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 3, 3, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 5, 5, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+];
 
-//   // Coefficients of pure fluid equations
-//   // Methane
-//   noik[1][1] = 0.57335704239162;
-//   noik[1][2] = -1.676068752373;
-//   noik[1][3] = 0.23405291834916;
-//   noik[1][4] = -0.21947376343441;
-//   noik[1][5] = 0.016369201404128;
-//   noik[1][6] = 0.01500440638928;
-//   noik[1][7] = 0.098990489492918;
-//   noik[1][8] = 0.58382770929055;
-//   noik[1][9] = -0.7478686756039;
-//   noik[1][10] = 0.30033302857974;
-//   noik[1][11] = 0.20985543806568;
-//   noik[1][12] = -0.018590151133061;
-//   noik[1][13] = -0.15782558339049;
-//   noik[1][14] = 0.12716735220791;
-//   noik[1][15] = -0.032019743894346;
-//   noik[1][16] = -0.068049729364536;
-//   noik[1][17] = 0.024291412853736;
-//   noik[1][18] = 5.1440451639444E-03;
-//   noik[1][19] = -0.019084949733532;
-//   noik[1][20] = 5.5229677241291E-03;
-//   noik[1][21] = -4.4197392976085E-03;
-//   noik[1][22] = 0.040061416708429;
-//   noik[1][23] = -0.033752085907575;
-//   noik[1][24] = -2.5127658213357E-03;
-//   // Nitrogen
-//   noik[2][1] = 0.59889711801201;
-//   noik[2][2] = -1.6941557480731;
-//   noik[2][3] = 0.24579736191718;
-//   noik[2][4] = -0.23722456755175;
-//   noik[2][5] = 0.017954918715141;
-//   noik[2][6] = 0.014592875720215;
-//   noik[2][7] = 0.10008065936206;
-//   noik[2][8] = 0.73157115385532;
-//   noik[2][9] = -0.88372272336366;
-//   noik[2][10] = 0.31887660246708;
-//   noik[2][11] = 0.20766491728799;
-//   noik[2][12] = -0.019379315454158;
-//   noik[2][13] = -0.16936641554983;
-//   noik[2][14] = 0.13546846041701;
-//   noik[2][15] = -0.033066712095307;
-//   noik[2][16] = -0.060690817018557;
-//   noik[2][17] = 0.012797548292871;
-//   noik[2][18] = 5.8743664107299E-03;
-//   noik[2][19] = -0.018451951971969;
-//   noik[2][20] = 4.7226622042472E-03;
-//   noik[2][21] = -5.2024079680599E-03;
-//   noik[2][22] = 0.043563505956635;
-//   noik[2][23] = -0.036251690750939;
-//   noik[2][24] = -2.8974026866543E-03;
-//   // Ethane
-//   noik[4][1] = 0.63596780450714;
-//   noik[4][2] = -1.7377981785459;
-//   noik[4][3] = 0.28914060926272;
-//   noik[4][4] = -0.33714276845694;
-//   noik[4][5] = 0.022405964699561;
-//   noik[4][6] = 0.015715424886913;
-//   noik[4][7] = 0.11450634253745;
-//   noik[4][8] = 1.0612049379745;
-//   noik[4][9] = -1.2855224439423;
-//   noik[4][10] = 0.39414630777652;
-//   noik[4][11] = 0.31390924682041;
-//   noik[4][12] = -0.021592277117247;
-//   noik[4][13] = -0.21723666564905;
-//   noik[4][14] = -0.28999574439489;
-//   noik[4][15] = 0.42321173025732;
-//   noik[4][16] = 0.04643410025926;
-//   noik[4][17] = -0.13138398329741;
-//   noik[4][18] = 0.011492850364368;
-//   noik[4][19] = -0.033387688429909;
-//   noik[4][20] = 0.015183171583644;
-//   noik[4][21] = -4.7610805647657E-03;
-//   noik[4][22] = 0.046917166277885;
-//   noik[4][23] = -0.039401755804649;
-//   noik[4][24] = -3.2569956247611E-03;
-//   // Propane
-//   noik[5][1] = 1.0403973107358;
-//   noik[5][2] = -2.8318404081403;
-//   noik[5][3] = 0.84393809606294;
-//   noik[5][4] = -0.076559591850023;
-//   noik[5][5] = 0.09469737305728;
-//   noik[5][6] = 2.4796475497006E-04;
-//   noik[5][7] = 0.2774376042287;
-//   noik[5][8] = -0.043846000648377;
-//   noik[5][9] = -0.2699106478435;
-//   noik[5][10] = -0.06931341308986;
-//   noik[5][11] = -0.029632145981653;
-//   noik[5][12] = 0.01404012675138;
-//   // Isobutane
-//   noik[6][1] = 1.04293315891;
-//   noik[6][2] = -2.8184272548892;
-//   noik[6][3] = 0.8617623239785;
-//   noik[6][4] = -0.10613619452487;
-//   noik[6][5] = 0.098615749302134;
-//   noik[6][6] = 2.3948208682322E-04;
-//   noik[6][7] = 0.3033000485695;
-//   noik[6][8] = -0.041598156135099;
-//   noik[6][9] = -0.29991937470058;
-//   noik[6][10] = -0.080369342764109;
-//   noik[6][11] = -0.029761373251151;
-//   noik[6][12] = 0.01305963030314;
-//   // n-Butane
-//   noik[7][1] = 1.0626277411455;
-//   noik[7][2] = -2.862095182835;
-//   noik[7][3] = 0.88738233403777;
-//   noik[7][4] = -0.12570581155345;
-//   noik[7][5] = 0.10286308708106;
-//   noik[7][6] = 2.5358040602654E-04;
-//   noik[7][7] = 0.32325200233982;
-//   noik[7][8] = -0.037950761057432;
-//   noik[7][9] = -0.32534802014452;
-//   noik[7][10] = -0.079050969051011;
-//   noik[7][11] = -0.020636720547775;
-//   noik[7][12] = 0.005705380933475;
-//   // Isopentane
-//   noik[8][1] = 1.0963;
-//   noik[8][2] = -3.0402;
-//   noik[8][3] = 1.0317;
-//   noik[8][4] = -0.1541;
-//   noik[8][5] = 0.11535;
-//   noik[8][6] = 0.00029809;
-//   noik[8][7] = 0.39571;
-//   noik[8][8] = -0.045881;
-//   noik[8][9] = -0.35804;
-//   noik[8][10] = -0.10107;
-//   noik[8][11] = -0.035484;
-//   noik[8][12] = 0.018156;
-//   // n-Pentane
-//   noik[9][1] = 1.0968643098001;
-//   noik[9][2] = -2.9988888298061;
-//   noik[9][3] = 0.99516886799212;
-//   noik[9][4] = -0.16170708558539;
-//   noik[9][5] = 0.11334460072775;
-//   noik[9][6] = 2.6760595150748E-04;
-//   noik[9][7] = 0.40979881986931;
-//   noik[9][8] = -0.040876423083075;
-//   noik[9][9] = -0.38169482469447;
-//   noik[9][10] = -0.10931956843993;
-//   noik[9][11] = -0.03207322332799;
-//   noik[9][12] = 0.016877016216975;
-//   // Hexane
-//   noik[10][1] = 1.0553238013661;
-//   noik[10][2] = -2.6120615890629;
-//   noik[10][3] = 0.7661388296726;
-//   noik[10][4] = -0.29770320622459;
-//   noik[10][5] = 0.11879907733358;
-//   noik[10][6] = 2.7922861062617E-04;
-//   noik[10][7] = 0.46347589844105;
-//   noik[10][8] = 0.011433196980297;
-//   noik[10][9] = -0.48256968738131;
-//   noik[10][10] = -0.093750558924659;
-//   noik[10][11] = -6.7273247155994E-03;
-//   noik[10][12] = -5.1141583585428E-03;
-//   // Heptane
-//   noik[11][1] = 1.0543747645262;
-//   noik[11][2] = -2.6500681506144;
-//   noik[11][3] = 0.81730047827543;
-//   noik[11][4] = -0.30451391253428;
-//   noik[11][5] = 0.122538687108;
-//   noik[11][6] = 2.7266472743928E-04;
-//   noik[11][7] = 0.4986582568167;
-//   noik[11][8] = -7.1432815084176E-04;
-//   noik[11][9] = -0.5423689552545;
-//   noik[11][10] = -0.13801821610756;
-//   noik[11][11] = -6.1595287380011E-03;
-//   noik[11][12] = 4.8602510393022E-04;
-//   // Octane
-//   noik[12][1] = 1.0722544875633;
-//   noik[12][2] = -2.4632951172003;
-//   noik[12][3] = 0.65386674054928;
-//   noik[12][4] = -0.36324974085628;
-//   noik[12][5] = 0.12713269626764;
-//   noik[12][6] = 3.071357277793E-04;
-//   noik[12][7] = 0.5265685698754;
-//   noik[12][8] = 0.019362862857653;
-//   noik[12][9] = -0.58939426849155;
-//   noik[12][10] = -0.14069963991934;
-//   noik[12][11] = -7.8966330500036E-03;
-//   noik[12][12] = 3.3036597968109E-03;
-//   // Nonane
-//   noik[13][1] = 1.1151;
-//   noik[13][2] = -2.702;
-//   noik[13][3] = 0.83416;
-//   noik[13][4] = -0.38828;
-//   noik[13][5] = 0.1376;
-//   noik[13][6] = 0.00028185;
-//   noik[13][7] = 0.62037;
-//   noik[13][8] = 0.015847;
-//   noik[13][9] = -0.61726;
-//   noik[13][10] = -0.15043;
-//   noik[13][11] = -0.012982;
-//   noik[13][12] = 0.0044325;
-//   // Decane
-//   noik[14][1] = 1.0461;
-//   noik[14][2] = -2.4807;
-//   noik[14][3] = 0.74372;
-//   noik[14][4] = -0.52579;
-//   noik[14][5] = 0.15315;
-//   noik[14][6] = 0.00032865;
-//   noik[14][7] = 0.84178;
-//   noik[14][8] = 0.055424;
-//   noik[14][9] = -0.73555;
-//   noik[14][10] = -0.18507;
-//   noik[14][11] = -0.020775;
-//   noik[14][12] = 0.012335;
-//   // Oxygen
-//   noik[16][1] = 0.88878286369701;
-//   noik[16][2] = -2.4879433312148;
-//   noik[16][3] = 0.59750190775886;
-//   noik[16][4] = 9.6501817061881E-03;
-//   noik[16][5] = 0.07197042871277;
-//   noik[16][6] = 2.2337443000195E-04;
-//   noik[16][7] = 0.18558686391474;
-//   noik[16][8] = -0.03812936803576;
-//   noik[16][9] = -0.15352245383006;
-//   noik[16][10] = -0.026726814910919;
-//   noik[16][11] = -0.025675298677127;
-//   noik[16][12] = 9.5714302123668E-03;
-//   // Carbon monoxide
-//   noik[17][1] = 0.90554;
-//   noik[17][2] = -2.4515;
-//   noik[17][3] = 0.53149;
-//   noik[17][4] = 0.024173;
-//   noik[17][5] = 0.072156;
-//   noik[17][6] = 0.00018818;
-//   noik[17][7] = 0.19405;
-//   noik[17][8] = -0.043268;
-//   noik[17][9] = -0.12778;
-//   noik[17][10] = -0.027896;
-//   noik[17][11] = -0.034154;
-//   noik[17][12] = 0.016329;
-//   // Hydrogen sulfide
-//   noik[19][1] = 0.87641;
-//   noik[19][2] = -2.0367;
-//   noik[19][3] = 0.21634;
-//   noik[19][4] = -0.050199;
-//   noik[19][5] = 0.066994;
-//   noik[19][6] = 0.00019076;
-//   noik[19][7] = 0.20227;
-//   noik[19][8] = -0.0045348;
-//   noik[19][9] = -0.2223;
-//   noik[19][10] = -0.034714;
-//   noik[19][11] = -0.014885;
-//   noik[19][12] = 0.0074154;
-//   // Argon
-//   noik[21][1] = 0.85095714803969;
-//   noik[21][2] = -2.400322294348;
-//   noik[21][3] = 0.54127841476466;
-//   noik[21][4] = 0.016919770692538;
-//   noik[21][5] = 0.068825965019035;
-//   noik[21][6] = 2.1428032815338E-04;
-//   noik[21][7] = 0.17429895321992;
-//   noik[21][8] = -0.033654495604194;
-//   noik[21][9] = -0.13526799857691;
-//   noik[21][10] = -0.016387350791552;
-//   noik[21][11] = -0.024987666851475;
-//   noik[21][12] = 8.8769204815709E-03;
-//   // Carbon dioxide
-//   coik[3][1] = 0;   doik[3][1] = 1;   toik[3][1] = 0;          noik[3][1] = 0.52646564804653;
-//   coik[3][2] = 0;   doik[3][2] = 1;   toik[3][2] = 1.25;       noik[3][2] = -1.4995725042592;
-//   coik[3][3] = 0;   doik[3][3] = 2;   toik[3][3] = 1.625;      noik[3][3] = 0.27329786733782;
-//   coik[3][4] = 0;   doik[3][4] = 3;   toik[3][4] = 0.375;      noik[3][4] = 0.12949500022786;
-//   coik[3][5] = 1;   doik[3][5] = 3;   toik[3][5] = 0.375;      noik[3][5] = 0.15404088341841;
-//   coik[3][6] = 1;   doik[3][6] = 3;   toik[3][6] = 1.375;      noik[3][6] = -0.58186950946814;
-//   coik[3][7] = 1;   doik[3][7] = 4;   toik[3][7] = 1.125;      noik[3][7] = -0.18022494838296;
-//   coik[3][8] = 1;   doik[3][8] = 5;   toik[3][8] = 1.375;      noik[3][8] = -0.095389904072812;
-//   coik[3][9] = 1;   doik[3][9] = 6;   toik[3][9] = 0.125;      noik[3][9] = -8.0486819317679E-03;
-//   coik[3][10] = 1;  doik[3][10] = 6;  toik[3][10] = 1.625;     noik[3][10] = -0.03554775127309;
-//   coik[3][11] = 2;  doik[3][11] = 1;  toik[3][11] = 3.75;      noik[3][11] = -0.28079014882405;
-//   coik[3][12] = 2;  doik[3][12] = 4;  toik[3][12] = 3.5;       noik[3][12] = -0.082435890081677;
-//   coik[3][13] = 3;  doik[3][13] = 1;  toik[3][13] = 7.5;       noik[3][13] = 0.010832427979006;
-//   coik[3][14] = 3;  doik[3][14] = 1;  toik[3][14] = 8;         noik[3][14] = -6.7073993161097E-03;
-//   coik[3][15] = 3;  doik[3][15] = 3;  toik[3][15] = 6;         noik[3][15] = -4.6827907600524E-03;
-//   coik[3][16] = 3;  doik[3][16] = 3;  toik[3][16] = 16;        noik[3][16] = -0.028359911832177;
-//   coik[3][17] = 3;  doik[3][17] = 4;  toik[3][17] = 11;        noik[3][17] = 0.019500174744098;
-//   coik[3][18] = 5;  doik[3][18] = 5;  toik[3][18] = 24;        noik[3][18] = -0.21609137507166;
-//   coik[3][19] = 5;  doik[3][19] = 5;  toik[3][19] = 26;        noik[3][19] = 0.43772794926972;
-//   coik[3][20] = 5;  doik[3][20] = 5;  toik[3][20] = 28;        noik[3][20] = -0.22130790113593;
-//   coik[3][21] = 6;  doik[3][21] = 5;  toik[3][21] = 24;        noik[3][21] = 0.015190189957331;
-//   coik[3][22] = 6;  doik[3][22] = 5;  toik[3][22] = 26;        noik[3][22] = -0.0153809489533;
-//   // Hydrogen
-//   coik[15][1] = 0;  doik[15][1] = 1;  toik[15][1] = 0.5;       noik[15][1] = 5.3579928451252;
-//   coik[15][2] = 0;  doik[15][2] = 1;  toik[15][2] = 0.625;     noik[15][2] = -6.2050252530595;
-//   coik[15][3] = 0;  doik[15][3] = 2;  toik[15][3] = 0.375;     noik[15][3] = 0.13830241327086;
-//   coik[15][4] = 0;  doik[15][4] = 2;  toik[15][4] = 0.625;     noik[15][4] = -0.071397954896129;
-//   coik[15][5] = 0;  doik[15][5] = 4;  toik[15][5] = 1.125;     noik[15][5] = 0.015474053959733;
-//   coik[15][6] = 1;  doik[15][6] = 1;  toik[15][6] = 2.625;     noik[15][6] = -0.14976806405771;
-//   coik[15][7] = 1;  doik[15][7] = 5;  toik[15][7] = 0;         noik[15][7] = -0.026368723988451;
-//   coik[15][8] = 1;  doik[15][8] = 5;  toik[15][8] = 0.25;      noik[15][8] = 0.056681303156066;
-//   coik[15][9] = 1;  doik[15][9] = 5;  toik[15][9] = 1.375;     noik[15][9] = -0.060063958030436;
-//   coik[15][10] = 2; doik[15][10] = 1; toik[15][10] = 4;        noik[15][10] = -0.45043942027132;
-//   coik[15][11] = 2; doik[15][11] = 1; toik[15][11] = 4.25;     noik[15][11] = 0.424788402445;
-//   coik[15][12] = 3; doik[15][12] = 2; toik[15][12] = 5;        noik[15][12] = -0.021997640827139;
-//   coik[15][13] = 3; doik[15][13] = 5; toik[15][13] = 8;        noik[15][13] = -0.01049952137453;
-//   coik[15][14] = 5; doik[15][14] = 1; toik[15][14] = 8;        noik[15][14] = -2.8955902866816E-03;
-//   // Water
-//   coik[18][1] = 0;  doik[18][1] = 1;  toik[18][1] = 0.5;       noik[18][1] = 0.82728408749586;
-//   coik[18][2] = 0;  doik[18][2] = 1;  toik[18][2] = 1.25;      noik[18][2] = -1.8602220416584;
-//   coik[18][3] = 0;  doik[18][3] = 1;  toik[18][3] = 1.875;     noik[18][3] = -1.1199009613744;
-//   coik[18][4] = 0;  doik[18][4] = 2;  toik[18][4] = 0.125;     noik[18][4] = 0.15635753976056;
-//   coik[18][5] = 0;  doik[18][5] = 2;  toik[18][5] = 1.5;       noik[18][5] = 0.87375844859025;
-//   coik[18][6] = 0;  doik[18][6] = 3;  toik[18][6] = 1;         noik[18][6] = -0.36674403715731;
-//   coik[18][7] = 0;  doik[18][7] = 4;  toik[18][7] = 0.75;      noik[18][7] = 0.053987893432436;
-//   coik[18][8] = 1;  doik[18][8] = 1;  toik[18][8] = 1.5;       noik[18][8] = 1.0957690214499;
-//   coik[18][9] = 1;  doik[18][9] = 5;  toik[18][9] = 0.625;     noik[18][9] = 0.053213037828563;
-//   coik[18][10] = 1; doik[18][10] = 5; toik[18][10] = 2.625;    noik[18][10] = 0.013050533930825;
-//   coik[18][11] = 2; doik[18][11] = 1; toik[18][11] = 5;        noik[18][11] = -0.41079520434476;
-//   coik[18][12] = 2; doik[18][12] = 2; toik[18][12] = 4;        noik[18][12] = 0.1463744334412;
-//   coik[18][13] = 2; doik[18][13] = 4; toik[18][13] = 4.5;      noik[18][13] = -0.055726838623719;
-//   coik[18][14] = 3; doik[18][14] = 4; toik[18][14] = 3;        noik[18][14] = -0.0112017741438;
-//   coik[18][15] = 5; doik[18][15] = 1; toik[18][15] = 4;        noik[18][15] = -6.6062758068099E-03;
-//   coik[18][16] = 5; doik[18][16] = 1; toik[18][16] = 6;        noik[18][16] = 4.6918522004538E-03;
-//   // Helium
-//   coik[20][1] = 0;  doik[20][1] = 1;  toik[20][1] = 0;         noik[20][1] = -0.45579024006737;
-//   coik[20][2] = 0;  doik[20][2] = 1;  toik[20][2] = 0.125;     noik[20][2] = 1.2516390754925;
-//   coik[20][3] = 0;  doik[20][3] = 1;  toik[20][3] = 0.75;      noik[20][3] = -1.5438231650621;
-//   coik[20][4] = 0;  doik[20][4] = 4;  toik[20][4] = 1;         noik[20][4] = 0.020467489707221;
-//   coik[20][5] = 1;  doik[20][5] = 1;  toik[20][5] = 0.75;      noik[20][5] = -0.34476212380781;
-//   coik[20][6] = 1;  doik[20][6] = 3;  toik[20][6] = 2.625;     noik[20][6] = -0.020858459512787;
-//   coik[20][7] = 1;  doik[20][7] = 5;  toik[20][7] = 0.125;     noik[20][7] = 0.016227414711778;
-//   coik[20][8] = 1;  doik[20][8] = 5;  toik[20][8] = 1.25;      noik[20][8] = -0.057471818200892;
-//   coik[20][9] = 1;  doik[20][9] = 5;  toik[20][9] = 2;         noik[20][9] = 0.019462416430715;
-//   coik[20][10] = 2; doik[20][10] = 2; toik[20][10] = 1;        noik[20][10] = -0.03329568012302;
-//   coik[20][11] = 3; doik[20][11] = 1; toik[20][11] = 4.5;      noik[20][11] = -0.010863577372367;
-//   coik[20][12] = 3; doik[20][12] = 2; toik[20][12] = 5;        noik[20][12] = -0.022173365245954;
+const DOIK: [[usize; MAXTRMP+1]; MAXFLDS+1] = [
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 1, 1, 2, 2, 4, 4, 1, 1, 1, 2, 3, 6, 2, 3, 3, 4, 4, 2, 3, 4, 5, 6, 6, 7, ],
+    [0, 1, 1, 2, 2, 4, 4, 1, 1, 1, 2, 3, 6, 2, 3, 3, 4, 4, 2, 3, 4, 5, 6, 6, 7, ],
+    [0, 1, 1, 2, 3, 3, 3, 4, 5, 6, 6, 1, 4, 1, 1, 3, 3, 4, 5, 5, 5, 5, 5, 0, 0, ],
+    [0, 1, 1, 2, 2, 4, 4, 1, 1, 1, 2, 3, 6, 2, 3, 3, 4, 4, 2, 3, 4, 5, 6, 6, 7, ],
+    [0, 1, 1, 1, 2, 3, 7, 2, 5, 1, 4, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 1, 1, 1, 2, 3, 7, 2, 5, 1, 4, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 1, 1, 1, 2, 3, 7, 2, 5, 1, 4, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 1, 1, 1, 2, 3, 7, 2, 5, 1, 4, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 1, 1, 1, 2, 3, 7, 2, 5, 1, 4, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 1, 1, 1, 2, 3, 7, 2, 5, 1, 4, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 1, 1, 1, 2, 3, 7, 2, 5, 1, 4, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 1, 1, 1, 2, 3, 7, 2, 5, 1, 4, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 1, 1, 1, 2, 3, 7, 2, 5, 1, 4, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 1, 1, 1, 2, 3, 7, 2, 5, 1, 4, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 1, 1, 2, 2, 4, 1, 5, 5, 5, 1, 1, 2, 5, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 1, 1, 1, 2, 3, 7, 2, 5, 1, 4, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 1, 1, 1, 2, 3, 7, 2, 5, 1, 4, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 1, 1, 1, 2, 2, 3, 4, 1, 5, 5, 1, 2, 4, 4, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 1, 1, 1, 2, 3, 7, 2, 5, 1, 4, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 1, 1, 1, 4, 1, 3, 5, 5, 5, 2, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 1, 1, 1, 2, 3, 7, 2, 5, 1, 4, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+];
 
-//   // Exponents in mixture equations
-//   // Methane-Nitrogen
-//   dijk[3][1] = 1;  tijk[3][1] = 0;     cijk[3][1] = 0;     eijk[3][1] = 0;    bijk[3][1] = 0;    gijk[3][1] = 0;    nijk[3][1] = -9.8038985517335E-03;
-//   dijk[3][2] = 4;  tijk[3][2] = 1.85;  cijk[3][2] = 0;     eijk[3][2] = 0;    bijk[3][2] = 0;    gijk[3][2] = 0;    nijk[3][2] = 4.2487270143005E-04;
-//   dijk[3][3] = 1;  tijk[3][3] = 7.85;  cijk[3][3] = 1;     eijk[3][3] = 0.5;  bijk[3][3] = 1;    gijk[3][3] = 0.5;  nijk[3][3] = -0.034800214576142;
-//   dijk[3][4] = 2;  tijk[3][4] = 5.4;   cijk[3][4] = 1;     eijk[3][4] = 0.5;  bijk[3][4] = 1;    gijk[3][4] = 0.5;  nijk[3][4] = -0.13333813013896;
-//   dijk[3][5] = 2;  tijk[3][5] = 0;     cijk[3][5] = 0.25;  eijk[3][5] = 0.5;  bijk[3][5] = 2.5;  gijk[3][5] = 0.5;  nijk[3][5] = -0.011993694974627;
-//   dijk[3][6] = 2;  tijk[3][6] = 0.75;  cijk[3][6] = 0;     eijk[3][6] = 0.5;  bijk[3][6] = 3;    gijk[3][6] = 0.5;  nijk[3][6] = 0.069243379775168;
-//   dijk[3][7] = 2;  tijk[3][7] = 2.8;   cijk[3][7] = 0;     eijk[3][7] = 0.5;  bijk[3][7] = 3;    gijk[3][7] = 0.5;  nijk[3][7] = -0.31022508148249;
-//   dijk[3][8] = 2;  tijk[3][8] = 4.45;  cijk[3][8] = 0;     eijk[3][8] = 0.5;  bijk[3][8] = 3;    gijk[3][8] = 0.5;  nijk[3][8] = 0.24495491753226;
-//   dijk[3][9] = 3;  tijk[3][9] = 4.25;  cijk[3][9] = 0;     eijk[3][9] = 0.5;  bijk[3][9] = 3;    gijk[3][9] = 0.5;  nijk[3][9] = 0.22369816716981;
-//   // Methane-Carbon dioxide
-//   dijk[4][1] = 1;  tijk[4][1] = 2.6;   cijk[4][1] = 0;     eijk[4][1] = 0;    bijk[4][1] = 0;    gijk[4][1] = 0;    nijk[4][1] = -0.10859387354942;
-//   dijk[4][2] = 2;  tijk[4][2] = 1.95;  cijk[4][2] = 0;     eijk[4][2] = 0;    bijk[4][2] = 0;    gijk[4][2] = 0;    nijk[4][2] = 0.080228576727389;
-//   dijk[4][3] = 3;  tijk[4][3] = 0;     cijk[4][3] = 0;     eijk[4][3] = 0;    bijk[4][3] = 0;    gijk[4][3] = 0;    nijk[4][3] = -9.3303985115717E-03;
-//   dijk[4][4] = 1;  tijk[4][4] = 3.95;  cijk[4][4] = 1;     eijk[4][4] = 0.5;  bijk[4][4] = 1;    gijk[4][4] = 0.5;  nijk[4][4] = 0.040989274005848;
-//   dijk[4][5] = 2;  tijk[4][5] = 7.95;  cijk[4][5] = 0.5;   eijk[4][5] = 0.5;  bijk[4][5] = 2;    gijk[4][5] = 0.5;  nijk[4][5] = -0.24338019772494;
-//   dijk[4][6] = 3;  tijk[4][6] = 8;     cijk[4][6] = 0;     eijk[4][6] = 0.5;  bijk[4][6] = 3;    gijk[4][6] = 0.5;  nijk[4][6] = 0.23855347281124;
-//   // Methane-Ethane
-//   dijk[1][1] = 3;  tijk[1][1] = 0.65;  cijk[1][1] = 0;     eijk[1][1] = 0;    bijk[1][1] = 0;    gijk[1][1] = 0;    nijk[1][1] = -8.0926050298746E-04;
-//   dijk[1][2] = 4;  tijk[1][2] = 1.55;  cijk[1][2] = 0;     eijk[1][2] = 0;    bijk[1][2] = 0;    gijk[1][2] = 0;    nijk[1][2] = -7.5381925080059E-04;
-//   dijk[1][3] = 1;  tijk[1][3] = 3.1;   cijk[1][3] = 1;     eijk[1][3] = 0.5;  bijk[1][3] = 1;    gijk[1][3] = 0.5;  nijk[1][3] = -0.041618768891219;
-//   dijk[1][4] = 2;  tijk[1][4] = 5.9;   cijk[1][4] = 1;     eijk[1][4] = 0.5;  bijk[1][4] = 1;    gijk[1][4] = 0.5;  nijk[1][4] = -0.23452173681569;
-//   dijk[1][5] = 2;  tijk[1][5] = 7.05;  cijk[1][5] = 1;     eijk[1][5] = 0.5;  bijk[1][5] = 1;    gijk[1][5] = 0.5;  nijk[1][5] = 0.14003840584586;
-//   dijk[1][6] = 2;  tijk[1][6] = 3.35;  cijk[1][6] = 0.875; eijk[1][6] = 0.5;  bijk[1][6] = 1.25; gijk[1][6] = 0.5;  nijk[1][6] = 0.063281744807738;
-//   dijk[1][7] = 2;  tijk[1][7] = 1.2;   cijk[1][7] = 0.75;  eijk[1][7] = 0.5;  bijk[1][7] = 1.5;  gijk[1][7] = 0.5;  nijk[1][7] = -0.034660425848809;
-//   dijk[1][8] = 2;  tijk[1][8] = 5.8;   cijk[1][8] = 0.5;   eijk[1][8] = 0.5;  bijk[1][8] = 2;    gijk[1][8] = 0.5;  nijk[1][8] = -0.23918747334251;
-//   dijk[1][9] = 2;  tijk[1][9] = 2.7;   cijk[1][9] = 0;     eijk[1][9] = 0.5;  bijk[1][9] = 3;    gijk[1][9] = 0.5;  nijk[1][9] = 1.9855255066891E-03;
-//   dijk[1][10] = 3; tijk[1][10] = 0.45; cijk[1][10] = 0;    eijk[1][10] = 0.5; bijk[1][10] = 3;   gijk[1][10] = 0.5; nijk[1][10] = 6.1777746171555;
-//   dijk[1][11] = 3; tijk[1][11] = 0.55; cijk[1][11] = 0;    eijk[1][11] = 0.5; bijk[1][11] = 3;   gijk[1][11] = 0.5; nijk[1][11] = -6.9575358271105;
-//   dijk[1][12] = 3; tijk[1][12] = 1.95; cijk[1][12] = 0;    eijk[1][12] = 0.5; bijk[1][12] = 3;   gijk[1][12] = 0.5; nijk[1][12] = 1.0630185306388;
-//   // Methane-Propane
-//   dijk[2][1] = 3;  tijk[2][1] = 1.85;  cijk[2][1] = 0;     eijk[2][1] = 0;    bijk[2][1] = 0;    gijk[2][1] = 0;    nijk[2][1] = 0.013746429958576;
-//   dijk[2][2] = 3;  tijk[2][2] = 3.95;  cijk[2][2] = 0;     eijk[2][2] = 0;    bijk[2][2] = 0;    gijk[2][2] = 0;    nijk[2][2] = -7.4425012129552E-03;
-//   dijk[2][3] = 4;  tijk[2][3] = 0;     cijk[2][3] = 0;     eijk[2][3] = 0;    bijk[2][3] = 0;    gijk[2][3] = 0;    nijk[2][3] = -4.5516600213685E-03;
-//   dijk[2][4] = 4;  tijk[2][4] = 1.85;  cijk[2][4] = 0;     eijk[2][4] = 0;    bijk[2][4] = 0;    gijk[2][4] = 0;    nijk[2][4] = -5.4546603350237E-03;
-//   dijk[2][5] = 4;  tijk[2][5] = 3.85;  cijk[2][5] = 0;     eijk[2][5] = 0;    bijk[2][5] = 0;    gijk[2][5] = 0;    nijk[2][5] = 2.3682016824471E-03;
-//   dijk[2][6] = 1;  tijk[2][6] = 5.25;  cijk[2][6] = 0.25;  eijk[2][6] = 0.5;  bijk[2][6] = 0.75; gijk[2][6] = 0.5;  nijk[2][6] = 0.18007763721438;
-//   dijk[2][7] = 1;  tijk[2][7] = 3.85;  cijk[2][7] = 0.25;  eijk[2][7] = 0.5;  bijk[2][7] = 1;    gijk[2][7] = 0.5;  nijk[2][7] = -0.44773942932486;
-//   dijk[2][8] = 1;  tijk[2][8] = 0.2;   cijk[2][8] = 0;     eijk[2][8] = 0.5;  bijk[2][8] = 2;    gijk[2][8] = 0.5;  nijk[2][8] = 0.0193273748882;
-//   dijk[2][9] = 2;  tijk[2][9] = 6.5;   cijk[2][9] = 0;     eijk[2][9] = 0.5;  bijk[2][9] = 3;    gijk[2][9] = 0.5;  nijk[2][9] = -0.30632197804624;
-//   // Nitrogen-Carbon dioxide
-//   dijk[5][1] = 2;  tijk[5][1] = 1.85;  cijk[5][1] = 0;     eijk[5][1] = 0;    bijk[5][1] = 0;    gijk[5][1] = 0;    nijk[5][1] = 0.28661625028399;
-//   dijk[5][2] = 3;  tijk[5][2] = 1.4;   cijk[5][2] = 0;     eijk[5][2] = 0;    bijk[5][2] = 0;    gijk[5][2] = 0;    nijk[5][2] = -0.10919833861247;
-//   dijk[5][3] = 1;  tijk[5][3] = 3.2;   cijk[5][3] = 0.25;  eijk[5][3] = 0.5;  bijk[5][3] = 0.75; gijk[5][3] = 0.5;  nijk[5][3] = -1.137403208227;
-//   dijk[5][4] = 1;  tijk[5][4] = 2.5;   cijk[5][4] = 0.25;  eijk[5][4] = 0.5;  bijk[5][4] = 1;    gijk[5][4] = 0.5;  nijk[5][4] = 0.76580544237358;
-//   dijk[5][5] = 1;  tijk[5][5] = 8;     cijk[5][5] = 0;     eijk[5][5] = 0.5;  bijk[5][5] = 2;    gijk[5][5] = 0.5;  nijk[5][5] = 4.2638000926819E-03;
-//   dijk[5][6] = 2;  tijk[5][6] = 3.75;  cijk[5][6] = 0;     eijk[5][6] = 0.5;  bijk[5][6] = 3;    gijk[5][6] = 0.5;  nijk[5][6] = 0.17673538204534;
-//   // Nitrogen-Ethane
-//   dijk[6][1] = 2;  tijk[6][1] = 0;     cijk[6][1] = 0;     eijk[6][1] = 0;    bijk[6][1] = 0;    gijk[6][1] = 0;    nijk[6][1] = -0.47376518126608;
-//   dijk[6][2] = 2;  tijk[6][2] = 0.05;  cijk[6][2] = 0;     eijk[6][2] = 0;    bijk[6][2] = 0;    gijk[6][2] = 0;    nijk[6][2] = 0.48961193461001;
-//   dijk[6][3] = 3;  tijk[6][3] = 0;     cijk[6][3] = 0;     eijk[6][3] = 0;    bijk[6][3] = 0;    gijk[6][3] = 0;    nijk[6][3] = -5.7011062090535E-03;
-//   dijk[6][4] = 1;  tijk[6][4] = 3.65;  cijk[6][4] = 1;     eijk[6][4] = 0.5;  bijk[6][4] = 1;    gijk[6][4] = 0.5;  nijk[6][4] = -0.1996682004132;
-//   dijk[6][5] = 2;  tijk[6][5] = 4.9;   cijk[6][5] = 1;     eijk[6][5] = 0.5;  bijk[6][5] = 1;    gijk[6][5] = 0.5;  nijk[6][5] = -0.69411103101723;
-//   dijk[6][6] = 2;  tijk[6][6] = 4.45;  cijk[6][6] = 0.875; eijk[6][6] = 0.5;  bijk[6][6] = 1.25; gijk[6][6] = 0.5;  nijk[6][6] = 0.69226192739021;
-//   // Methane-Hydrogen
-//   dijk[7][1] = 1;  tijk[7][1] = 2;     cijk[7][1] = 0;     eijk[7][1] = 0;    bijk[7][1] = 0;    gijk[7][1] = 0;    nijk[7][1] = -0.25157134971934;
-//   dijk[7][2] = 3;  tijk[7][2] = -1;    cijk[7][2] = 0;     eijk[7][2] = 0;    bijk[7][2] = 0;    gijk[7][2] = 0;    nijk[7][2] = -6.2203841111983E-03;
-//   dijk[7][3] = 3;  tijk[7][3] = 1.75;  cijk[7][3] = 0;     eijk[7][3] = 0;    bijk[7][3] = 0;    gijk[7][3] = 0;    nijk[7][3] = 0.088850315184396;
-//   dijk[7][4] = 4;  tijk[7][4] = 1.4;   cijk[7][4] = 0;     eijk[7][4] = 0;    bijk[7][4] = 0;    gijk[7][4] = 0;    nijk[7][4] = -0.035592212573239;
-//   // Methane-n-Butane, Methane-Isobutane, Ethane-Propane, Ethane-n-Butane,
-//   // Ethane-Isobutane, Propane-n-Butane, Propane-Isobutane, and n-Butane-Isobutane
-//   dijk[10][1] = 1;  tijk[10][1] = 1;     cijk[10][1] = 0;  eijk[10][1] = 0;   bijk[10][1] = 0;   gijk[10][1] = 0;   nijk[10][1] = 2.5574776844118;
-//   dijk[10][2] = 1;  tijk[10][2] = 1.55;  cijk[10][2] = 0;  eijk[10][2] = 0;   bijk[10][2] = 0;   gijk[10][2] = 0;   nijk[10][2] = -7.9846357136353;
-//   dijk[10][3] = 1;  tijk[10][3] = 1.7;   cijk[10][3] = 0;  eijk[10][3] = 0;   bijk[10][3] = 0;   gijk[10][3] = 0;   nijk[10][3] = 4.7859131465806;
-//   dijk[10][4] = 2;  tijk[10][4] = 0.25;  cijk[10][4] = 0;  eijk[10][4] = 0;   bijk[10][4] = 0;   gijk[10][4] = 0;   nijk[10][4] = -0.73265392369587;
-//   dijk[10][5] = 2;  tijk[10][5] = 1.35;  cijk[10][5] = 0;  eijk[10][5] = 0;   bijk[10][5] = 0;   gijk[10][5] = 0;   nijk[10][5] = 1.3805471345312;
-//   dijk[10][6] = 3;  tijk[10][6] = 0;     cijk[10][6] = 0;  eijk[10][6] = 0;   bijk[10][6] = 0;   gijk[10][6] = 0;   nijk[10][6] = 0.28349603476365;
-//   dijk[10][7] = 3;  tijk[10][7] = 1.25;  cijk[10][7] = 0;  eijk[10][7] = 0;   bijk[10][7] = 0;   gijk[10][7] = 0;   nijk[10][7] = -0.49087385940425;
-//   dijk[10][8] = 4;  tijk[10][8] = 0;     cijk[10][8] = 0;  eijk[10][8] = 0;   bijk[10][8] = 0;   gijk[10][8] = 0;   nijk[10][8] = -0.10291888921447;
-//   dijk[10][9] = 4;  tijk[10][9] = 0.7;   cijk[10][9] = 0;  eijk[10][9] = 0;   bijk[10][9] = 0;   gijk[10][9] = 0;   nijk[10][9] = 0.11836314681968;
-//   dijk[10][10] = 4; tijk[10][10] = 5.4;  cijk[10][10] = 0; eijk[10][10] = 0;  bijk[10][10] = 0;  gijk[10][10] = 0;  nijk[10][10] = 5.5527385721943E-05;
+const TOIK: [[f64; MAXTRMP+1]; MAXFLDS+1] = [
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.1250000000000000, 1.125000000000000, 0.3750000000000000, 1.125000000000000, 0.6250000000000000, 1.500000000000000, 0.6250000000000000, 2.625000000000000, 2.750000000000000, 2.125000000000000, 2.000000000000000, 1.750000000000000, 4.500000000000000, 4.750000000000000, 5.000000000000000, 4.000000000000000, 4.500000000000000, 7.500000000000000, 14.00000000000000, 11.50000000000000, 26.00000000000000, 28.00000000000000, 30.00000000000000, 16.00000000000000, ],
+    [0.000000000000000, 0.1250000000000000, 1.125000000000000, 0.3750000000000000, 1.125000000000000, 0.6250000000000000, 1.500000000000000, 0.6250000000000000, 2.625000000000000, 2.750000000000000, 2.125000000000000, 2.000000000000000, 1.750000000000000, 4.500000000000000, 4.750000000000000, 5.000000000000000, 4.000000000000000, 4.500000000000000, 7.500000000000000, 14.00000000000000, 11.50000000000000, 26.00000000000000, 28.00000000000000, 30.00000000000000, 16.00000000000000, ],
+    [0.000000000000000, 0.000000000000000, 1.250000000000000, 1.625000000000000, 0.3750000000000000, 0.3750000000000000, 1.375000000000000, 1.125000000000000, 1.375000000000000, 0.1250000000000000, 1.625000000000000, 3.750000000000000, 3.500000000000000, 7.500000000000000, 8.000000000000000, 6.000000000000000, 16.00000000000000, 11.00000000000000, 24.00000000000000, 26.00000000000000, 28.00000000000000, 24.00000000000000, 26.00000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.1250000000000000, 1.125000000000000, 0.3750000000000000, 1.125000000000000, 0.6250000000000000, 1.500000000000000, 0.6250000000000000, 2.625000000000000, 2.750000000000000, 2.125000000000000, 2.000000000000000, 1.750000000000000, 4.500000000000000, 4.750000000000000, 5.000000000000000, 4.000000000000000, 4.500000000000000, 7.500000000000000, 14.00000000000000, 11.50000000000000, 26.00000000000000, 28.00000000000000, 30.00000000000000, 16.00000000000000, ],
+    [0.000000000000000, 0.2500000000000000, 1.125000000000000, 1.500000000000000, 1.375000000000000, 0.2500000000000000, 0.8750000000000000, 0.6250000000000000, 1.750000000000000, 3.625000000000000, 3.625000000000000, 14.50000000000000, 12.00000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.2500000000000000, 1.125000000000000, 1.500000000000000, 1.375000000000000, 0.2500000000000000, 0.8750000000000000, 0.6250000000000000, 1.750000000000000, 3.625000000000000, 3.625000000000000, 14.50000000000000, 12.00000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.2500000000000000, 1.125000000000000, 1.500000000000000, 1.375000000000000, 0.2500000000000000, 0.8750000000000000, 0.6250000000000000, 1.750000000000000, 3.625000000000000, 3.625000000000000, 14.50000000000000, 12.00000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.2500000000000000, 1.125000000000000, 1.500000000000000, 1.375000000000000, 0.2500000000000000, 0.8750000000000000, 0.6250000000000000, 1.750000000000000, 3.625000000000000, 3.625000000000000, 14.50000000000000, 12.00000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.2500000000000000, 1.125000000000000, 1.500000000000000, 1.375000000000000, 0.2500000000000000, 0.8750000000000000, 0.6250000000000000, 1.750000000000000, 3.625000000000000, 3.625000000000000, 14.50000000000000, 12.00000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.2500000000000000, 1.125000000000000, 1.500000000000000, 1.375000000000000, 0.2500000000000000, 0.8750000000000000, 0.6250000000000000, 1.750000000000000, 3.625000000000000, 3.625000000000000, 14.50000000000000, 12.00000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.2500000000000000, 1.125000000000000, 1.500000000000000, 1.375000000000000, 0.2500000000000000, 0.8750000000000000, 0.6250000000000000, 1.750000000000000, 3.625000000000000, 3.625000000000000, 14.50000000000000, 12.00000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.2500000000000000, 1.125000000000000, 1.500000000000000, 1.375000000000000, 0.2500000000000000, 0.8750000000000000, 0.6250000000000000, 1.750000000000000, 3.625000000000000, 3.625000000000000, 14.50000000000000, 12.00000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.2500000000000000, 1.125000000000000, 1.500000000000000, 1.375000000000000, 0.2500000000000000, 0.8750000000000000, 0.6250000000000000, 1.750000000000000, 3.625000000000000, 3.625000000000000, 14.50000000000000, 12.00000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.2500000000000000, 1.125000000000000, 1.500000000000000, 1.375000000000000, 0.2500000000000000, 0.8750000000000000, 0.6250000000000000, 1.750000000000000, 3.625000000000000, 3.625000000000000, 14.50000000000000, 12.00000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.5000000000000000, 0.6250000000000000, 0.3750000000000000, 0.6250000000000000, 1.125000000000000, 2.625000000000000, 0.000000000000000, 0.2500000000000000, 1.375000000000000, 4.000000000000000, 4.250000000000000, 5.000000000000000, 8.000000000000000, 8.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.2500000000000000, 1.125000000000000, 1.500000000000000, 1.375000000000000, 0.2500000000000000, 0.8750000000000000, 0.6250000000000000, 1.750000000000000, 3.625000000000000, 3.625000000000000, 14.50000000000000, 12.00000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.2500000000000000, 1.125000000000000, 1.500000000000000, 1.375000000000000, 0.2500000000000000, 0.8750000000000000, 0.6250000000000000, 1.750000000000000, 3.625000000000000, 3.625000000000000, 14.50000000000000, 12.00000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.5000000000000000, 1.250000000000000, 1.875000000000000, 0.1250000000000000, 1.500000000000000, 1.000000000000000, 0.7500000000000000, 1.500000000000000, 0.6250000000000000, 2.625000000000000, 5.000000000000000, 4.000000000000000, 4.500000000000000, 3.000000000000000, 4.000000000000000, 6.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.2500000000000000, 1.125000000000000, 1.500000000000000, 1.375000000000000, 0.2500000000000000, 0.8750000000000000, 0.6250000000000000, 1.750000000000000, 3.625000000000000, 3.625000000000000, 14.50000000000000, 12.00000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.1250000000000000, 0.7500000000000000, 1.000000000000000, 0.7500000000000000, 2.625000000000000, 0.1250000000000000, 1.250000000000000, 2.000000000000000, 1.000000000000000, 4.500000000000000, 5.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.2500000000000000, 1.125000000000000, 1.500000000000000, 1.375000000000000, 0.2500000000000000, 0.8750000000000000, 0.6250000000000000, 1.750000000000000, 3.625000000000000, 3.625000000000000, 14.50000000000000, 12.00000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+];
 
-//   // Generalized parameters
-//   fij[1][2] = 1;                // Methane-Nitrogen
-//   fij[1][3] = 1;                // Methane-CO2
-//   fij[1][4] = 1;                // Methane-Ethane
-//   fij[1][5] = 1;                // Methane-Propane
-//   fij[2][3] = 1;                // Nitrogen-CO2
-//   fij[2][4] = 1;                // Nitrogen-Ethane
-//   fij[1][15] = 1;               // Methane-Hydrogen
-//   fij[1][6] = 0.771035405688;   // Methane-Isobutane
-//   fij[1][7] = 1;                // Methane-n-Butane
-//   fij[4][5] = 0.13042476515;    // Ethane-Propane
-//   fij[4][6] = 0.260632376098;   // Ethane-Isobutane
-//   fij[4][7] = 0.281570073085;   // Ethane-n-Butane
-//   fij[5][6] = -0.0551609771024; // Propane-Isobutane
-//   fij[5][7] = 0.0312572600489;  // Propane-n-Butane
-//   fij[6][7] = -0.0551240293009; // Isobutane-n-Butane
+const DIJK: [[usize; MAXTRMM+1]; MAXMDL+1] = [
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 3, 4, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, ],
+    [0, 3, 3, 4, 4, 4, 1, 1, 1, 2, 0, 0, 0, ],
+    [0, 1, 4, 1, 2, 2, 2, 2, 2, 3, 0, 0, 0, ],
+    [0, 1, 2, 3, 1, 2, 3, 0, 0, 0, 0, 0, 0, ],
+    [0, 2, 3, 1, 1, 1, 2, 0, 0, 0, 0, 0, 0, ],
+    [0, 2, 2, 3, 1, 2, 2, 0, 0, 0, 0, 0, 0, ],
+    [0, 1, 3, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 1, 1, 1, 2, 2, 3, 3, 4, 4, 4, 0, 0, ],
+];
 
-//   // Model numbers for binary mixtures with no excess functions (mn=-1)
-//   for(int i = 1; i <= MaxFlds; ++i){
-//     mNumb[i][i] = -1;
-//     for (int j = i + 1; j <= MaxFlds; ++j){
-//       fij[j][i] = fij[i][j];
-//       mNumb[i][j] = -1;
-//       mNumb[j][i] = -1;
-//     }
-//   }
+const TIJK: [[f64; MAXTRMM+1]; MAXMDL+1] = [
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.6500000000000000, 1.550000000000000, 3.100000000000000, 5.900000000000000, 7.050000000000000, 3.350000000000000, 1.200000000000000, 5.800000000000000, 2.700000000000000, 0.4500000000000000, 0.5500000000000000, 1.950000000000000, ],
+    [0.000000000000000, 1.850000000000000, 3.950000000000000, 0.000000000000000, 1.850000000000000, 3.850000000000000, 5.250000000000000, 3.850000000000000, 0.2000000000000000, 6.500000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 1.850000000000000, 7.850000000000000, 5.400000000000000, 0.000000000000000, 0.7500000000000000, 2.800000000000000, 4.450000000000000, 4.250000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 2.600000000000000, 1.950000000000000, 0.000000000000000, 3.950000000000000, 7.950000000000000, 8.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 1.850000000000000, 1.400000000000000, 3.200000000000000, 2.500000000000000, 8.000000000000000, 3.750000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.05000000000000000, 0.000000000000000, 3.650000000000000, 4.900000000000000, 4.450000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 2.000000000000000, -1.000000000000000, 1.750000000000000, 1.400000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 1.000000000000000, 1.550000000000000, 1.700000000000000, 0.2500000000000000, 1.350000000000000, 0.000000000000000, 1.250000000000000, 0.000000000000000, 0.7000000000000000, 5.400000000000000, 0.000000000000000, 0.000000000000000, ],
+];
 
-//   // Model numbers for excess functions, 10 is for generalized equation
-//   mNumb[1][2] = 3;
-//   mNumb[1][3] = 4;
-//   mNumb[1][4] = 1;
-//   mNumb[1][5] = 2;
-//   mNumb[1][6] = 10;
-//   mNumb[1][7] = 10;
-//   mNumb[1][15] = 7;
-//   mNumb[2][3] = 5;
-//   mNumb[2][4] = 6;
-//   mNumb[4][5] = 10;
-//   mNumb[4][6] = 10;
-//   mNumb[4][7] = 10;
-//   mNumb[5][6] = 10;
-//   mNumb[5][7] = 10;
-//   mNumb[6][7] = 10;
+const CIJK: [[f64; MAXTRMM+1]; MAXMDL+1] = [
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, -0.000000000000000, -0.000000000000000, -1.000000000000000, -1.000000000000000, -1.000000000000000, -0.8750000000000000, -0.7500000000000000, -0.5000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, ],
+    [0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.2500000000000000, -0.2500000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, ],
+    [0.000000000000000, -0.000000000000000, -0.000000000000000, -1.000000000000000, -1.000000000000000, -0.2500000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, ],
+    [0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -1.000000000000000, -0.5000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, ],
+    [0.000000000000000, -0.000000000000000, -0.000000000000000, -0.2500000000000000, -0.2500000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, ],
+    [0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -1.000000000000000, -1.000000000000000, -0.8750000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, ],
+    [0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, ],
+    [0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, ],
+    [0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, ],
+    [0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, -0.000000000000000, ],
+];
 
-//   // Ideal gas parameters
-//   n0i[1][3] = 4.00088;  n0i[1][4] = 0.76315;  n0i[1][5] = 0.0046;   n0i[1][6] = 8.74432;  n0i[1][7] = -4.46921; n0i[1][1] = 29.83843397;  n0i[1][2] = -15999.69151;
-//   n0i[2][3] = 3.50031;  n0i[2][4] = 0.13732;  n0i[2][5] = -0.1466;  n0i[2][6] = 0.90066;  n0i[2][7] = 0;        n0i[2][1] = 17.56770785;  n0i[2][2] = -2801.729072;
-//   n0i[3][3] = 3.50002;  n0i[3][4] = 2.04452;  n0i[3][5] = -1.06044; n0i[3][6] = 2.03366;  n0i[3][7] = 0.01393;  n0i[3][1] = 20.65844696;  n0i[3][2] = -4902.171516;
-//   n0i[4][3] = 4.00263;  n0i[4][4] = 4.33939;  n0i[4][5] = 1.23722;  n0i[4][6] = 13.1974;  n0i[4][7] = -6.01989; n0i[4][1] = 36.73005938;  n0i[4][2] = -23639.65301;
-//   n0i[5][3] = 4.02939;  n0i[5][4] = 6.60569;  n0i[5][5] = 3.197;    n0i[5][6] = 19.1921;  n0i[5][7] = -8.37267; n0i[5][1] = 44.70909619;  n0i[5][2] = -31236.63551;
-//   n0i[6][3] = 4.06714;  n0i[6][4] = 8.97575;  n0i[6][5] = 5.25156;  n0i[6][6] = 25.1423;  n0i[6][7] = 16.1388;  n0i[6][1] = 34.30180349;  n0i[6][2] = -38525.50276;
-//   n0i[7][3] = 4.33944;  n0i[7][4] = 9.44893;  n0i[7][5] = 6.89406;  n0i[7][6] = 24.4618;  n0i[7][7] = 14.7824;  n0i[7][1] = 36.53237783;  n0i[7][2] = -38957.80933;
-//   n0i[8][3] = 4;        n0i[8][4] = 11.7618;  n0i[8][5] = 20.1101;  n0i[8][6] = 33.1688;  n0i[8][7] = 0;        n0i[8][1] = 43.17218626;  n0i[8][2] = -51198.30946;
-//   n0i[9][3] = 4;        n0i[9][4] = 8.95043;  n0i[9][5] = 21.836;   n0i[9][6] = 33.4032;  n0i[9][7] = 0;        n0i[9][1] = 42.67837089;  n0i[9][2] = -45215.83;
-//   n0i[10][3] = 4;       n0i[10][4] = 11.6977; n0i[10][5] = 26.8142; n0i[10][6] = 38.6164; n0i[10][7] = 0;       n0i[10][1] = 46.99717188; n0i[10][2] = -52746.83318;
-//   n0i[11][3] = 4;       n0i[11][4] = 13.7266; n0i[11][5] = 30.4707; n0i[11][6] = 43.5561; n0i[11][7] = 0;       n0i[11][1] = 52.07631631; n0i[11][2] = -57104.81056;
-//   n0i[12][3] = 4;       n0i[12][4] = 15.6865; n0i[12][5] = 33.8029; n0i[12][6] = 48.1731; n0i[12][7] = 0;       n0i[12][1] = 57.25830934; n0i[12][2] = -60546.76385;
-//   n0i[13][3] = 4;       n0i[13][4] = 18.0241; n0i[13][5] = 38.1235; n0i[13][6] = 53.3415; n0i[13][7] = 0;       n0i[13][1] = 62.09646901; n0i[13][2] = -66600.12837;
-//   n0i[14][3] = 4;       n0i[14][4] = 21.0069; n0i[14][5] = 43.4931; n0i[14][6] = 58.3657; n0i[14][7] = 0;       n0i[14][1] = 65.93909154; n0i[14][2] = -74131.45483;
-//   n0i[15][3] = 2.47906; n0i[15][4] = 0.95806; n0i[15][5] = 0.45444; n0i[15][6] = 1.56039; n0i[15][7] = -1.3756; n0i[15][1] = 13.07520288; n0i[15][2] = -5836.943696;
-//   n0i[16][3] = 3.50146; n0i[16][4] = 1.07558; n0i[16][5] = 1.01334; n0i[16][6] = 0;       n0i[16][7] = 0;       n0i[16][1] = 16.8017173;  n0i[16][2] = -2318.32269;
-//   n0i[17][3] = 3.50055; n0i[17][4] = 1.02865; n0i[17][5] = 0.00493; n0i[17][6] = 0;       n0i[17][7] = 0;       n0i[17][1] = 17.45786899; n0i[17][2] = -2635.244116;
-//   n0i[18][3] = 4.00392; n0i[18][4] = 0.01059; n0i[18][5] = 0.98763; n0i[18][6] = 3.06904; n0i[18][7] = 0;       n0i[18][1] = 21.57882705; n0i[18][2] = -7766.733078;
-//   n0i[19][3] = 4;       n0i[19][4] = 3.11942; n0i[19][5] = 1.00243; n0i[19][6] = 0;       n0i[19][7] = 0;       n0i[19][1] = 21.5830944;  n0i[19][2] = -6069.035869;
-//   n0i[20][3] = 2.5;     n0i[20][4] = 0;       n0i[20][5] = 0;       n0i[20][6] = 0;       n0i[20][7] = 0;       n0i[20][1] = 10.04639507; n0i[20][2] = -745.375;
-//   n0i[21][3] = 2.5;     n0i[21][4] = 0;       n0i[21][5] = 0;       n0i[21][6] = 0;       n0i[21][7] = 0;       n0i[21][1] = 10.04639507; n0i[21][2] = -745.375;
-//   th0i[1][4] = 820.659;  th0i[1][5] = 178.41;   th0i[1][6] = 1062.82;  th0i[1][7] = 1090.53;
-//   th0i[2][4] = 662.738;  th0i[2][5] = 680.562;  th0i[2][6] = 1740.06;  th0i[2][7] = 0;
-//   th0i[3][4] = 919.306;  th0i[3][5] = 865.07;   th0i[3][6] = 483.553;  th0i[3][7] = 341.109;
-//   th0i[4][4] = 559.314;  th0i[4][5] = 223.284;  th0i[4][6] = 1031.38;  th0i[4][7] = 1071.29;
-//   th0i[5][4] = 479.856;  th0i[5][5] = 200.893;  th0i[5][6] = 955.312;  th0i[5][7] = 1027.29;
-//   th0i[6][4] = 438.27;   th0i[6][5] = 198.018;  th0i[6][6] = 1905.02;  th0i[6][7] = 893.765;
-//   th0i[7][4] = 468.27;   th0i[7][5] = 183.636;  th0i[7][6] = 1914.1;   th0i[7][7] = 903.185;
-//   th0i[8][4] = 292.503;  th0i[8][5] = 910.237;  th0i[8][6] = 1919.37;  th0i[8][7] = 0;
-//   th0i[9][4] = 178.67;   th0i[9][5] = 840.538;  th0i[9][6] = 1774.25;  th0i[9][7] = 0;
-//   th0i[10][4] = 182.326; th0i[10][5] = 859.207; th0i[10][6] = 1826.59; th0i[10][7] = 0;
-//   th0i[11][4] = 169.789; th0i[11][5] = 836.195; th0i[11][6] = 1760.46; th0i[11][7] = 0;
-//   th0i[12][4] = 158.922; th0i[12][5] = 815.064; th0i[12][6] = 1693.07; th0i[12][7] = 0;
-//   th0i[13][4] = 156.854; th0i[13][5] = 814.882; th0i[13][6] = 1693.79; th0i[13][7] = 0;
-//   th0i[14][4] = 164.947; th0i[14][5] = 836.264; th0i[14][6] = 1750.24; th0i[14][7] = 0;
-//   th0i[15][4] = 228.734; th0i[15][5] = 326.843; th0i[15][6] = 1651.71; th0i[15][7] = 1671.69;
-//   th0i[16][4] = 2235.71; th0i[16][5] = 1116.69; th0i[16][6] = 0;       th0i[16][7] = 0;
-//   th0i[17][4] = 1550.45; th0i[17][5] = 704.525; th0i[17][6] = 0;       th0i[17][7] = 0;
-//   th0i[18][4] = 268.795; th0i[18][5] = 1141.41; th0i[18][6] = 2507.37; th0i[18][7] = 0;
-//   th0i[19][4] = 1833.63; th0i[19][5] = 847.181; th0i[19][6] = 0;       th0i[19][7] = 0;
-//   th0i[20][4] = 0;       th0i[20][5] = 0;       th0i[20][6] = 0;       th0i[20][7] = 0;
-//   th0i[21][4] = 0;       th0i[21][5] = 0;       th0i[21][6] = 0;       th0i[21][7] = 0;
+const EIJK: [[f64; MAXTRMM+1]; MAXMDL+1] = [
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, -0.3750000000000000, -0.7500000000000000, -1.500000000000000, -3.000000000000000, -3.000000000000000, -3.000000000000000, -3.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, -0.5000000000000000, -0.7500000000000000, -2.000000000000000, -3.000000000000000, -6.923472305982402e-310, -6.952861644092627e-310, -6.923472305939714e-310, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, -2.250000000000000, -3.000000000000000, -3.000000000000000, -3.000000000000000, -3.000000000000000, -6.952861644087884e-310, -6.952861644087686e-310, -4.940656458412465e-324, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, -1.500000000000000, -3.000000000000000, -4.940656458412465e-324, -6.923472053486596e-310, -6.923472321053578e-310, -4.229201928401070e-321, -6.923472056578063e-310, -6.923472306129435e-310, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, -0.5000000000000000, -0.7500000000000000, -2.000000000000000, -3.000000000000000, -3.586279664080114e-315, -4.669164244212619e-310, -5.603561627735270e-317, -6.952861644104089e-310, -6.952861644103299e-310, -6.952861644094208e-310, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, -0.3750000000000000, -6.952861644111599e-310, -6.923472327410621e-310, 0.000000000000000, -6.923472306210857e-310, -6.923472321162420e-310, -1.976262583364986e-323, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, -4.669164244414000e-310, -2.488544627194658e-314, -6.952861644103299e-310, -6.952861644104089e-310, -6.923472327453309e-310, 0.000000000000000, -6.923472305649006e-310, -6.923472305282014e-310, ],
+    [0.000000000000000, -6.923472322066017e-310, -6.923472054798241e-310, -6.923472306129435e-310, -6.923472305253556e-310, -6.923472235302556e-310, -6.952861644150729e-310, -6.923472323403255e-310, -6.923472305446489e-310, -2.964393875047479e-323, -6.923472305454344e-310, -4.669164249378569e-310, -6.952861644159424e-310, ],
+    [0.000000000000000, -4.940656458412465e-324, -6.952861644174839e-310, -6.952861644175630e-310, -6.923472322066017e-310, -4.940656458412465e-324, 0.000000000000000, -6.923472305253951e-310, -6.923472054798241e-310, -6.952861644157053e-310, -6.923472323403255e-310, -6.923472260419272e-310, -2.964393875047479e-323, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.0, -4.272557051947238e+180, ],
+];
 
-//   // Mixture parameters for reducing variables
-//   bvij[1][2] = 0.998721377;   gvij[1][2] = 1.013950311;   btij[1][2] = 0.99809883;    gtij[1][2] = 0.979273013;   // CH4-N2
-//   bvij[1][3] = 0.999518072;   gvij[1][3] = 1.002806594;   btij[1][3] = 1.02262449;    gtij[1][3] = 0.975665369;   // CH4-CO2
-//   bvij[1][4] = 0.997547866;   gvij[1][4] = 1.006617867;   btij[1][4] = 0.996336508;   gtij[1][4] = 1.049707697;   // CH4-C2H6
-//   bvij[1][5] = 1.00482707;    gvij[1][5] = 1.038470657;   btij[1][5] = 0.989680305;   gtij[1][5] = 1.098655531;   // CH4-C3H8
-//   bvij[1][6] = 1.011240388;   gvij[1][6] = 1.054319053;   btij[1][6] = 0.980315756;   gtij[1][6] = 1.161117729;   // CH4-i-C4H10
-//   bvij[1][7] = 0.979105972;   gvij[1][7] = 1.045375122;   btij[1][7] = 0.99417491;    gtij[1][7] = 1.171607691;   // CH4-C4H10
-//   bvij[1][8] = 1;             gvij[1][8] = 1.343685343;   btij[1][8] = 1;             gtij[1][8] = 1.188899743;   // CH4-i-C5H12
-//   bvij[1][9] = 0.94833012;    gvij[1][9] = 1.124508039;   btij[1][9] = 0.992127525;   gtij[1][9] = 1.249173968;   // CH4-C5H12
-//   bvij[1][10] = 0.958015294;  gvij[1][10] = 1.052643846;  btij[1][10] = 0.981844797;  gtij[1][10] = 1.330570181;  // CH4-C6H14
-//   bvij[1][11] = 0.962050831;  gvij[1][11] = 1.156655935;  btij[1][11] = 0.977431529;  gtij[1][11] = 1.379850328;  // CH4-C7H16
-//   bvij[1][12] = 0.994740603;  gvij[1][12] = 1.116549372;  btij[1][12] = 0.957473785;  gtij[1][12] = 1.449245409;  // CH4-C8H18
-//   bvij[1][13] = 1.002852287;  gvij[1][13] = 1.141895355;  btij[1][13] = 0.947716769;  gtij[1][13] = 1.528532478;  // CH4-C9H20
-//   bvij[1][14] = 1.033086292;  gvij[1][14] = 1.146089637;  btij[1][14] = 0.937777823;  gtij[1][14] = 1.568231489;  // CH4-C10H22
-//   bvij[1][15] = 1;            gvij[1][15] = 1.018702573;  btij[1][15] = 1;            gtij[1][15] = 1.352643115;  // CH4-H2
-//   bvij[1][16] = 1;            gvij[1][16] = 1;            btij[1][16] = 1;            gtij[1][16] = 0.95;         // CH4-O2
-//   bvij[1][17] = 0.997340772;  gvij[1][17] = 1.006102927;  btij[1][17] = 0.987411732;  gtij[1][17] = 0.987473033;  // CH4-CO
-//   bvij[1][18] = 1.012783169;  gvij[1][18] = 1.585018334;  btij[1][18] = 1.063333913;  gtij[1][18] = 0.775810513;  // CH4-H2O
-//   bvij[1][19] = 1.012599087;  gvij[1][19] = 1.040161207;  btij[1][19] = 1.011090031;  gtij[1][19] = 0.961155729;  // CH4-H2S
-//   bvij[1][20] = 1;            gvij[1][20] = 0.881405683;  btij[1][20] = 1;            gtij[1][20] = 3.159776855;  // CH4-He
-//   bvij[1][21] = 1.034630259;  gvij[1][21] = 1.014678542;  btij[1][21] = 0.990954281;  gtij[1][21] = 0.989843388;  // CH4-Ar
-//   bvij[2][3] = 0.977794634;   gvij[2][3] = 1.047578256;   btij[2][3] = 1.005894529;   gtij[2][3] = 1.107654104;   // N2-CO2
-//   bvij[2][4] = 0.978880168;   gvij[2][4] = 1.042352891;   btij[2][4] = 1.007671428;   gtij[2][4] = 1.098650964;   // N2-C2H6
-//   bvij[2][5] = 0.974424681;   gvij[2][5] = 1.081025408;   btij[2][5] = 1.002677329;   gtij[2][5] = 1.201264026;   // N2-C3H8
-//   bvij[2][6] = 0.98641583;    gvij[2][6] = 1.100576129;   btij[2][6] = 0.99286813;    gtij[2][6] = 1.284462634;   // N2-i-C4H10
-//   bvij[2][7] = 0.99608261;    gvij[2][7] = 1.146949309;   btij[2][7] = 0.994515234;   gtij[2][7] = 1.304886838;   // N2-C4H10
-//   bvij[2][8] = 1;             gvij[2][8] = 1.154135439;   btij[2][8] = 1;             gtij[2][8] = 1.38177077;    // N2-i-C5H12
-//   bvij[2][9] = 1;             gvij[2][9] = 1.078877166;   btij[2][9] = 1;             gtij[2][9] = 1.419029041;   // N2-C5H12
-//   bvij[2][10] = 1;            gvij[2][10] = 1.195952177;  btij[2][10] = 1;            gtij[2][10] = 1.472607971;  // N2-C6H14
-//   bvij[2][11] = 1;            gvij[2][11] = 1.40455409;   btij[2][11] = 1;            gtij[2][11] = 1.520975334;  // N2-C7H16
-//   bvij[2][12] = 1;            gvij[2][12] = 1.186067025;  btij[2][12] = 1;            gtij[2][12] = 1.733280051;  // N2-C8H18
-//   bvij[2][13] = 1;            gvij[2][13] = 1.100405929;  btij[2][13] = 0.95637945;   gtij[2][13] = 1.749119996;  // N2-C9H20
-//   bvij[2][14] = 1;            gvij[2][14] = 1;            btij[2][14] = 0.957934447;  gtij[2][14] = 1.822157123;  // N2-C10H22
-//   bvij[2][15] = 0.972532065;  gvij[2][15] = 0.970115357;  btij[2][15] = 0.946134337;  gtij[2][15] = 1.175696583;  // N2-H2
-//   bvij[2][16] = 0.99952177;   gvij[2][16] = 0.997082328;  btij[2][16] = 0.997190589;  gtij[2][16] = 0.995157044;  // N2-O2
-//   bvij[2][17] = 1;            gvij[2][17] = 1.008690943;  btij[2][17] = 1;            gtij[2][17] = 0.993425388;  // N2-CO
-//   bvij[2][18] = 1;            gvij[2][18] = 1.094749685;  btij[2][18] = 1;            gtij[2][18] = 0.968808467;  // N2-H2O
-//   bvij[2][19] = 0.910394249;  gvij[2][19] = 1.256844157;  btij[2][19] = 1.004692366;  gtij[2][19] = 0.9601742;    // N2-H2S
-//   bvij[2][20] = 0.969501055;  gvij[2][20] = 0.932629867;  btij[2][20] = 0.692868765;  gtij[2][20] = 1.47183158;   // N2-He
-//   bvij[2][21] = 1.004166412;  gvij[2][21] = 1.002212182;  btij[2][21] = 0.999069843;  gtij[2][21] = 0.990034831;  // N2-Ar
-//   bvij[3][4] = 1.002525718;   gvij[3][4] = 1.032876701;   btij[3][4] = 1.013871147;   gtij[3][4] = 0.90094953;    // CO2-C2H6
-//   bvij[3][5] = 0.996898004;   gvij[3][5] = 1.047596298;   btij[3][5] = 1.033620538;   gtij[3][5] = 0.908772477;   // CO2-C3H8
-//   bvij[3][6] = 1.076551882;   gvij[3][6] = 1.081909003;   btij[3][6] = 1.023339824;   gtij[3][6] = 0.929982936;   // CO2-i-C4H10
-//   bvij[3][7] = 1.174760923;   gvij[3][7] = 1.222437324;   btij[3][7] = 1.018171004;   gtij[3][7] = 0.911498231;   // CO2-C4H10
-//   bvij[3][8] = 1.060793104;   gvij[3][8] = 1.116793198;   btij[3][8] = 1.019180957;   gtij[3][8] = 0.961218039;   // CO2-i-C5H12
-//   bvij[3][9] = 1.024311498;   gvij[3][9] = 1.068406078;   btij[3][9] = 1.027000795;   gtij[3][9] = 0.979217302;   // CO2-C5H12
-//   bvij[3][10] = 1;            gvij[3][10] = 0.851343711;  btij[3][10] = 1;            gtij[3][10] = 1.038675574;  // CO2-C6H14
-//   bvij[3][11] = 1.205469976;  gvij[3][11] = 1.164585914;  btij[3][11] = 1.011806317;  gtij[3][11] = 1.046169823;  // CO2-C7H16
-//   bvij[3][12] = 1.026169373;  gvij[3][12] = 1.104043935;  btij[3][12] = 1.02969078;   gtij[3][12] = 1.074455386;  // CO2-C8H18
-//   bvij[3][13] = 1;            gvij[3][13] = 0.973386152;  btij[3][13] = 1.00768862;   gtij[3][13] = 1.140671202;  // CO2-C9H20
-//   bvij[3][14] = 1.000151132;  gvij[3][14] = 1.183394668;  btij[3][14] = 1.02002879;   gtij[3][14] = 1.145512213;  // CO2-C10H22
-//   bvij[3][15] = 0.904142159;  gvij[3][15] = 1.15279255;   btij[3][15] = 0.942320195;  gtij[3][15] = 1.782924792;  // CO2-H2
-//   bvij[3][16] = 1;            gvij[3][16] = 1;            btij[3][16] = 1;            gtij[3][16] = 1;            // CO2-O2
-//   bvij[3][17] = 1;            gvij[3][17] = 1;            btij[3][17] = 1;            gtij[3][17] = 1;            // CO2-CO
-//   bvij[3][18] = 0.949055959;  gvij[3][18] = 1.542328793;  btij[3][18] = 0.997372205;  gtij[3][18] = 0.775453996;  // CO2-H2O
-//   bvij[3][19] = 0.906630564;  gvij[3][19] = 1.024085837;  btij[3][19] = 1.016034583;  gtij[3][19] = 0.92601888;   // CO2-H2S
-//   bvij[3][20] = 0.846647561;  gvij[3][20] = 0.864141549;  btij[3][20] = 0.76837763;   gtij[3][20] = 3.207456948;  // CO2-He
-//   bvij[3][21] = 1.008392428;  gvij[3][21] = 1.029205465;  btij[3][21] = 0.996512863;  gtij[3][21] = 1.050971635;  // CO2-Ar
-//   bvij[4][5] = 0.997607277;   gvij[4][5] = 1.00303472;    btij[4][5] = 0.996199694;   gtij[4][5] = 1.01473019;    // C2H6-C3H8
-//   bvij[4][6] = 1;             gvij[4][6] = 1.006616886;   btij[4][6] = 1;             gtij[4][6] = 1.033283811;   // C2H6-i-C4H10
-//   bvij[4][7] = 0.999157205;   gvij[4][7] = 1.006179146;   btij[4][7] = 0.999130554;   gtij[4][7] = 1.034832749;   // C2H6-C4H10
-//   bvij[4][8] = 1;             gvij[4][8] = 1.045439935;   btij[4][8] = 1;             gtij[4][8] = 1.021150247;   // C2H6-i-C5H12
-//   bvij[4][9] = 0.993851009;   gvij[4][9] = 1.026085655;   btij[4][9] = 0.998688946;   gtij[4][9] = 1.066665676;   // C2H6-C5H12
-//   bvij[4][10] = 1;            gvij[4][10] = 1.169701102;  btij[4][10] = 1;            gtij[4][10] = 1.092177796;  // C2H6-C6H14
-//   bvij[4][11] = 1;            gvij[4][11] = 1.057666085;  btij[4][11] = 1;            gtij[4][11] = 1.134532014;  // C2H6-C7H16
-//   bvij[4][12] = 1.007469726;  gvij[4][12] = 1.071917985;  btij[4][12] = 0.984068272;  gtij[4][12] = 1.168636194;  // C2H6-C8H18
-//   bvij[4][13] = 1;            gvij[4][13] = 1.14353473;   btij[4][13] = 1;            gtij[4][13] = 1.05603303;   // C2H6-C9H20
-//   bvij[4][14] = 0.995676258;  gvij[4][14] = 1.098361281;  btij[4][14] = 0.970918061;  gtij[4][14] = 1.237191558;  // C2H6-C10H22
-//   bvij[4][15] = 0.925367171;  gvij[4][15] = 1.10607204;   btij[4][15] = 0.932969831;  gtij[4][15] = 1.902008495;  // C2H6-H2
-//   bvij[4][16] = 1;            gvij[4][16] = 1;            btij[4][16] = 1;            gtij[4][16] = 1;            // C2H6-O2
-//   bvij[4][17] = 1;            gvij[4][17] = 1.201417898;  btij[4][17] = 1;            gtij[4][17] = 1.069224728;  // C2H6-CO
-//   bvij[4][18] = 1;            gvij[4][18] = 1;            btij[4][18] = 1;            gtij[4][18] = 1;            // C2H6-H2O
-//   bvij[4][19] = 1.010817909;  gvij[4][19] = 1.030988277;  btij[4][19] = 0.990197354;  gtij[4][19] = 0.90273666;   // C2H6-H2S
-//   bvij[4][20] = 1;            gvij[4][20] = 1;            btij[4][20] = 1;            gtij[4][20] = 1;            // C2H6-He
-//   bvij[4][21] = 1;            gvij[4][21] = 1;            btij[4][21] = 1;            gtij[4][21] = 1;            // C2H6-Ar
-//   bvij[5][6] = 0.999243146;   gvij[5][6] = 1.001156119;   btij[5][6] = 0.998012298;   gtij[5][6] = 1.005250774;   // C3H8-i-C4H10
-//   bvij[5][7] = 0.999795868;   gvij[5][7] = 1.003264179;   btij[5][7] = 1.000310289;   gtij[5][7] = 1.007392782;   // C3H8-C4H10
-//   bvij[5][8] = 1.040459289;   gvij[5][8] = 0.999432118;   btij[5][8] = 0.994364425;   gtij[5][8] = 1.0032695;     // C3H8-i-C5H12
-//   bvij[5][9] = 1.044919431;   gvij[5][9] = 1.019921513;   btij[5][9] = 0.996484021;   gtij[5][9] = 1.008344412;   // C3H8-C5H12
-//   bvij[5][10] = 1;            gvij[5][10] = 1.057872566;  btij[5][10] = 1;            gtij[5][10] = 1.025657518;  // C3H8-C6H14
-//   bvij[5][11] = 1;            gvij[5][11] = 1.079648053;  btij[5][11] = 1;            gtij[5][11] = 1.050044169;  // C3H8-C7H16
-//   bvij[5][12] = 1;            gvij[5][12] = 1.102764612;  btij[5][12] = 1;            gtij[5][12] = 1.063694129;  // C3H8-C8H18
-//   bvij[5][13] = 1;            gvij[5][13] = 1.199769134;  btij[5][13] = 1;            gtij[5][13] = 1.109973833;  // C3H8-C9H20
-//   bvij[5][14] = 0.984104227;  gvij[5][14] = 1.053040574;  btij[5][14] = 0.985331233;  gtij[5][14] = 1.140905252;  // C3H8-C10H22
-//   bvij[5][15] = 1;            gvij[5][15] = 1.07400611;   btij[5][15] = 1;            gtij[5][15] = 2.308215191;  // C3H8-H2
-//   bvij[5][16] = 1;            gvij[5][16] = 1;            btij[5][16] = 1;            gtij[5][16] = 1;            // C3H8-O2
-//   bvij[5][17] = 1;            gvij[5][17] = 1.108143673;  btij[5][17] = 1;            gtij[5][17] = 1.197564208;  // C3H8-CO
-//   bvij[5][18] = 1;            gvij[5][18] = 1.011759763;  btij[5][18] = 1;            gtij[5][18] = 0.600340961;  // C3H8-H2O
-//   bvij[5][19] = 0.936811219;  gvij[5][19] = 1.010593999;  btij[5][19] = 0.992573556;  gtij[5][19] = 0.905829247;  // C3H8-H2S
-//   bvij[5][20] = 1;            gvij[5][20] = 1;            btij[5][20] = 1;            gtij[5][20] = 1;            // C3H8-He
-//   bvij[5][21] = 1;            gvij[5][21] = 1;            btij[5][21] = 1;            gtij[5][21] = 1;            // C3H8-Ar
+const BIJK: [[f64; MAXTRMM+1]; MAXMDL+1] = [
+    [0.000000000000000, 6.923472321800704e-310, 4.940656458412465e-324, 6.923472306129435e-310, 6.952861644061402e-310, 6.923472321800704e-310, 4.940656458412465e-324, 6.923472321002590e-310, 6.952861644062983e-310, 1.090896946017472e-320, 6.923472306129435e-310, 4.940656458412465e-324, 6.923472053753787e-310, ],
+    [6.923472321053578e-310, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.250000000000000, 1.500000000000000, 2.000000000000000, 3.000000000000000, 3.000000000000000, 3.000000000000000, 3.000000000000000, ],
+    [3.701125297565758e-317, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.7500000000000000, 1.000000000000000, 2.000000000000000, 3.000000000000000, 6.923472305982402e-310, 6.952861644092627e-310, 6.923472305939714e-310, ],
+    [6.923472321002590e-310, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, 2.500000000000000, 3.000000000000000, 3.000000000000000, 3.000000000000000, 3.000000000000000, 6.952861644087884e-310, 6.952861644087686e-310, 4.940656458412465e-324, ],
+    [6.923435667182394e-310, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 2.000000000000000, 3.000000000000000, 4.940656458412465e-324, 6.923472053486596e-310, 6.923472321053578e-310, 4.229201928401070e-321, 6.923472056578063e-310, 6.923472306129435e-310, ],
+    [6.952861644094208e-310, 0.000000000000000, 0.000000000000000, 0.7500000000000000, 1.000000000000000, 2.000000000000000, 3.000000000000000, 3.586279664080114e-315, 4.669164244212619e-310, 5.603561627735270e-317, 6.952861644104089e-310, 6.952861644103299e-310, 6.952861644094208e-310, ],
+    [6.923472306205719e-310, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, 1.250000000000000, 6.952861644111599e-310, 6.923472327410621e-310, 0.000000000000000, 6.923472306210857e-310, 6.923472321162420e-310, 1.976262583364986e-323, ],
+    [6.923472306210857e-310, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 4.669164244414000e-310, 2.488544627194658e-314, 6.952861644103299e-310, 6.952861644104089e-310, 6.923472327453309e-310, 0.000000000000000, 6.923472305649006e-310, 6.923472305282014e-310, ],
+    [2.121995790471207e-314, 6.923472322066017e-310, 6.923472054798241e-310, 6.923472306129435e-310, 6.923472305253556e-310, 6.923472235302556e-310, 6.952861644150729e-310, 6.923472323403255e-310, 6.923472305446489e-310, 2.964393875047479e-323, 6.923472305454344e-310, 4.669164249378569e-310, 6.952861644159424e-310, ],
+    [4.669164249344973e-310, 4.940656458412465e-324, 6.952861644174839e-310, 6.952861644175630e-310, 6.923472322066017e-310, 4.940656458412465e-324, 0.000000000000000, 6.923472305253951e-310, 6.923472054798241e-310, 6.952861644157053e-310, 6.923472323403255e-310, 6.923472260419272e-310, 2.964393875047479e-323, ],
+    [4.669164249384103e-310, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.0, 4.272557051947238e+180, ],
+];
 
-//   // The beta values for isobutane+butane are the reciprocal values of those in the GERG-2008 publication because the order was reversed in this work.
-//   bvij[6][7] = 0.999120311;   gvij[6][7] = 1.00041444;    btij[6][7] = 0.999922459;   gtij[6][7] = 1.001432824;   // C4H10-i-C4H10
+const GIJK: [[f64; MAXTRMM+1]; MAXMDL+1] = [
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.2500000000000000, 0.2500000000000000, 0.2500000000000000, 0.4062500000000000, 0.5625000000000000, 0.8750000000000000, 1.500000000000000, 1.500000000000000, 1.500000000000000, 1.500000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.3125000000000000, 0.4375000000000000, 1.000000000000000, 1.500000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.2500000000000000, 0.2500000000000000, 1.187500000000000, 1.500000000000000, 1.500000000000000, 1.500000000000000, 1.500000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.2500000000000000, 0.8750000000000000, 1.500000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.3125000000000000, 0.4375000000000000, 1.000000000000000, 1.500000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.2500000000000000, 0.2500000000000000, 0.4062500000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.0, 0.000000000000000, ],
+];
 
-//   bvij[6][8] = 1;             gvij[6][8] = 1.002284353;   btij[6][8] = 1;             gtij[6][8] = 1.001835788;   // i-C4H10-i-C5H1
-//   bvij[6][9] = 1;             gvij[6][9] = 1.002779804;   btij[6][9] = 1;             gtij[6][9] = 1.002495889;   // i-C4H10-C5H12
-//   bvij[6][10] = 1;            gvij[6][10] = 1.010493989;  btij[6][10] = 1;            gtij[6][10] = 1.006018054;  // i-C4H10-C6H14
-//   bvij[6][11] = 1;            gvij[6][11] = 1.021668316;  btij[6][11] = 1;            gtij[6][11] = 1.00988576;   // i-C4H10-C7H16
-//   bvij[6][12] = 1;            gvij[6][12] = 1.032807063;  btij[6][12] = 1;            gtij[6][12] = 1.013945424;  // i-C4H10-C8H18
-//   bvij[6][13] = 1;            gvij[6][13] = 1.047298475;  btij[6][13] = 1;            gtij[6][13] = 1.017817492;  // i-C4H10-C9H20
-//   bvij[6][14] = 1;            gvij[6][14] = 1.060243344;  btij[6][14] = 1;            gtij[6][14] = 1.021624748;  // i-C4H10-C10H22
-//   bvij[6][15] = 1;            gvij[6][15] = 1.147595688;  btij[6][15] = 1;            gtij[6][15] = 1.895305393;  // i-C4H10-H2
-//   bvij[6][16] = 1;            gvij[6][16] = 1;            btij[6][16] = 1;            gtij[6][16] = 1;            // i-C4H10-O2
-//   bvij[6][17] = 1;            gvij[6][17] = 1.087272232;  btij[6][17] = 1;            gtij[6][17] = 1.161390082;  // i-C4H10-CO
-//   bvij[6][18] = 1;            gvij[6][18] = 1;            btij[6][18] = 1;            gtij[6][18] = 1;            // i-C4H10-H2O
-//   bvij[6][19] = 1.012994431;  gvij[6][19] = 0.988591117;  btij[6][19] = 0.974550548;  gtij[6][19] = 0.937130844;  // i-C4H10-H2S
-//   bvij[6][20] = 1;            gvij[6][20] = 1;            btij[6][20] = 1;            gtij[6][20] = 1;            // i-C4H10-He
-//   bvij[6][21] = 1;            gvij[6][21] = 1;            btij[6][21] = 1;            gtij[6][21] = 1;            // i-C4H10-Ar
-//   bvij[7][8] = 1;             gvij[7][8] = 1.002728434;   btij[7][8] = 1;             gtij[7][8] = 1.000792201;   // C4H10-i-C5H12
-//   bvij[7][9] = 1;             gvij[7][9] = 1.01815965;    btij[7][9] = 1;             gtij[7][9] = 1.00214364;    // C4H10-C5H12
-//   bvij[7][10] = 1;            gvij[7][10] = 1.034995284;  btij[7][10] = 1;            gtij[7][10] = 1.00915706;   // C4H10-C6H14
-//   bvij[7][11] = 1;            gvij[7][11] = 1.019174227;  btij[7][11] = 1;            gtij[7][11] = 1.021283378;  // C4H10-C7H16
-//   bvij[7][12] = 1;            gvij[7][12] = 1.046905515;  btij[7][12] = 1;            gtij[7][12] = 1.033180106;  // C4H10-C8H18
-//   bvij[7][13] = 1;            gvij[7][13] = 1.049219137;  btij[7][13] = 1;            gtij[7][13] = 1.014096448;  // C4H10-C9H20
-//   bvij[7][14] = 0.976951968;  gvij[7][14] = 1.027845529;  btij[7][14] = 0.993688386;  gtij[7][14] = 1.076466918;  // C4H10-C10H22
-//   bvij[7][15] = 1;            gvij[7][15] = 1.232939523;  btij[7][15] = 1;            gtij[7][15] = 2.509259945;  // C4H10-H2
-//   bvij[7][16] = 1;            gvij[7][16] = 1;            btij[7][16] = 1;            gtij[7][16] = 1;            // C4H10-O2
-//   bvij[7][17] = 1;            gvij[7][17] = 1.084740904;  btij[7][17] = 1;            gtij[7][17] = 1.173916162;  // C4H10-CO
-//   bvij[7][18] = 1;            gvij[7][18] = 1.223638763;  btij[7][18] = 1;            gtij[7][18] = 0.615512682;  // C4H10-H2O
-//   bvij[7][19] = 0.908113163;  gvij[7][19] = 1.033366041;  btij[7][19] = 0.985962886;  gtij[7][19] = 0.926156602;  // C4H10-H2S
-//   bvij[7][20] = 1;            gvij[7][20] = 1;            btij[7][20] = 1;            gtij[7][20] = 1;            // C4H10-He
-//   bvij[7][21] = 1;            gvij[7][21] = 1.214638734;  btij[7][21] = 1;            gtij[7][21] = 1.245039498;  // C4H10-Ar
-//   bvij[8][9] = 1;             gvij[8][9] = 1.000024335;   btij[8][9] = 1;             gtij[8][9] = 1.000050537;   // C5H12-i-C5H12
-//   bvij[8][10] = 1;            gvij[8][10] = 1.002995876;  btij[8][10] = 1;            gtij[8][10] = 1.001204174;  // i-C5H12-C6H14
-//   bvij[8][11] = 1;            gvij[8][11] = 1.009928206;  btij[8][11] = 1;            gtij[8][11] = 1.003194615;  // i-C5H12-C7H16
-//   bvij[8][12] = 1;            gvij[8][12] = 1.017880545;  btij[8][12] = 1;            gtij[8][12] = 1.00564748;   // i-C5H12-C8H18
-//   bvij[8][13] = 1;            gvij[8][13] = 1.028994325;  btij[8][13] = 1;            gtij[8][13] = 1.008191499;  // i-C5H12-C9H20
-//   bvij[8][14] = 1;            gvij[8][14] = 1.039372957;  btij[8][14] = 1;            gtij[8][14] = 1.010825138;  // i-C5H12-C10H22
-//   bvij[8][15] = 1;            gvij[8][15] = 1.184340443;  btij[8][15] = 1;            gtij[8][15] = 1.996386669;  // i-C5H12-H2
-//   bvij[8][16] = 1;            gvij[8][16] = 1;            btij[8][16] = 1;            gtij[8][16] = 1;            // i-C5H12-O2
-//   bvij[8][17] = 1;            gvij[8][17] = 1.116694577;  btij[8][17] = 1;            gtij[8][17] = 1.199326059;  // i-C5H12-CO
-//   bvij[8][18] = 1;            gvij[8][18] = 1;            btij[8][18] = 1;            gtij[8][18] = 1;            // i-C5H12-H2O
-//   bvij[8][19] = 1;            gvij[8][19] = 0.835763343;  btij[8][19] = 1;            gtij[8][19] = 0.982651529;  // i-C5H12-H2S
-//   bvij[8][20] = 1;            gvij[8][20] = 1;            btij[8][20] = 1;            gtij[8][20] = 1;            // i-C5H12-He
-//   bvij[8][21] = 1;            gvij[8][21] = 1;            btij[8][21] = 1;            gtij[8][21] = 1;            // i-C5H12-Ar
-//   bvij[9][10] = 1;            gvij[9][10] = 1.002480637;  btij[9][10] = 1;            gtij[9][10] = 1.000761237;  // C5H12-C6H14
-//   bvij[9][11] = 1;            gvij[9][11] = 1.008972412;  btij[9][11] = 1;            gtij[9][11] = 1.002441051;  // C5H12-C7H16
-//   bvij[9][12] = 1;            gvij[9][12] = 1.069223964;  btij[9][12] = 1;            gtij[9][12] = 1.016422347;  // C5H12-C8H18
-//   bvij[9][13] = 1;            gvij[9][13] = 1.034910633;  btij[9][13] = 1;            gtij[9][13] = 1.103421755;  // C5H12-C9H20
-//   bvij[9][14] = 1;            gvij[9][14] = 1.016370338;  btij[9][14] = 1;            gtij[9][14] = 1.049035838;  // C5H12-C10H22
-//   bvij[9][15] = 1;            gvij[9][15] = 1.188334783;  btij[9][15] = 1;            gtij[9][15] = 2.013859174;  // C5H12-H2
-//   bvij[9][16] = 1;            gvij[9][16] = 1;            btij[9][16] = 1;            gtij[9][16] = 1;            // C5H12-O2
-//   bvij[9][17] = 1;            gvij[9][17] = 1.119954454;  btij[9][17] = 1;            gtij[9][17] = 1.206043295;  // C5H12-CO
-//   bvij[9][18] = 1;            gvij[9][18] = 0.95667731;   btij[9][18] = 1;            gtij[9][18] = 0.447666011;  // C5H12-H2O
-//   bvij[9][19] = 0.984613203;  gvij[9][19] = 1.076539234;  btij[9][19] = 0.962006651;  gtij[9][19] = 0.959065662;  // C5H12-H2S
-//   bvij[9][20] = 1;            gvij[9][20] = 1;            btij[9][20] = 1;            gtij[9][20] = 1;            // C5H12-He
-//   bvij[9][21] = 1;            gvij[9][21] = 1;            btij[9][21] = 1;            gtij[9][21] = 1;            // C5H12-Ar
-//   bvij[10][11] = 1;           gvij[10][11] = 1.001508227; btij[10][11] = 1;           gtij[10][11] = 0.999762786; // C6H14-C7H16
-//   bvij[10][12] = 1;           gvij[10][12] = 1.006268954; btij[10][12] = 1;           gtij[10][12] = 1.001633952; // C6H14-C8H18
-//   bvij[10][13] = 1;           gvij[10][13] = 1.02076168;  btij[10][13] = 1;           gtij[10][13] = 1.055369591; // C6H14-C9H20
-//   bvij[10][14] = 1.001516371; gvij[10][14] = 1.013511439; btij[10][14] = 0.99764101;  gtij[10][14] = 1.028939539; // C6H14-C10H22
-//   bvij[10][15] = 1;           gvij[10][15] = 1.243461678; btij[10][15] = 1;           gtij[10][15] = 3.021197546; // C6H14-H2
-//   bvij[10][16] = 1;           gvij[10][16] = 1;           btij[10][16] = 1;           gtij[10][16] = 1;           // C6H14-O2
-//   bvij[10][17] = 1;           gvij[10][17] = 1.155145836; btij[10][17] = 1;           gtij[10][17] = 1.233272781; // C6H14-CO
-//   bvij[10][18] = 1;           gvij[10][18] = 1.170217596; btij[10][18] = 1;           gtij[10][18] = 0.569681333; // C6H14-H2O
-//   bvij[10][19] = 0.754473958; gvij[10][19] = 1.339283552; btij[10][19] = 0.985891113; gtij[10][19] = 0.956075596; // C6H14-H2S
-//   bvij[10][20] = 1;           gvij[10][20] = 1;           btij[10][20] = 1;           gtij[10][20] = 1;           // C6H14-He
-//   bvij[10][21] = 1;           gvij[10][21] = 1;           btij[10][21] = 1;           gtij[10][21] = 1;           // C6H14-Ar
-//   bvij[11][12] = 1;           gvij[11][12] = 1.006767176; btij[11][12] = 1;           gtij[11][12] = 0.998793111; // C7H16-C8H18
-//   bvij[11][13] = 1;           gvij[11][13] = 1.001370076; btij[11][13] = 1;           gtij[11][13] = 1.001150096; // C7H16-C9H20
-//   bvij[11][14] = 1;           gvij[11][14] = 1.002972346; btij[11][14] = 1;           gtij[11][14] = 1.002229938; // C7H16-C10H22
-//   bvij[11][15] = 1;           gvij[11][15] = 1.159131722; btij[11][15] = 1;           gtij[11][15] = 3.169143057; // C7H16-H2
-//   bvij[11][16] = 1;           gvij[11][16] = 1;           btij[11][16] = 1;           gtij[11][16] = 1;           // C7H16-O2
-//   bvij[11][17] = 1;           gvij[11][17] = 1.190354273; btij[11][17] = 1;           gtij[11][17] = 1.256123503; // C7H16-CO
-//   bvij[11][18] = 1;           gvij[11][18] = 1;           btij[11][18] = 1;           gtij[11][18] = 1;           // C7H16-H2O
-//   bvij[11][19] = 0.828967164; gvij[11][19] = 1.087956749; btij[11][19] = 0.988937417; gtij[11][19] = 1.013453092; // C7H16-H2S
-//   bvij[11][20] = 1;           gvij[11][20] = 1;           btij[11][20] = 1;           gtij[11][20] = 1;           // C7H16-He
-//   bvij[11][21] = 1;           gvij[11][21] = 1;           btij[11][21] = 1;           gtij[11][21] = 1;           // C7H16-Ar
-//   bvij[12][13] = 1;           gvij[12][13] = 1.001357085; btij[12][13] = 1;           gtij[12][13] = 1.000235044; // C8H18-C9H20
-//   bvij[12][14] = 1;           gvij[12][14] = 1.002553544; btij[12][14] = 1;           gtij[12][14] = 1.007186267; // C8H18-C10H22
-//   bvij[12][15] = 1;           gvij[12][15] = 1.305249405; btij[12][15] = 1;           gtij[12][15] = 2.191555216; // C8H18-H2
-//   bvij[12][16] = 1;           gvij[12][16] = 1;           btij[12][16] = 1;           gtij[12][16] = 1;           // C8H18-O2
-//   bvij[12][17] = 1;           gvij[12][17] = 1.219206702; btij[12][17] = 1;           gtij[12][17] = 1.276565536; // C8H18-CO
-//   bvij[12][18] = 1;           gvij[12][18] = 0.599484191; btij[12][18] = 1;           gtij[12][18] = 0.662072469; // C8H18-H2O
-//   bvij[12][19] = 1;           gvij[12][19] = 1;           btij[12][19] = 1;           gtij[12][19] = 1;           // C8H18-H2S
-//   bvij[12][20] = 1;           gvij[12][20] = 1;           btij[12][20] = 1;           gtij[12][20] = 1;           // C8H18-He
-//   bvij[12][21] = 1;           gvij[12][21] = 1;           btij[12][21] = 1;           gtij[12][21] = 1;           // C8H18-Ar
-//   bvij[13][14] = 1;           gvij[13][14] = 1.00081052;  btij[13][14] = 1;           gtij[13][14] = 1.000182392; // C9H20-C10H22
-//   bvij[13][15] = 1;           gvij[13][15] = 1.342647661; btij[13][15] = 1;           gtij[13][15] = 2.23435404;  // C9H20-H2
-//   bvij[13][16] = 1;           gvij[13][16] = 1;           btij[13][16] = 1;           gtij[13][16] = 1;           // C9H20-O2
-//   bvij[13][17] = 1;           gvij[13][17] = 1.252151449; btij[13][17] = 1;           gtij[13][17] = 1.294070556; // C9H20-CO
-//   bvij[13][18] = 1;           gvij[13][18] = 1;           btij[13][18] = 1;           gtij[13][18] = 1;           // C9H20-H2O
-//   bvij[13][19] = 1;           gvij[13][19] = 1.082905109; btij[13][19] = 1;           gtij[13][19] = 1.086557826; // C9H20-H2S
-//   bvij[13][20] = 1;           gvij[13][20] = 1;           btij[13][20] = 1;           gtij[13][20] = 1;           // C9H20-He
-//   bvij[13][21] = 1;           gvij[13][21] = 1;           btij[13][21] = 1;           gtij[13][21] = 1;           // C9H20-Ar
-//   bvij[14][15] = 1.695358382; gvij[14][15] = 1.120233729; btij[14][15] = 1.064818089; gtij[14][15] = 3.786003724; // C10H22-H2
-//   bvij[14][16] = 1;           gvij[14][16] = 1;           btij[14][16] = 1;           gtij[14][16] = 1;           // C10H22-O2
-//   bvij[14][17] = 1;           gvij[14][17] = 0.87018496;  btij[14][17] = 1.049594632; gtij[14][17] = 1.803567587; // C10H22-CO
-//   bvij[14][18] = 1;           gvij[14][18] = 0.551405318; btij[14][18] = 0.897162268; gtij[14][18] = 0.740416402; // C10H22-H2O
-//   bvij[14][19] = 0.975187766; gvij[14][19] = 1.171714677; btij[14][19] = 0.973091413; gtij[14][19] = 1.103693489; // C10H22-H2S
-//   bvij[14][20] = 1;           gvij[14][20] = 1;           btij[14][20] = 1;           gtij[14][20] = 1;           // C10H22-He
-//   bvij[14][21] = 1;           gvij[14][21] = 1;           btij[14][21] = 1;           gtij[14][21] = 1;           // C10H22-Ar
-//   bvij[15][16] = 1;           gvij[15][16] = 1;           btij[15][16] = 1;           gtij[15][16] = 1;           // H2-O2
-//   bvij[15][17] = 1;           gvij[15][17] = 1.121416201; btij[15][17] = 1;           gtij[15][17] = 1.377504607; // H2-CO
-//   bvij[15][18] = 1;           gvij[15][18] = 1;           btij[15][18] = 1;           gtij[15][18] = 1;           // H2-H2O
-//   bvij[15][19] = 1;           gvij[15][19] = 1;           btij[15][19] = 1;           gtij[15][19] = 1;           // H2-H2S
-//   bvij[15][20] = 1;           gvij[15][20] = 1;           btij[15][20] = 1;           gtij[15][20] = 1;           // H2-He
-//   bvij[15][21] = 1;           gvij[15][21] = 1;           btij[15][21] = 1;           gtij[15][21] = 1;           // H2-Ar
-//   bvij[16][17] = 1;           gvij[16][17] = 1;           btij[16][17] = 1;           gtij[16][17] = 1;           // O2-CO
-//   bvij[16][18] = 1;           gvij[16][18] = 1.143174289; btij[16][18] = 1;           gtij[16][18] = 0.964767932; // O2-H2O
-//   bvij[16][19] = 1;           gvij[16][19] = 1;           btij[16][19] = 1;           gtij[16][19] = 1;           // O2-H2S
-//   bvij[16][20] = 1;           gvij[16][20] = 1;           btij[16][20] = 1;           gtij[16][20] = 1;           // O2-He
-//   bvij[16][21] = 0.999746847; gvij[16][21] = 0.993907223; btij[16][21] = 1.000023103; gtij[16][21] = 0.990430423; // O2-Ar
-//   bvij[17][18] = 1;           gvij[17][18] = 1;           btij[17][18] = 1;           gtij[17][18] = 1;           // CO-H2O
-//   bvij[17][19] = 0.795660392; gvij[17][19] = 1.101731308; btij[17][19] = 1.025536736; gtij[17][19] = 1.022749748; // CO-H2S
-//   bvij[17][20] = 1;           gvij[17][20] = 1;           btij[17][20] = 1;           gtij[17][20] = 1;           // CO-He
-//   bvij[17][21] = 1;           gvij[17][21] = 1.159720623; btij[17][21] = 1;           gtij[17][21] = 0.954215746; // CO-Ar
-//   bvij[18][19] = 1;           gvij[18][19] = 1.014832832; btij[18][19] = 1;           gtij[18][19] = 0.940587083; // H2O-H2S
-//   bvij[18][20] = 1;           gvij[18][20] = 1;           btij[18][20] = 1;           gtij[18][20] = 1;           // H2O-He
-//   bvij[18][21] = 1;           gvij[18][21] = 1.038993495; btij[18][21] = 1;           gtij[18][21] = 1.070941866; // H2O-Ar
-//   bvij[19][20] = 1;           gvij[19][20] = 1;           btij[19][20] = 1;           gtij[19][20] = 1;           // H2S-He
-//   bvij[19][21] = 1;           gvij[19][21] = 1;           btij[19][21] = 1;           gtij[19][21] = 1;           // H2S-Ar
-//   bvij[20][21] = 1;           gvij[20][21] = 1;           btij[20][21] = 1;           gtij[20][21] = 1;           // He-Ar
+const NIJK: [[f64; MAXTRMM+1]; MAXMDL+1] = [
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, -0.0008092605029874600, -0.0007538192508005900, -0.04161876889121900, -0.2345217368156900, 0.1400384058458600, 0.06328174480773800, -0.03466042584880900, -0.2391874733425100, 0.001985525506689100, 6.177774617155500, -6.957535827110500, 1.063018530638800, ],
+    [0.000000000000000, 0.01374642995857600, -0.007442501212955200, -0.004551660021368500, -0.005454660335023700, 0.002368201682447100, 0.1800776372143800, -0.4477394293248600, 0.01932737488820000, -0.3063219780462400, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, -0.009803898551733499, 0.0004248727014300500, -0.03480021457614200, -0.1333381301389600, -0.01199369497462700, 0.06924337977516801, -0.3102250814824900, 0.2449549175322600, 0.2236981671698100, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, -0.1085938735494200, 0.08022857672738901, -0.009330398511571700, 0.04098927400584800, -0.2433801977249400, 0.2385534728112400, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.2866162502839900, -0.1091983386124700, -1.137403208227000, 0.7658054423735799, 0.004263800092681900, 0.1767353820453400, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, -0.4737651812660800, 0.4896119346100100, -0.005701106209053500, -0.1996682004132000, -0.6941110310172300, 0.6922619273902100, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, -0.2515713497193400, -0.006220384111198300, 0.08885031518439600, -0.03559221257323900, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 2.557477684411800, -7.984635713635300, 4.785913146580600, -0.7326539236958700, 1.380547134531200, 0.2834960347636500, -0.4908738594042500, -0.1029188892144700, 0.1183631468196800, 5.552738572194300e-05, 0.000000000000000, 0.000000000000000, ],
+];
 
-//   for(int i = 1; i <= MaxFlds; ++i){
-//     bvij[i][i] = 1;
-//     btij[i][i] = 1;
-//     gvij[i][i] = 1 / Dc[i];
-//     gtij[i][i] = Tc[i];
-//     for (int j = i + 1; j <= MaxFlds; ++j){
-//       gvij[i][j] = gvij[i][j] * bvij[i][j] * pow(Vc3[i] + Vc3[j], 3);
-//       gtij[i][j] = gtij[i][j] * btij[i][j] * Tc2[i] * Tc2[j];
-//       bvij[i][j] = pow(bvij[i][j], 2);
-//       btij[i][j] = pow(btij[i][j], 2);
-//     }
-//   }
+const FIJ: [[f64; MAXFLDS+1]; MAXFLDS+1] = [
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 0.7710354056880000, 1.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 1.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 1.000000000000000, 1.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 1.000000000000000, 1.000000000000000, 0.000000000000000, 0.000000000000000, 0.1304247651500000, 0.2606323760980000, 0.2815700730850000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 1.000000000000000, 0.000000000000000, 0.000000000000000, 0.1304247651500000, 0.000000000000000, -0.05516097710240000, 0.03125726004890000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.7710354056880000, 0.000000000000000, 0.000000000000000, 0.2606323760980000, -0.05516097710240000, 0.000000000000000, -0.05512402930090000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 1.000000000000000, 0.000000000000000, 0.000000000000000, 0.2815700730850000, 0.03125726004890000, -0.05512402930090000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 1.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+];
 
-//   for (int i = 1; i <= MaxMdl; ++i){
-//     for (int j = 1; j <= MaxTrmM; ++j){
-//       gijk[i][j] = -cijk[i][j] * pow(eijk[i][j], 2) + bijk[i][j] * gijk[i][j];
-//       eijk[i][j] = 2 * cijk[i][j] * eijk[i][j] - bijk[i][j];
-//       cijk[i][j] = -cijk[i][j];
-//     }
-//   }
+const MNUMB: [[usize; MAXFLDS+1]; MAXFLDS+1] = [
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 3, 4, 1, 2, 10, 10, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 10, 10, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 10, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
+];
 
-//   // Ideal gas terms
-//   T0 = 298.15;
-//   d0 = 101.325 / RGERG / T0;
-//   for (int i = 1; i <= MaxFlds; ++i){
-//     n0i[i][3] = n0i[i][3] - 1;
-//     n0i[i][2] = n0i[i][2] + T0;
-//     for (int j = 1; j <= 7; ++j){
-//       n0i[i][j] = Rsr * n0i[i][j];
-//     }
-//     n0i[i][2] = n0i[i][2] - T0;
-//     n0i[i][1] = n0i[i][1] - log(d0);
-//   }
-//   return;
+const N0I: [[f64; 7+1]; MAXFLDS+1] = [
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 33.03583149590175, -15999.76327145128, 3.000893715054907, 0.7631534878582789, 0.004600021023583939, 8.744359964553372, -4.469230425828604, ],
+    [0.000000000000000, 20.76504929445815, -2801.740514218428, 2.500321427277643, 0.1373206275996840, -0.1466006700124795, 0.9006641163263284, 0.000000000000000, ],
+    [0.000000000000000, 23.85580253020013, -4902.192557963652, 2.500031425952244, 2.044529344160399, -1.060444846575946, 2.033669294526459, 0.01393006366489658, ],
+    [0.000000000000000, 39.92748840300290, -23639.75968870604, 3.002643723053009, 4.339409832506502, 1.237225654521418, 13.19746031666232, -6.019917512970157, ],
+    [0.000000000000000, 47.90656167994857, -31236.77690953197, 3.029403845355424, 6.605720190277867, 3.197014611390838, 19.19218771450550, -8.372708265984899, ],
+    [0.000000000000000, 37.49922141503735, -38525.67747216512, 3.067154017885922, 8.975791022268160, 5.251584001437493, 25.14241490896836, 16.13887375987315, ],
+    [0.000000000000000, 39.72980594953015, -38957.98601795499, 3.339455262390684, 9.448973184863693, 6.894091508228063, 24.46191179884904, 14.78246756065809, ],
+    [0.000000000000000, 46.36964472574098, -51198.54209125541, 3.000013711033004, 11.76185375547599, 20.11019191008160, 33.16895159283716, 0.000000000000000, ],
+    [0.000000000000000, 45.87582709883470, -45216.03528926431, 3.000013711033004, 8.950470906547043, 21.83609979803889, 33.40335266412588, 0.000000000000000, ],
+    [0.000000000000000, 50.19464782724235, -52747.07288854202, 3.000013711033004, 11.69775346251692, 26.81432255012706, 38.61657649024496, 0.000000000000000, ],
+    [0.000000000000000, 55.27381547068131, -57105.07018599926, 3.000013711033004, 13.72666273528854, 30.47083926159112, 43.55629906637487, 0.000000000000000, ],
+    [0.000000000000000, 60.45583218417379, -60547.03920691097, 3.000013711033004, 15.68657169270640, 33.80305449089251, 48.17332016765466, 0.000000000000000, ],
+    [0.000000000000000, 65.29401396622944, -66600.43139287122, 3.000013711033004, 18.02418237634332, 38.12367423752224, 53.34174378902232, 0.000000000000000, ],
+    [0.000000000000000, 69.13665405833756, -74131.79227362643, 3.000013711033004, 21.00699600876640, 43.49329877844318, 58.36596675134632, 0.000000000000000, ],
+    [0.000000000000000, 16.27252379216351, -5836.969010194389, 1.479066759813491, 0.9580643786640932, 0.4544420769472794, 1.560397131519596, -1.375606286965666, ],
+    [0.000000000000000, 19.99905524361758, -2318.331922884809, 2.501471432533539, 1.075584915770959, 1.013344631312728, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 20.65520993245674, -2635.254797324852, 2.500561428374526, 1.028654701284700, 0.004930022531797570, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 24.77618682665406, -7766.767211996358, 3.003933728948753, 0.01059004839994650, 0.9876345138091751, 3.069054026569577, 0.000000000000000, ],
+    [0.000000000000000, 24.78045419615732, -6069.062243935537, 3.000013711033004, 3.119434256823524, 1.002434581450271, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 13.24370213946889, -745.3770439722450, 1.500006855516502, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 13.24370213946889, -745.3770439722450, 1.500006855516502, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+];
 
-//   // Code to produce nearly exact values for n0(1) and n0(2)
-//   // This is not called in the current code, but included below to show how the values were calculated.  The return above can be removed to call this code.
-//   // T0 = 298.15;
-//   // d0 = 101.325 / RGERG / T0;
-//   // for (int i = 1; i <= MaxFlds; ++i){
-//   //   n1 = 0; n2 = 0;
-//   //   if (th0i[i][4] > epsilon) { n2 += - n0i[i][4] * th0i[i][4] / Tanh(th0i[i][4] / T0); n1 += - n0i[i][4] * log(Sinh(th0i[i][4] / T0)); }
-//   //   if (th0i[i][5] > epsilon) { n2 += + n0i[i][5] * th0i[i][5] * Tanh(th0i[i][5] / T0); n1 += + n0i[i][5] * log(Cosh(th0i[i][5] / T0)); }
-//   //   if (th0i[i][6] > epsilon) { n2 += - n0i[i][6] * th0i[i][6] / Tanh(th0i[i][6] / T0); n1 += - n0i[i][6] * log(Sinh(th0i[i][6] / T0)); }
-//   //   if (th0i[i][7] > epsilon) { n2 += + n0i[i][7] * th0i[i][7] * Tanh(th0i[i][7] / T0); n1 += + n0i[i][7] * log(Cosh(th0i[i][7] / T0)); }
-//   //   n0i[i][3] = n0i[i][3] - 1;
-//   //   n0i[i][1] = n1 - n2 / T0 + n0i[i][3] * (1 + log(T0));
-//   //   n0i[i][2] = n2 - n0i[i][3] * T0;
-//   //   for (int j = 1; j <= 7; ++j){
-//   //     n0i[i][j] = Rsr * n0i[i][j];
-//   //   }
-//   //   n0i[i][2] = n0i[i][2] - T0;
-//   //   n0i[i][1] = n0i[i][1] - log(d0);
-//   // }
-// }
+const TH0I: [[f64; 7+1]; MAXFLDS+1] = [
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 820.6590000000000, 178.4100000000000, 1062.820000000000, 1090.530000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 662.7380000000001, 680.5620000000000, 1740.060000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 919.3060000000000, 865.0700000000001, 483.5530000000000, 341.1090000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 559.3140000000000, 223.2840000000000, 1031.380000000000, 1071.290000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 479.8560000000000, 200.8930000000000, 955.3120000000000, 1027.290000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 438.2700000000000, 198.0180000000000, 1905.020000000000, 893.7650000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 468.2700000000000, 183.6360000000000, 1914.100000000000, 903.1849999999999, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 292.5030000000000, 910.2370000000000, 1919.370000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 178.6700000000000, 840.5380000000000, 1774.250000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 182.3260000000000, 859.2070000000000, 1826.590000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 169.7890000000000, 836.1950000000001, 1760.460000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 158.9220000000000, 815.0640000000000, 1693.070000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 156.8540000000000, 814.8819999999999, 1693.790000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 164.9470000000000, 836.2640000000000, 1750.240000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 228.7340000000000, 326.8430000000000, 1651.710000000000, 1671.690000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 2235.710000000000, 1116.690000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1550.450000000000, 704.5250000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 268.7950000000000, 1141.410000000000, 2507.370000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1833.630000000000, 847.1810000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+];
+
+const BVIJ: [[f64; MAXFLDS+1]; MAXFLDS+1] = [
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 1.000000000000000, 0.9974443888767761, 0.9990363762545972, 0.9951017449611540, 1.009677440604785, 1.022607122322391, 0.9586485044060649, 1.000000000000000, 0.8993300164992145, 0.9177933035379063, 0.9255418014277905, 0.9895088672568036, 1.005712709541130, 1.067267286718309, 1.000000000000000, 1.000000000000000, 0.9946886154935560, 1.025729747409682, 1.025356910993233, 1.000000000000000, 1.070459772838407, ],
+    [0.000000000000000, 0.000000000000000, 1.000000000000000, 0.9560823462791940, 0.9582063833037082, 0.9495034589419518, 0.9730161896745889, 0.9921805659444121, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 0.9458186174531642, 0.9990437687039329, 1.000000000000000, 1.000000000000000, 0.8288176886122740, 0.9399322956461129, 1.008350182988954, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.005057815251416, 0.9938056303791839, 1.158963954637742, 1.380063226207812, 1.125282009493955, 1.049214044935004, 1.000000000000000, 1.453157863037441, 1.053023582083213, 1.000000000000000, 1.000302286840882, 0.8174730436811812, 1.000000000000000, 1.000000000000000, 0.9007072133134096, 0.8219789795789580, 0.7168120925472488, 1.016855288847735, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 0.9952202791233546, 1.000000000000000, 0.9983151203034121, 1.000000000000000, 0.9877398280903181, 1.000000000000000, 1.000000000000000, 1.014995248806515, 1.000000000000000, 0.9913712107448827, 0.8563044011645432, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.021752845155132, 1.000000000000000, 1.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 0.9984868648279772, 0.9995917776698734, 1.082555532066385, 1.091856617281364, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 0.9684611295992676, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 0.8776152600442659, 1.000000000000000, 1.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 0.9982413958527366, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.026157717237014, 1.000000000000000, 1.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 0.9544351477790729, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 0.8246695168138646, 1.000000000000000, 1.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 0.9694631595219192, 1.000000000000000, 1.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.003035041381009, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 0.5692309533001857, 1.000000000000000, 1.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 0.6871865589902030, 1.000000000000000, 1.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 2.874240043417658, 1.000000000000000, 1.000000000000000, 1.000000000000000, 0.9509911789560708, 1.000000000000000, 1.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 0.9994937580864415, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, 0.6330754593975938, 1.000000000000000, 1.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, ],
+];
+
+const GVIJ: [[f64; MAXFLDS+1]; MAXFLDS+1] = [
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 0.09862572236818776, 0.09513349381203616, 0.09657806584344247, 0.1210671509816274, 0.1496295609028296, 0.1771428785314997, 0.1685495717670535, 0.2460237594565183, 0.1972463440401667, 0.2069285703332520, 0.2512860961209341, 0.2701209697928585, 0.3020114236037432, 0.3327219269040879, 0.08328832937418065, 0.08537493536985147, 0.09568618815465649, 0.1208496662482664, 0.1036207282348787, 0.06717043597788004, 0.09033331649375066, ],
+    [0.000000000000000, 0.000000000000000, 0.08941424726615939, 0.09397687829062652, 0.1175526942735744, 0.1447081157080465, 0.1731619818556942, 0.1805874048709332, 0.2031326998193614, 0.1918495427671280, 0.2362476311788352, 0.3057130074406300, 0.2782798185876332, 0.2802418897681576, 0.2715600589941661, 0.07324400476454085, 0.08085121603361749, 0.09157211375544100, 0.07814201489984832, 0.1072220087735300, 0.06534763314144051, 0.08229830577332384, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.09411783575511880, 0.1221547048657018, 0.1467060312284717, 0.1897682438758877, 0.2318873802147639, 0.2128409304803593, 0.1986348078947102, 0.1715344317248116, 0.3114753052840692, 0.2708277621583260, 0.2524424963135926, 0.3271836340748599, 0.08312842489959818, 0.08331251635442594, 0.09313845825829596, 0.1074203548558978, 0.08923746160027898, 0.05435734042129235, 0.08715125587655904, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.1455423039708246, 0.1714393656743100, 0.1981818039904798, 0.1962684451208782, 0.2256296051472722, 0.2222156116202908, 0.2812330010515487, 0.2785039031833608, 0.3051347809638714, 0.3490142459705742, 0.3545899733634683, 0.1035867912935121, 0.1053704529578616, 0.1403613105589193, 0.09372541670140304, 0.1253553702387325, 0.09479640493083616, 0.1061432699138848, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.1999982764948525, 0.2283470992127822, 0.2271261429527691, 0.2590640051744343, 0.2679515543046866, 0.2921480068526442, 0.3252266341637917, 0.3553650119994654, 0.4162618285525517, 0.3810097114545736, 0.1305889508139833, 0.1262929615596563, 0.1542499609901310, 0.1144538290264615, 0.1354583631039435, 0.1143373266227266, 0.1271648377899160, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.2590577643220642, 0.2569545837458022, 0.2823873351332171, 0.2850219424143964, 0.3143117965106567, 0.3454813389462400, 0.3726717516427648, 0.4057719760305587, 0.4344069310066155, 0.1629960842771485, 0.1472450868093243, 0.1756118314446152, 0.1326301061572424, 0.1660396993651052, 0.1339794665992285, 0.1482107957478344, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.2551009480471634, 0.2804089272140941, 0.2872449155961379, 0.3196134105207196, 0.3422229539820711, 0.3751683956308331, 0.4037935679872359, 0.4087218070261471, 0.1734804359024254, 0.1458848092585968, 0.1736334233133459, 0.1607390687562834, 0.1542084543332911, 0.1327022941212915, 0.1783631000302835, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.3057169061449098, 0.3083515133375920, 0.3376413676109724, 0.3688109100981098, 0.3960013224335295, 0.4291015469177791, 0.4577365018322581, 0.1863256551542911, 0.1629022803260088, 0.1989414023075421, 0.1472508527777243, 0.1527153530333512, 0.1486974741581830, 0.1639352140605326, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.3109861207304820, 0.3402759748862068, 0.3714455172564741, 0.4192741194319073, 0.4349117635004124, 0.4510108556995468, 0.1889602625220721, 0.1646301261469664, 0.2015760096956138, 0.1424170766155539, 0.1956614440997982, 0.1503235337720747, 0.1656703433038360, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.3695658289825811, 0.4005291477398147, 0.4279257839161997, 0.4643597383308069, 0.4869031160029209, 0.2205117857350171, 0.1833756691313343, 0.2308658637676204, 0.1947440571227899, 0.2069360100170327, 0.1679863299539747, 0.1844933386523490, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.4319049137629409, 0.4616611864110435, 0.4903951271319349, 0.5172636081431188, 0.2272850094528531, 0.2025367687671113, 0.2620354061994153, 0.1843973796986496, 0.2032799592821606, 0.1860776682276512, 0.2037309204932012, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.4862857387175434, 0.5193859630435835, 0.5470885180509746, 0.2766100715748006, 0.2187170818187281, 0.2892258185755857, 0.1196624453975623, 0.2427559715774492, 0.2013803407775042, 0.2199739523053399, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.5524861878453039, 0.5811211425229519, 0.3097102960618724, 0.2378602005934755, 0.3223260432125248, 0.2176359401947182, 0.2850829449721815, 0.2195122180901155, 0.2391893088657795, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.6097560975609756, 0.4681387958644017, 0.2540052119263587, 0.2388016921804501, 0.1284015418325299, 0.3205334884994168, 0.2348250324634247, 0.2553937467857709, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.06693440428380187, 0.07010179850447741, 0.08845601056990605, 0.06127719296460801, 0.08154271906497129, 0.06208442079410317, 0.07069096425894923, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.07336757153338225, 0.08240974130906203, 0.07346596185071996, 0.08515209313549774, 0.06509808341771975, 0.07350554527271989, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.09216589861751152, 0.07255733729926725, 0.08338208282104481, 0.07346059970761289, 0.09633323363471309, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.05594807453383915, 0.07619132157066086, 0.05670789681980431, 0.06734851301633836, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.09813542688910697, 0.07600172384102773, 0.08582270646459379, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.05747456750387953, 0.06565890814001021, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.07458551157333355, ],
+];
+
+const BTIJ: [[f64; MAXFLDS+1]; MAXFLDS+1] = [
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 1.000000000000000, 0.9962012744473688, 1.045760847547760, 0.9926864371736339, 0.9794671061048931, 0.9610189814618515, 0.9883837516735081, 1.000000000000000, 0.9843170258626256, 0.9640192053959713, 0.9553723938832778, 0.9167560489622263, 0.8981670742437994, 0.8794272453106193, 1.000000000000000, 1.000000000000000, 0.9749819284912398, 1.130679010535891, 1.022303050787581, 1.000000000000000, 0.9819903870322271, ],
+    [0.000000000000000, 0.000000000000000, 1.000000000000000, 1.011823803472132, 1.015401706807559, 1.005361826090574, 0.9857871235696968, 0.9890605506580747, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 0.9146616523823026, 0.9176384047491958, 0.8951701836504297, 0.9943890707901669, 1.000000000000000, 1.000000000000000, 1.009406750298678, 0.4800671255126253, 0.9981405511920447, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.027934702719095, 1.068371416575410, 1.047224395384351, 1.036672193386368, 1.038729823111436, 1.054730632930632, 1.000000000000000, 1.023752023121105, 1.060263102417008, 1.015436354877504, 1.040458732428864, 0.8879673499048379, 1.000000000000000, 1.000000000000000, 0.9947513153065620, 1.032326273851984, 0.5904041822844169, 0.9930378861244568, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 0.9924138303256935, 1.000000000000000, 0.9982618639363469, 1.000000000000000, 0.9973796108625910, 1.000000000000000, 1.000000000000000, 0.9683903639570660, 1.000000000000000, 0.9426818811759997, 0.8704327055561685, 1.000000000000000, 1.000000000000000, 1.000000000000000, 0.9804907998686012, 1.000000000000000, 1.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 0.9960285469592408, 1.000620674279263, 0.9887606097055807, 0.9929804041083284, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 0.9708776387253003, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 0.9852022640704851, 1.000000000000000, 1.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 0.9998449240126066, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 0.9497487706071003, 1.000000000000000, 1.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 0.9874166084712850, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 0.9721228125694491, 1.000000000000000, 1.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 0.9254567965682359, 1.000000000000000, 1.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 0.9952875848338202, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 0.9719812866923787, 1.000000000000000, 1.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 0.9779972147426320, 1.000000000000000, 1.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.133837562661612, 1.000000000000000, 1.101648891523215, 0.8049001351229038, 0.9469068980543366, 1.000000000000000, 1.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000046206533749, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, 1.051725596885534, 1.000000000000000, 1.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, ],
+];
+
+const GTIJ: [[f64; MAXFLDS+1]; MAXFLDS+1] = [
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
+    [0.000000000000000, 190.5640000000000, 151.5701479881736, 240.1960466031651, 252.2748201314937, 288.6523099075485, 317.3184556996133, 331.5307111115051, 352.1354408236836, 370.7841270001427, 406.4021156241856, 432.7010061102872, 457.0539597026416, 487.6046717527100, 504.5675991786781, 107.5739913292733, 163.0578671084287, 155.1461780582284, 289.6877384127097, 259.1293716590194, 99.42192303673512, 166.2181437692417, ],
+    [0.000000000000000, 0.000000000000000, 126.1920000000000, 218.2734256893610, 217.3069651848146, 260.2038461441325, 289.3087839773652, 300.5789235555173, 333.0396848074405, 345.4756760759687, 372.7845967327090, 397.0884294832958, 464.5825256688316, 458.2051265198602, 487.3335669738378, 71.98924155475973, 138.6064454254421, 128.6317832607745, 276.8459630760971, 209.3204553673829, 26.11141021192185, 136.3955272875254, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 304.1282000000000, 278.3496131619096, 315.0233709759120, 335.1628415494222, 333.7053913600579, 366.5604732108367, 380.0917858356499, 408.1907556910224, 429.0195377860164, 460.3644478481144, 488.7754326160893, 506.4415158683939, 168.7965222872744, 216.8333440202406, 201.0136131012027, 343.1041750024804, 316.9343430852917, 97.96460902524419, 224.2023409966151, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 305.3220000000000, 339.6832779709951, 364.6123183956969, 372.5030011900611, 382.8359998447917, 403.4111452516014, 430.0582594769881, 460.7283688747306, 479.4704339937678, 449.9359999661619, 521.6598086904000, 178.6334262351470, 217.2584971640925, 215.3501444809983, 444.4914452630106, 301.6994474084470, 39.82762090057602, 214.4948862187628, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 369.8250000000000, 389.6198769089135, 399.5673801746188, 411.6284603805881, 418.7816541099113, 444.4832517245036, 469.3046424561628, 488.0823640181041, 520.4812217128971, 537.3023774594378, 255.7278657249550, 239.1089623477129, 265.4569282597974, 293.6841217320592, 333.9794898237834, 43.83322737946636, 236.0674051515795, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 407.8170000000000, 416.9453459458028, 434.0835000634194, 438.7585001462073, 457.8184998641902, 473.9735002062214, 488.5684998493670, 501.1835001255292, 512.7584998109120, 220.5035000179776, 251.0905595895632, 270.3385000159771, 513.7088177479534, 356.2459120391862, 46.02968238104625, 247.8965919067868, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 425.1250000000000, 442.7375001228837, 447.8149387217079, 468.8910961116370, 489.3884730293855, 508.2911849465443, 509.8374998098914, 548.1482408392825, 298.0626804801041, 256.3634127074299, 278.9924998975487, 322.8343110714528, 363.6770882468457, 46.99629679559870, 315.1224505783322, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 460.3500000000000, 465.0249997783860, 484.0850001640415, 500.2400001650092, 514.8349998770528, 527.4499999752048, 539.0249999074330, 246.7700000190910, 266.7729526207632, 296.6050000684182, 545.7935906549288, 407.2454422291030, 48.90456374409243, 263.3794989174366, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 469.7000000000000, 488.7599997625391, 504.9150001904361, 525.6088938012690, 583.1039911718311, 565.0532873899480, 251.4449999867786, 269.4684981588757, 301.2800000166069, 246.8020482104324, 386.2329499862754, 49.39870858635881, 266.0407560882355, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 507.8200000000000, 523.6016632323489, 538.5699999087508, 579.9007477242704, 574.9205743380877, 392.2271479804588, 280.1899942895892, 320.3399999066655, 326.5662108668542, 410.2879006043737, 51.36416305168419, 276.6258706990364, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 540.1300000000000, 553.8637073612125, 567.3388641713556, 578.9023626735006, 424.3210919010731, 288.9660833904214, 336.4950000921659, 591.1987504046334, 449.9188980682869, 52.97298735204576, 285.2903245993456, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 569.3200000000001, 581.9350001623353, 597.2784101094609, 301.2549999629922, 296.6715783488536, 351.0900000457704, 401.8538254309484, 460.8831652382195, 54.38555135327764, 292.8978027230659, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 594.5500000000000, 606.1249998398653, 313.8700000069703, 303.1739719204140, 363.7050000590259, 620.2668190383877, 511.7521317427675, 55.57756395345157, 299.3174833684127, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 617.7000000000000, 577.2299862316896, 309.0199532392690, 542.3004282064553, 419.9718576844389, 515.5888844860302, 56.64924368427172, 305.0891015752611, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 33.19000000000000, 71.63105506691912, 91.47318694533813, 146.5507292373532, 111.2797780371618, 13.13133683217364, 70.71988072670936, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 154.5950000000000, 143.3160552764414, 305.1440730780441, 240.1653482499088, 28.34020824729416, 151.1713949575274, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 132.8600000000000, 293.2118254095492, 233.5233712436011, 26.27256283654109, 135.0148680083226, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 647.0960000000000, 462.1638713738240, 57.98153023851646, 334.4168467890140, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 373.1000000000000, 44.02688303752605, 237.1103534221987, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 5.195300000000000, 27.97970998956207, ],
+    [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 150.6870000000000, ],
+];
+
+pub struct Gerg2008 {
+    pub dp_dd: f64,
+    pub d2p_dd2: f64,
+    pub d2p_dtd: f64,
+    pub dp_dt: f64,
+    pub u: f64,
+    pub h: f64,
+    pub s: f64,
+    pub cv: f64,
+    pub cp: f64,
+    pub w: f64,
+    pub g: f64,
+    pub jt: f64,
+    pub kappa: f64,
+    pub a: f64,
+    pub mm: f64,
+    pub t: f64,
+    pub p: f64,
+    pub d: f64,
+    pub z: f64,
+    pub x: [f64; NC_GERG+1],
+    
+    drold: f64,
+    trold: f64,
+    told: f64,
+    trold2: f64,
+    xold: [f64; NC_GERG+1],
+    a0: [f64; 3],
+    ar: [[f64; 4]; 4],
+    dpddsave: f64,
+    taup: [[f64; MAXTRMP+1]; MAXFLDS+1],
+    taupijk: [[f64; MAXTRMM+1]; MAXFLDS+1],
+}
+
+impl Default for Gerg2008 {
+    fn default() -> Self {
+        Gerg2008 {
+            dp_dd: 0.0,
+            d2p_dd2: 0.0,
+            d2p_dtd: 0.0,
+            dp_dt: 0.0,
+            u: 0.0,
+            h: 0.0,
+            s: 0.0,
+            cv: 0.0,
+            cp: 0.0,
+            w: 0.0,
+            g: 0.0,
+            jt: 0.0,
+            kappa: 0.0,
+            a: 0.0,
+            mm: 0.0,
+            t: 0.0,
+            p: 0.0,
+            d: 0.0,
+            z: 0.0,
+            x: [0.0; NC_GERG+1],
+            xold: [0.0; NC_GERG+1],
+            told: 0.0,
+            a0: [0.0; 3],
+            ar: [[0.0; 4]; 4],
+            dpddsave: 0.0,
+            drold: 0.0,
+            trold: 0.0,
+            trold2: 0.0,
+            taup: [[0.0; MAXTRMP+1]; MAXFLDS+1],
+            taupijk: [[0.0; MAXTRMM+1]; MAXFLDS+1],
+        }
+    }
+}
+
+impl Gerg2008 {
+    pub fn molarmass(&mut self) {
+        self.mm = 0.0;
+        for i in 1..NC_GERG+1 {
+            self.mm += self.x[i] * MMI_GERG[i];
+        }
+    }
+
+    pub fn pressure(&mut self) -> f64 {
+        self.alphar(0, 0);
+        self.z = 1.0 + self.ar[0][1];
+        let p = self.d * RGERG * self.t * self.z;
+        self.dpddsave = RGERG * self.t * (1.0 + 2.0 * self.ar[0][1] + self.ar[0][2]);
+        p
+    }
+
+    pub fn density(&mut self, iflag: i32) {
+        let mut nfail: i32 = 0;
+        let mut ifail: i32 = 0;
+        let mut plog: f64 = 0.0;
+        let mut vlog: f64 = 0.0;
+        let mut p2: f64 = 0.0;
+        let mut z: f64 = 0.0;
+        let mut dpdlv: f64 = 0.0;
+        let mut vdiff: f64 = 0.0;
+        let mut tolr: f64 = 0.0000001;
+        let mut vinc: f64 = 0.0;
+        let mut tcx: f64 = 0.0;
+        let mut dcx: f64 = 0.0;
+        let mut dpdd: f64 = 0.0;
+        let mut d2pdd2: f64 = 0.0;
+        let mut d2pdtd: f64 = 0.0;
+        let mut dpdt: f64 = 0.0;
+        let mut u: f64 = 0.0;
+        let mut h: f64 = 0.0;
+        let mut s: f64 = 0.0;
+        let mut a: f64 = 0.0;
+        let mut cv: f64 = 0.0;
+        let mut cp: f64 = 0.0;
+        let mut w: f64 = 0.0;
+        let mut g: f64 = 0.0;
+        let mut jt: f64 = 0.0;
+        let mut kappa: f64 = 0.0;
+        let mut pp: f64 = 0.0;
+
+        let mut ierr: i32 = 0;
+
+        if self.d < EPSILON {
+            self.d = 0.0;
+        }
+
+        let (dcx, tcx) = self.pseudocriticalpoint();
+
+        if self.p > -EPSILON {
+            self.d = self.p / RGERG / self.t;
+            if iflag == 2 {
+                self.d = dcx * 3.0;
+            }
+        } else {
+            self.d = f64::abs(self.d);
+        }
+        
+        plog = f64::ln(self.p);
+        vlog = f64::ln(self.d);
+
+        for it in 0..50 {
+            if vlog < -7.0 || vlog > 100.0 || it == 20 || it == 30 || it == 40 || ifail == 1 {
+                //Current state is bad or iteration is taking too long.  Restart with completely different initial state
+                ifail = 0;
+                if nfail > 2 {
+                    // Iteration failed (above loop did not find a solution or checks made below indicate possible 2-phase state)
+                    ierr = 1;
+                    //herr = "Calculation failed to converge in GERG method, ideal gas density returned.";
+                    self.d = self.p / RGERG / self.t;
+                }
+                nfail += 1;
+                if nfail == 1 {
+                    self.d = dcx * 3.0; // If vapor phase search fails, look for root in liquid region
+                } else if nfail == 2 {
+                    self.d = dcx * 2.5; // If liquid phase search fails, look for root between liquid and critical regions
+                } else if nfail == 3 {
+                    self.d = dcx * 2.0; // If search fails, look for root in critical region
+                }
+                vlog = -f64::ln(self.d);
+            }
+            self.d = f64::exp(-vlog);
+            p2 = self.pressure();
+            if self.dpddsave < EPSILON || p2 < EPSILON {
+                // Current state is 2-phase, try locating a different state that is single phase
+                vinc = 0.1;
+                if self.d > dcx { vinc = -0.1; }
+                if it > 5 { vinc = vinc / 2.0; }
+                if it > 10 && it < 20 { vinc = vinc / 5.0; }
+                vlog += vinc;
+            } else {
+                // Find the next density with a first order Newton's type iterative scheme, with
+                // log(P) as the known variable and log(v) as the unknown property.
+                // See AGA 8 publication for further information.
+                dpdlv = -self.d * self.dpddsave;     // d(p)/d[log(v)]
+                vdiff = (f64::ln(p2) - plog) * p2 / dpdlv; 
+                vlog += - vdiff;
+                if f64::abs(vdiff) < tolr {
+                    // Check to see if state is possibly 2-phase, and if so restart
+                    if self.dpddsave < 0.0 {
+                        ifail = 1;
+                    }
+                    else {
+                        self.d = f64::exp(-vlog);
+
+                        // If requested, check to see if point is possibly 2-phase
+                        if iflag > 0 {
+                            self.properties();
+                            if (pp <= 0.0 || dpdd <= 0.0 || d2pdtd <= 0.0) || (cv <= 0.0 || cp <= 0.0 || w <= 0.0) {
+                                // Iteration failed (above loop did find a solution or checks made below indicate possible 2-phase state)
+                                ierr = 1;
+                                //herr = "Calculation failed to converge in GERG method, ideal gas density returned.";
+                                self.d = self.p / RGERG / self.t;
+                            }
+                            return;
+                        }
+                        return;               // Iteration converged
+                    }
+                }
+            }
+        }
+        // Iteration failed (above loop did not find a solution or checks made below indicate possible 2-phase state)
+        ierr = 1;
+        //herr = "Calculation failed to converge in GERG method, ideal gas density returned.";
+        self.d = self.p / RGERG / self.t;
+    }
+
+    pub fn properties(&mut self) {
+        let mut a0: [f64; 2+1];
+        let mut rt: f64;
+
+        self.molarmass();
+        self.alpha0();
+        self.alphar(1, 0);
+
+        rt = RGERG * self.t;
+        self.z = 1.0 + self.ar[0][1];
+        self.p = self.d * rt * self.z;
+        self.dp_dd = rt * (1.0 + 2.0 * self.ar[0][1] + self.ar[0][2]);
+        self.dp_dt = self.d * RGERG * (1.0 + self.ar[0][1] - self.ar[1][1]);
+        self.d2p_dtd = RGERG * (1.0 + 2.0 * self.ar[0][1] + self.ar[0][2] - 2.0 * self.ar[1][1] - self.ar[1][2]);
+        self.a = self.a0[0] + self.ar[0][0];
+        self.g = rt * (1.0 + self.ar[0][1] + self.a0[0] + self.ar[0][0]);
+        self.u = rt * (self.a0[1] + self.ar[1][0]);
+        self.h = rt * (1.0 + self.ar[0][1] + self.a0[1] + self.ar[1][0]);
+        self.s = RGERG * (self.a0[1] + self.ar[1][0] - self.a0[0] - self.ar[0][0]);
+        self.cv = -RGERG * (self.a0[2] + self.ar[2][0]);
+        if self.d > EPSILON {
+            self.cp = self.cv + self.t * (self.dp_dt / self.d) * (self.dp_dt / self.d) / self.dp_dd;
+            self.d2p_dd2 = rt * (2.0 * self.ar[0][1] + 4.0 * self.ar[0][2] + self.ar[0][3]) / self.d;
+            self.jt = (self.t / self.d * self.dp_dt / self.dp_dd - 1.0) / self.cp / self.d; //  '=(dB/dT*T-B)/Cp for an ideal gas, but dB/dT is not known
+        }
+        else{
+            self.cp = self.cv + RGERG;
+            self.d2p_dd2 = 0.0;
+            self.jt = 1E+20;
+        }
+        self.w = 1000.0 * self.cp / self.cv * self.dp_dd / self.mm;
+        if self.w < 0.0 { self.w = 0.0; }
+        self.w = f64::sqrt(self.w);
+        self.kappa = f64::powi(self.w, 2) * self.mm / (rt * 1000.0 * self.z);
+    }
+
+    fn reducingparameters(&mut self) -> (f64, f64) {
+        let mut dr: f64 = 0.0;
+        let mut tr: f64 = 0.0;
+        let mut vr: f64 = 0.0;
+        let mut xij: f64 = 0.0;
+        let mut f: f64 = 0.0;
+        let mut icheck: i32 = 0;
+
+        // Check to see if a component fraction has changed.  If x is the same as the previous call, then exit.
+        for i in 1..NC_GERG+1 {
+            if f64::abs(self.x[i] - self.xold[i]) > 0.0000001 { icheck = 1; }
+            self.xold[i] = self.x[i];
+        }
+        if icheck == 0 {
+            dr = self.drold;
+            tr = self.trold;
+            return (dr, tr);
+        }
+        self.told = 0.0;
+        self.trold2 = 0.0;
+
+        // Calculate reducing variables for T and D
+        dr = 0.0;
+        vr = 0.0;
+        tr = 0.0;
+        for i in 1..NC_GERG+1 {
+            if self.x[i] > EPSILON {
+            f = 1.0;
+            for j in i..NC_GERG+1 {
+                if self.x[j] > EPSILON {
+                xij = f * (self.x[i] * self.x[j]) * (self.x[i] + self.x[j]);
+                vr = vr + xij * GVIJ[i][j] / (BVIJ[i][j] * self.x[i] + self.x[j]);
+                tr = tr + xij * GTIJ[i][j] / (BTIJ[i][j] * self.x[i] + self.x[j]);
+                f = 2.0;
+                }
+            }
+            }
+        }
+        if vr > EPSILON { dr = 1.0 / vr; }
+        self.drold = dr;
+        self.trold = tr;
+        (dr, tr)
+    }
+
+    fn alpha0(&mut self) {
+        let mut logt: f64 = 0.0;
+        let mut logd: f64 = 0.0;
+        let mut loghyp: f64 = 0.0;
+        let mut th0t: f64 = 0.0;
+        let mut logxd: f64 = 0.0;
+        let mut sumhyp0: f64 = 0.0;
+        let mut sumhyp1: f64 = 0.0;
+        let mut sumhyp2: f64 = 0.0;
+        let mut em: f64 = 0.0;
+        let mut ep: f64 = 0.0;
+        let mut hcn: f64 = 0.0;
+        let mut hsn: f64 = 0.0;
+
+        self.a0[0] = 0.0; self.a0[1] = 0.0; self.a0[2] = 0.0;
+        if self.d > EPSILON {
+            logd = f64::ln(self.d);
+        } else {
+            logd = f64::ln(EPSILON);
+        }
+        logt = f64::ln(self.t);
+        for i in 1..NC_GERG+1 {
+            if self.x[i] > EPSILON {
+                logxd = logd + f64::ln(self.x[i]);
+                sumhyp0 = 0.0;
+                sumhyp1 = 0.0;
+                sumhyp2 = 0.0;
+                for j in 4..8 {
+                    if TH0I[i][j] > EPSILON {
+                        th0t = TH0I[i][j] / self.t;
+                        ep = f64::exp(th0t);
+                        em = 1.0 / ep;
+                        hsn = (ep - em) / 2.0;
+                        hcn = (ep + em) / 2.0;
+                        if j == 4 || j == 6 {
+                            loghyp = f64::ln(f64::abs(hsn));
+                            sumhyp0 = sumhyp0 + N0I[i][j] * loghyp;
+                            sumhyp1 = sumhyp1 + N0I[i][j] * th0t * hcn / hsn;
+                            sumhyp2 = sumhyp2 + N0I[i][j] * (th0t / hsn)* (th0t / hsn);
+                        }
+                        else {
+                            loghyp = f64::ln(f64::abs(hcn));
+                            sumhyp0 = sumhyp0 - N0I[i][j] * loghyp;
+                            sumhyp1 = sumhyp1 - N0I[i][j] * th0t * hsn / hcn;
+                            sumhyp2 = sumhyp2 + N0I[i][j] * (th0t / hcn) * (th0t / hcn);
+                        }
+                    }
+                }
+                self.a0[0] += self.x[i] * (logxd + N0I[i][1] + N0I[i][2] / self.t - N0I[i][3] * logt + sumhyp0);
+                self.a0[1] += self.x[i] * (N0I[i][3] + N0I[i][2] / self.t + sumhyp1);
+                self.a0[2] += -self.x[i] * (N0I[i][3] + sumhyp2);
+            }
+        }
+    }
+
+    fn alphar(&mut self, itau: i32, idelta: i32) {
+        let mut mn: usize = 0;
+        let mut del: f64 = 0.0;
+        let mut tau: f64 = 0.0;
+        let mut lntau: f64 = 0.0;
+        let mut ex: f64 = 0.0;
+        let mut ex2: f64 = 0.0;
+        let mut ex3: f64 = 0.0;
+        let mut cij0: f64 = 0.0;
+        let mut eij0: f64 = 0.0;
+        let mut ndt: f64 = 0.0;
+        let mut ndtd: f64 = 0.0;
+        let mut ndtt: f64 = 0.0;
+        let mut xijf: f64 = 0.0;
+        let mut delp:[f64; 7+1] = [0.0; 7+1];
+        let mut expd:[f64; 7+1] = [0.0; 7+1];
+
+        for i in 0..4 {
+            for j in 0..4 {
+                self.ar[i][j] = 0.0;
+            }
+        }
+
+        //Set up del, tau, log(tau), and the first 7 calculations for del^i
+        let (dr, tr) = self.reducingparameters();
+        del = self.d / dr;
+        tau = tr / self.t;
+        lntau = f64::ln(tau);
+        delp[1] = del;
+        expd[1] = f64::exp(-delp[1]);
+        for i in 2..8 {
+            delp[i] = delp[i - 1] * del;
+            expd[i] = f64::exp(-delp[i]);
+        }
+
+        // If temperature has changed, calculate temperature dependent parts
+        if f64::abs(self.t - self.told) > 0.0000001 || f64::abs(tr - self.trold2) > 0.0000001 { 
+            self.tterms(lntau); 
+        }
+        self.told = self.t;
+        self.trold2 = tr;
+
+        // Calculate pure fluid contributions
+        for i in 1..NC_GERG+1 {
+            if self.x[i] > EPSILON {
+                for k in 1..KPOL[i]+1 {
+                    ndt = self.x[i] * delp[DOIK[i][k]] * self.taup[i][k];
+                    ndtd = ndt * DOIK[i][k] as f64;
+                    self.ar[0][1] += ndtd;
+                    self.ar[0][2] += ndtd * (DOIK[i][k] as f64 - 1.0);
+                    if itau > 0 {
+                        ndtt = ndt * TOIK[i][k];
+                        self.ar[0][0] += ndt;
+                        self.ar[1][0] += ndtt;
+                        self.ar[2][0] += ndtt * (TOIK[i][k] - 1.0);
+                        self.ar[1][1] += ndtt * DOIK[i][k] as f64;
+                        self.ar[1][2] += ndtt * DOIK[i][k] as f64 * (DOIK[i][k] as f64 - 1.0);
+                        self.ar[0][3] += ndtd * (DOIK[i][k] as f64 - 1.0) * (DOIK[i][k] as f64 - 2.0);
+                    }
+                }
+                for k in 1 + KPOL[i]..(KPOL[i] + KEXP[i] + 1) {
+                    ndt = self.x[i] * delp[DOIK[i][k]] * self.taup[i][k]*expd[COIK[i][k]];
+                    ex = COIK[i][k] as f64 * delp[COIK[i][k]];
+                    ex2 = DOIK[i][k] as f64 - ex;
+                    ex3 = ex2 * (ex2 - 1.0);
+                    self.ar[0][1] += ndt * ex2;
+                    self.ar[0][2] += ndt * (ex3 - COIK[i][k] as f64 * ex);
+                    if itau > 0 {
+                        ndtt = ndt * TOIK[i][k];
+                        self.ar[0][0] += ndt;
+                        self.ar[1][0] += ndtt;
+                        self.ar[2][0] += ndtt * (TOIK[i][k] - 1.0);
+                        self.ar[1][1] += ndtt * ex2;
+                        self.ar[1][2] += ndtt * (ex3 - COIK[i][k] as f64 * ex);
+                        self.ar[0][3] += ndt * (ex3 * (ex2 - 2.0) - ex * (3.0 * ex2 - 3.0 + COIK[i][k] as f64) * COIK[i][k] as f64);
+                    }
+                }
+            }
+        }
+
+        // Calculate mixture contributions
+        for i in 1..NC_GERG+1 {
+            if self.x[i] > EPSILON {
+                for j in i + 1..NC_GERG+1 {
+                    if self.x[j] > EPSILON {
+                        mn = MNUMB[i][j];
+                        if mn > 0 {
+                            xijf = self.x[i] * self.x[j] * FIJ[i][j];
+                            for k in 1..KPOLIJ[mn]+1 {
+                                ndt = xijf * delp[DIJK[mn][k]] * self.taupijk[mn][k];
+                                ndtd = ndt * DIJK[mn][k] as f64;
+                                self.ar[0][1] += ndtd;
+                                self.ar[0][2] += ndtd * (DIJK[mn][k] as f64 - 1.0);
+                                if itau > 0 {
+                                    ndtt = ndt * TIJK[mn][k] as f64;
+                                    self.ar[0][0] += ndt;
+                                    self.ar[1][0] += ndtt;
+                                    self.ar[2][0] += ndtt * (TIJK[mn][k] - 1.0);
+                                    self.ar[1][1] += ndtt * DIJK[mn][k] as f64;
+                                    self.ar[1][2] += ndtt * DIJK[mn][k] as f64 * (DIJK[mn][k] as f64 - 1.0);
+                                    self.ar[0][3] += ndtd * (DIJK[mn][k] as f64 - 1.0) * (DIJK[mn][k] as f64 - 2.0);
+                                }
+                            }
+                            for k in 1 + KPOLIJ[mn]..KPOLIJ[mn] + KEXPIJ[mn] + 1 {
+                                cij0 = CIJK[mn][k] * delp[2];
+                                eij0 = EIJK[mn][k] * del;
+                                ndt = xijf * NIJK[mn][k] * delp[DIJK[mn][k]] * f64::exp(cij0 + eij0 + GIJK[mn][k] + TIJK[mn][k] * lntau);
+                                ex = DIJK[mn][k] as f64 + 2.0 * cij0 + eij0;
+                                ex2 = ex * ex - DIJK[mn][k] as f64 + 2.0 * cij0;
+                                self.ar[0][1] += ndt * ex;
+                                self.ar[0][2] += ndt * ex2;
+                                if itau > 0 {
+                                    ndtt = ndt * TIJK[mn][k];
+                                    self.ar[0][0] += ndt;
+                                    self.ar[1][0] += ndtt;
+                                    self.ar[2][0] += ndtt * (TIJK[mn][k] - 1.0);
+                                    self.ar[1][1] += ndtt * ex;
+                                    self.ar[1][2] += ndtt * ex2;
+                                    self.ar[0][3] += ndt * (ex * (ex2 - 2.0 * (DIJK[mn][k] as f64 - 2.0 * cij0)) + 2.0 * DIJK[mn][k] as f64);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn tterms(&mut self, lntau: f64) {
+        let i: usize = 5;
+        let mut mn: usize = 0;
+        let mut taup0: [f64; 12+1] = [0.0; 12+1];
+
+        //i = 5;  // Use propane to get exponents for short form of EOS
+        for k in 1..KPOL[i] + KEXP[i] + 1 {
+            taup0[k] = f64::exp(TOIK[i][k] * lntau);
+        }
+        for i in 1..NC_GERG+1 {
+            if self.x[i] > EPSILON {
+                if i > 4 && i != 15 && i != 18 && i != 20 {
+                    for k in 0..KPOL[i] + KEXP[i] {
+                        self.taup[i][k] = NOIK[i][k] * taup0[k];
+                    }
+                }
+                else {
+                    for k in 0..KPOL[i] + KEXP[i] {
+                        self.taup[i][k] = NOIK[i][k] * f64::exp(TOIK[i][k] * lntau);
+                    }
+                }
+            }
+        }
+
+        for i in 1..NC_GERG+1 {
+            if self.x[i] > EPSILON {
+                for j in i + 1..NC_GERG+1 {
+                    if self.x[j] > EPSILON {
+                        mn = MNUMB[i][j];
+                        if mn > 0 {
+                            for k in 1..KPOLIJ[mn]+1 {
+                                self.taupijk[mn][k] = NIJK[mn][k] * f64::exp(TIJK[mn][k] * lntau);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn pseudocriticalpoint(&mut self) -> (f64, f64) {
+        let mut dcx = 0.0;
+        let mut tcx = 0.0;
+        let mut vcx: f64 = 0.0;
+
+        for i in 1..NC_GERG+1 {
+            tcx = tcx + self.x[i] * TC[i];
+            vcx = vcx + self.x[i] / DC[i];
+        }
+        if vcx > EPSILON {
+            dcx = 1.0 / vcx;
+        }
+        (dcx, tcx)
+    }
+}
