@@ -253,19 +253,19 @@ const EIJK: [[f64; MAXTRMM+1]; MAXMDL+1] = [
     [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.0, -4.272557051947238e+180, ],
 ];
 
-const BIJK: [[f64; MAXTRMM+1]; MAXMDL+1] = [
-    [0.000000000000000, 6.923472321800704e-310, 4.940656458412465e-324, 6.923472306129435e-310, 6.952861644061402e-310, 6.923472321800704e-310, 4.940656458412465e-324, 6.923472321002590e-310, 6.952861644062983e-310, 1.090896946017472e-320, 6.923472306129435e-310, 4.940656458412465e-324, 6.923472053753787e-310, ],
-    [6.923472321053578e-310, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.250000000000000, 1.500000000000000, 2.000000000000000, 3.000000000000000, 3.000000000000000, 3.000000000000000, 3.000000000000000, ],
-    [3.701125297565758e-317, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.7500000000000000, 1.000000000000000, 2.000000000000000, 3.000000000000000, 6.923472305982402e-310, 6.952861644092627e-310, 6.923472305939714e-310, ],
-    [6.923472321002590e-310, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, 2.500000000000000, 3.000000000000000, 3.000000000000000, 3.000000000000000, 3.000000000000000, 6.952861644087884e-310, 6.952861644087686e-310, 4.940656458412465e-324, ],
-    [6.923435667182394e-310, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 2.000000000000000, 3.000000000000000, 4.940656458412465e-324, 6.923472053486596e-310, 6.923472321053578e-310, 4.229201928401070e-321, 6.923472056578063e-310, 6.923472306129435e-310, ],
-    [6.952861644094208e-310, 0.000000000000000, 0.000000000000000, 0.7500000000000000, 1.000000000000000, 2.000000000000000, 3.000000000000000, 3.586279664080114e-315, 4.669164244212619e-310, 5.603561627735270e-317, 6.952861644104089e-310, 6.952861644103299e-310, 6.952861644094208e-310, ],
-    [6.923472306205719e-310, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, 1.250000000000000, 6.952861644111599e-310, 6.923472327410621e-310, 0.000000000000000, 6.923472306210857e-310, 6.923472321162420e-310, 1.976262583364986e-323, ],
-    [6.923472306210857e-310, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 4.669164244414000e-310, 2.488544627194658e-314, 6.952861644103299e-310, 6.952861644104089e-310, 6.923472327453309e-310, 0.000000000000000, 6.923472305649006e-310, 6.923472305282014e-310, ],
-    [2.121995790471207e-314, 6.923472322066017e-310, 6.923472054798241e-310, 6.923472306129435e-310, 6.923472305253556e-310, 6.923472235302556e-310, 6.952861644150729e-310, 6.923472323403255e-310, 6.923472305446489e-310, 2.964393875047479e-323, 6.923472305454344e-310, 4.669164249378569e-310, 6.952861644159424e-310, ],
-    [4.669164249344973e-310, 4.940656458412465e-324, 6.952861644174839e-310, 6.952861644175630e-310, 6.923472322066017e-310, 4.940656458412465e-324, 0.000000000000000, 6.923472305253951e-310, 6.923472054798241e-310, 6.952861644157053e-310, 6.923472323403255e-310, 6.923472260419272e-310, 2.964393875047479e-323, ],
-    [4.669164249384103e-310, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.0, 4.272557051947238e+180, ],
-];
+// const BIJK: [[f64; MAXTRMM+1]; MAXMDL+1] = [
+//     [0.000000000000000, 6.923472321800704e-310, 4.940656458412465e-324, 6.923472306129435e-310, 6.952861644061402e-310, 6.923472321800704e-310, 4.940656458412465e-324, 6.923472321002590e-310, 6.952861644062983e-310, 1.090896946017472e-320, 6.923472306129435e-310, 4.940656458412465e-324, 6.923472053753787e-310, ],
+//     [6.923472321053578e-310, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, 1.000000000000000, 1.250000000000000, 1.500000000000000, 2.000000000000000, 3.000000000000000, 3.000000000000000, 3.000000000000000, 3.000000000000000, ],
+//     [3.701125297565758e-317, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.7500000000000000, 1.000000000000000, 2.000000000000000, 3.000000000000000, 6.923472305982402e-310, 6.952861644092627e-310, 6.923472305939714e-310, ],
+//     [6.923472321002590e-310, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, 2.500000000000000, 3.000000000000000, 3.000000000000000, 3.000000000000000, 3.000000000000000, 6.952861644087884e-310, 6.952861644087686e-310, 4.940656458412465e-324, ],
+//     [6.923435667182394e-310, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 2.000000000000000, 3.000000000000000, 4.940656458412465e-324, 6.923472053486596e-310, 6.923472321053578e-310, 4.229201928401070e-321, 6.923472056578063e-310, 6.923472306129435e-310, ],
+//     [6.952861644094208e-310, 0.000000000000000, 0.000000000000000, 0.7500000000000000, 1.000000000000000, 2.000000000000000, 3.000000000000000, 3.586279664080114e-315, 4.669164244212619e-310, 5.603561627735270e-317, 6.952861644104089e-310, 6.952861644103299e-310, 6.952861644094208e-310, ],
+//     [6.923472306205719e-310, 0.000000000000000, 0.000000000000000, 0.000000000000000, 1.000000000000000, 1.000000000000000, 1.250000000000000, 6.952861644111599e-310, 6.923472327410621e-310, 0.000000000000000, 6.923472306210857e-310, 6.923472321162420e-310, 1.976262583364986e-323, ],
+//     [6.923472306210857e-310, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 4.669164244414000e-310, 2.488544627194658e-314, 6.952861644103299e-310, 6.952861644104089e-310, 6.923472327453309e-310, 0.000000000000000, 6.923472305649006e-310, 6.923472305282014e-310, ],
+//     [2.121995790471207e-314, 6.923472322066017e-310, 6.923472054798241e-310, 6.923472306129435e-310, 6.923472305253556e-310, 6.923472235302556e-310, 6.952861644150729e-310, 6.923472323403255e-310, 6.923472305446489e-310, 2.964393875047479e-323, 6.923472305454344e-310, 4.669164249378569e-310, 6.952861644159424e-310, ],
+//     [4.669164249344973e-310, 4.940656458412465e-324, 6.952861644174839e-310, 6.952861644175630e-310, 6.923472322066017e-310, 4.940656458412465e-324, 0.000000000000000, 6.923472305253951e-310, 6.923472054798241e-310, 6.952861644157053e-310, 6.923472323403255e-310, 6.923472260419272e-310, 2.964393875047479e-323, ],
+//     [4.669164249384103e-310, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.0, 4.272557051947238e+180, ],
+// ];
 
 const GIJK: [[f64; MAXTRMM+1]; MAXMDL+1] = [
     [0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, 0.000000000000000, ],
@@ -575,7 +575,7 @@ impl Gerg2008 {
     }
 
     pub fn pressure(&mut self) -> f64 {
-        self.alphar(0, 0);
+        self.alphar(0);
         self.z = 1.0 + self.ar[0][1];
         let p = self.d * RGERG * self.t * self.z;
         self.dpddsave = RGERG * self.t * (1.0 + 2.0 * self.ar[0][1] + self.ar[0][2]);
@@ -585,39 +585,13 @@ impl Gerg2008 {
     pub fn density(&mut self, iflag: i32) {
         let mut nfail: i32 = 0;
         let mut ifail: i32 = 0;
-        let mut plog: f64 = 0.0;
-        let mut vlog: f64 = 0.0;
-        let mut p2: f64 = 0.0;
-        let mut z: f64 = 0.0;
-        let mut dpdlv: f64 = 0.0;
-        let mut vdiff: f64 = 0.0;
-        let mut tolr: f64 = 0.0000001;
-        let mut vinc: f64 = 0.0;
-        let mut tcx: f64 = 0.0;
-        let mut dcx: f64 = 0.0;
-        let mut dpdd: f64 = 0.0;
-        let mut d2pdd2: f64 = 0.0;
-        let mut d2pdtd: f64 = 0.0;
-        let mut dpdt: f64 = 0.0;
-        let mut u: f64 = 0.0;
-        let mut h: f64 = 0.0;
-        let mut s: f64 = 0.0;
-        let mut a: f64 = 0.0;
-        let mut cv: f64 = 0.0;
-        let mut cp: f64 = 0.0;
-        let mut w: f64 = 0.0;
-        let mut g: f64 = 0.0;
-        let mut jt: f64 = 0.0;
-        let mut kappa: f64 = 0.0;
-        let mut pp: f64 = 0.0;
-
-        let mut ierr: i32 = 0;
+        const TOLR: f64 = 0.000_000_1;
 
         if self.d < EPSILON {
             self.d = 0.0;
         }
 
-        let (dcx, tcx) = self.pseudocriticalpoint();
+        let (dcx, _tcx) = self.pseudocriticalpoint();
 
         if self.p > -EPSILON {
             self.d = self.p / RGERG / self.t;
@@ -628,8 +602,8 @@ impl Gerg2008 {
             self.d = f64::abs(self.d);
         }
         
-        plog = f64::ln(self.p);
-        vlog = f64::ln(self.d);
+        let plog = f64::ln(self.p);
+        let mut vlog = f64::ln(self.d);
 
         for it in 0..50 {
             if vlog < -7.0 || vlog > 100.0 || it == 20 || it == 30 || it == 40 || ifail == 1 {
@@ -637,7 +611,6 @@ impl Gerg2008 {
                 ifail = 0;
                 if nfail > 2 {
                     // Iteration failed (above loop did not find a solution or checks made below indicate possible 2-phase state)
-                    ierr = 1;
                     //herr = "Calculation failed to converge in GERG method, ideal gas density returned.";
                     self.d = self.p / RGERG / self.t;
                 }
@@ -652,10 +625,10 @@ impl Gerg2008 {
                 vlog = -f64::ln(self.d);
             }
             self.d = f64::exp(-vlog);
-            p2 = self.pressure();
+            let p2 = self.pressure();
             if self.dpddsave < EPSILON || p2 < EPSILON {
                 // Current state is 2-phase, try locating a different state that is single phase
-                vinc = 0.1;
+                let mut vinc = 0.1;
                 if self.d > dcx { vinc = -0.1; }
                 if it > 5 { vinc = vinc / 2.0; }
                 if it > 10 && it < 20 { vinc = vinc / 5.0; }
@@ -664,10 +637,10 @@ impl Gerg2008 {
                 // Find the next density with a first order Newton's type iterative scheme, with
                 // log(P) as the known variable and log(v) as the unknown property.
                 // See AGA 8 publication for further information.
-                dpdlv = -self.d * self.dpddsave;     // d(p)/d[log(v)]
-                vdiff = (f64::ln(p2) - plog) * p2 / dpdlv; 
+                let dpdlv = -self.d * self.dpddsave;     // d(p)/d[log(v)]
+                let vdiff = (f64::ln(p2) - plog) * p2 / dpdlv; 
                 vlog += - vdiff;
-                if f64::abs(vdiff) < tolr {
+                if f64::abs(vdiff) < TOLR {
                     // Check to see if state is possibly 2-phase, and if so restart
                     if self.dpddsave < 0.0 {
                         ifail = 1;
@@ -677,10 +650,8 @@ impl Gerg2008 {
 
                         // If requested, check to see if point is possibly 2-phase
                         if iflag > 0 {
-                            self.properties();
-                            if (pp <= 0.0 || dpdd <= 0.0 || d2pdtd <= 0.0) || (cv <= 0.0 || cp <= 0.0 || w <= 0.0) {
+                            if (self.properties() <= 0.0 || self.dp_dd <= 0.0 || self.d2p_dtd <= 0.0) || (self.cv <= 0.0 || self.cp <= 0.0 || self.w <= 0.0) {
                                 // Iteration failed (above loop did find a solution or checks made below indicate possible 2-phase state)
-                                ierr = 1;
                                 //herr = "Calculation failed to converge in GERG method, ideal gas density returned.";
                                 self.d = self.p / RGERG / self.t;
                             }
@@ -692,22 +663,18 @@ impl Gerg2008 {
             }
         }
         // Iteration failed (above loop did not find a solution or checks made below indicate possible 2-phase state)
-        ierr = 1;
         //herr = "Calculation failed to converge in GERG method, ideal gas density returned.";
         self.d = self.p / RGERG / self.t;
     }
 
-    pub fn properties(&mut self) {
-        let mut a0: [f64; 2+1];
-        let mut rt: f64;
-
+    pub fn properties(&mut self) -> f64 {
         self.molarmass();
         self.alpha0();
-        self.alphar(1, 0);
+        self.alphar(1);
 
-        rt = RGERG * self.t;
+        let rt = RGERG * self.t;
         self.z = 1.0 + self.ar[0][1];
-        self.p = self.d * rt * self.z;
+        let p = self.d * rt * self.z;
         self.dp_dd = rt * (1.0 + 2.0 * self.ar[0][1] + self.ar[0][2]);
         self.dp_dt = self.d * RGERG * (1.0 + self.ar[0][1] - self.ar[1][1]);
         self.d2p_dtd = RGERG * (1.0 + 2.0 * self.ar[0][1] + self.ar[0][2] - 2.0 * self.ar[1][1] - self.ar[1][2]);
@@ -731,14 +698,15 @@ impl Gerg2008 {
         if self.w < 0.0 { self.w = 0.0; }
         self.w = f64::sqrt(self.w);
         self.kappa = f64::powi(self.w, 2) * self.mm / (rt * 1000.0 * self.z);
+        p
     }
 
     fn reducingparameters(&mut self) -> (f64, f64) {
         let mut dr: f64 = 0.0;
         let mut tr: f64 = 0.0;
         let mut vr: f64 = 0.0;
-        let mut xij: f64 = 0.0;
-        let mut f: f64 = 0.0;
+        let mut xij: f64;
+        let mut f: f64;
         let mut icheck: i32 = 0;
 
         // Check to see if a component fraction has changed.  If x is the same as the previous call, then exit.
@@ -747,28 +715,23 @@ impl Gerg2008 {
             self.xold[i] = self.x[i];
         }
         if icheck == 0 {
-            dr = self.drold;
-            tr = self.trold;
-            return (dr, tr);
+            return (self.drold, self.trold);
         }
         self.told = 0.0;
         self.trold2 = 0.0;
 
         // Calculate reducing variables for T and D
-        dr = 0.0;
-        vr = 0.0;
-        tr = 0.0;
         for i in 1..NC_GERG+1 {
             if self.x[i] > EPSILON {
-            f = 1.0;
-            for j in i..NC_GERG+1 {
-                if self.x[j] > EPSILON {
-                xij = f * (self.x[i] * self.x[j]) * (self.x[i] + self.x[j]);
-                vr = vr + xij * GVIJ[i][j] / (BVIJ[i][j] * self.x[i] + self.x[j]);
-                tr = tr + xij * GTIJ[i][j] / (BTIJ[i][j] * self.x[i] + self.x[j]);
-                f = 2.0;
+                f = 1.0;
+                for j in i..NC_GERG+1 {
+                    if self.x[j] > EPSILON {
+                        xij = f * (self.x[i] * self.x[j]) * (self.x[i] + self.x[j]);
+                        vr = vr + xij * GVIJ[i][j] / (BVIJ[i][j] * self.x[i] + self.x[j]);
+                        tr = tr + xij * GTIJ[i][j] / (BTIJ[i][j] * self.x[i] + self.x[j]);
+                        f = 2.0;
+                    }
                 }
-            }
             }
         }
         if vr > EPSILON { dr = 1.0 / vr; }
@@ -778,18 +741,18 @@ impl Gerg2008 {
     }
 
     fn alpha0(&mut self) {
-        let mut logt: f64 = 0.0;
-        let mut logd: f64 = 0.0;
-        let mut loghyp: f64 = 0.0;
-        let mut th0t: f64 = 0.0;
-        let mut logxd: f64 = 0.0;
-        let mut sumhyp0: f64 = 0.0;
-        let mut sumhyp1: f64 = 0.0;
-        let mut sumhyp2: f64 = 0.0;
-        let mut em: f64 = 0.0;
-        let mut ep: f64 = 0.0;
-        let mut hcn: f64 = 0.0;
-        let mut hsn: f64 = 0.0;
+        let logt: f64;
+        let logd: f64;
+        let mut loghyp: f64;
+        let mut th0t: f64;
+        let mut logxd: f64;
+        let mut sumhyp0: f64;
+        let mut sumhyp1: f64;
+        let mut sumhyp2: f64;
+        let mut em: f64;
+        let mut ep: f64;
+        let mut hcn: f64;
+        let mut hsn: f64;
 
         self.a0[0] = 0.0; self.a0[1] = 0.0; self.a0[2] = 0.0;
         if self.d > EPSILON {
@@ -832,20 +795,16 @@ impl Gerg2008 {
         }
     }
 
-    fn alphar(&mut self, itau: i32, idelta: i32) {
-        let mut mn: usize = 0;
-        let mut del: f64 = 0.0;
-        let mut tau: f64 = 0.0;
-        let mut lntau: f64 = 0.0;
-        let mut ex: f64 = 0.0;
-        let mut ex2: f64 = 0.0;
-        let mut ex3: f64 = 0.0;
-        let mut cij0: f64 = 0.0;
-        let mut eij0: f64 = 0.0;
-        let mut ndt: f64 = 0.0;
-        let mut ndtd: f64 = 0.0;
-        let mut ndtt: f64 = 0.0;
-        let mut xijf: f64 = 0.0;
+    fn alphar(&mut self, itau: i32) {
+        let mut ex: f64;
+        let mut ex2: f64;
+        let mut ex3: f64;
+        let mut cij0: f64;
+        let mut eij0: f64;
+        let mut ndt: f64;
+        let mut ndtd: f64;
+        let mut ndtt: f64;
+        let mut xijf: f64;
         let mut delp:[f64; 7+1] = [0.0; 7+1];
         let mut expd:[f64; 7+1] = [0.0; 7+1];
 
@@ -857,9 +816,9 @@ impl Gerg2008 {
 
         //Set up del, tau, log(tau), and the first 7 calculations for del^i
         let (dr, tr) = self.reducingparameters();
-        del = self.d / dr;
-        tau = tr / self.t;
-        lntau = f64::ln(tau);
+        let del = self.d / dr;
+        let tau = tr / self.t;
+        let lntau = f64::ln(tau);
         delp[1] = del;
         expd[1] = f64::exp(-delp[1]);
         for i in 2..8 {
@@ -917,7 +876,7 @@ impl Gerg2008 {
             if self.x[i] > EPSILON {
                 for j in i + 1..NC_GERG+1 {
                     if self.x[j] > EPSILON {
-                        mn = MNUMB[i][j];
+                        let mn = MNUMB[i][j];
                         if mn > 0 {
                             xijf = self.x[i] * self.x[j] * FIJ[i][j];
                             for k in 1..KPOLIJ[mn]+1 {
@@ -962,7 +921,6 @@ impl Gerg2008 {
 
     fn tterms(&mut self, lntau: f64) {
         let i: usize = 5;
-        let mut mn: usize = 0;
         let mut taup0: [f64; 12+1] = [0.0; 12+1];
 
         //i = 5;  // Use propane to get exponents for short form of EOS
@@ -988,7 +946,7 @@ impl Gerg2008 {
             if self.x[i] > EPSILON {
                 for j in i + 1..NC_GERG+1 {
                     if self.x[j] > EPSILON {
-                        mn = MNUMB[i][j];
+                        let mn = MNUMB[i][j];
                         if mn > 0 {
                             for k in 1..KPOLIJ[mn]+1 {
                                 self.taupijk[mn][k] = NIJK[mn][k] * f64::exp(TIJK[mn][k] * lntau);
