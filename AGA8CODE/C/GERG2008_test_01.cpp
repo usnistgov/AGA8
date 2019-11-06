@@ -29,7 +29,7 @@ int main()
     double P_reference     = 50000.0;
     double Z_reference     = 1.174690666383717;
     double dPdD_reference  = 7000.694030193327;
-    double dPdD2_reference = 1130.481239114938;
+    double dPdD2_reference = 1129.526655214841;
     double dPdT_reference  = 235.9832292593096;
     double U_reference     = -2746.492901212530;
     double H_reference     = 1160.280160510973;
