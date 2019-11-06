@@ -43,9 +43,7 @@ fn gerg_demo_example() {
     assert!(f64::abs(gerg_test.p - 50000.00000000001 ) < 1.0e-8);
     assert!(f64::abs(gerg_test.z - 1.174690666383717 ) < 1.0e-5);
     assert!(f64::abs(gerg_test.dp_dd - 7000.694030193327 ) < 1.0e-1);
-    // TODO: This next assert will probably have to get a new reference value.
-    // The tolerance is set really high to let it pass.
-    assert!(f64::abs(gerg_test.d2p_dd2 - 1130.481239114938 ) < 1.0e+3);
+    assert!(f64::abs(gerg_test.d2p_dd2 - 1129.526655214841 ) < 1.0e-1);
     assert!(f64::abs(gerg_test.dp_dt - 235.9832292593096 ) < 1.0e-2);
     assert!(f64::abs(gerg_test.u - -2746.492901212530) < 1.0e-2);
     assert!(f64::abs(gerg_test.h - 1160.280160510973 ) < 1.0e-2);
