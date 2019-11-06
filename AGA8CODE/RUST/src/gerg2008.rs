@@ -3686,7 +3686,7 @@ impl Gerg2008 {
         self.dp_dt = self.d * RGERG * (1.0 + self.ar[0][1] - self.ar[1][1]);
         self.d2p_dtd = RGERG
             * (1.0 + 2.0 * self.ar[0][1] + self.ar[0][2] - 2.0 * self.ar[1][1] - self.ar[1][2]);
-        self.a = self.a0[0] + self.ar[0][0];
+        self.a = rt * self.a0[0] + self.ar[0][0];
         self.g = rt * (1.0 + self.ar[0][1] + self.a0[0] + self.ar[0][0]);
         self.u = rt * (self.a0[1] + self.ar[1][0]);
         self.h = rt * (1.0 + self.ar[0][1] + self.a0[1] + self.ar[1][0]);
