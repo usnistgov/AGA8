@@ -5,9 +5,7 @@
 #include <cmath>
 #include <iostream>
 
-//   **********  June 7, 2016  **********
-
-// Version 2.0 of routines for the calculation of thermodynamic
+// Version 2.01 of routines for the calculation of thermodynamic
 // properties from the AGA 8 Part 2 GERG-2008 equation of state.
 // April, 2017
 
@@ -42,7 +40,7 @@
 // Kunz, O., Klimeck, R., Wagner, W., and Jaeschke, M.
 // The GERG-2004 Wide-Range Equation of State for Natural Gases and Other Mixtures
 // GERG Technical Monograph 15
-// Fortschr.-Ber. VDI, Reihe 6, Nr. 557, VDI Verlag, DÃ¼sseldorf, 2007.
+// Fortschr.-Ber. VDI, Reihe 6, Nr. 557, VDI Verlag, Düsseldorf, 2007.
 // http://www.gerg.eu/public/uploads/files/publications/technical_monographs/tm15_04.pdf
 
 // Subroutines contained here for property calculations:
@@ -112,7 +110,7 @@ void MolarMassGERG(const std::vector<double> &x, double &Mm)
     // Calculate molar mass of the mixture with the compositions contained in the x() input array
 
     // Inputs:
-    //    x() - Ccomposition (mole fraction)
+    //    x() - Composition (mole fraction)
     //          Do not send mole percents or mass fractions in the x() array, otherwise the output will be incorrect.
     //          The sum of the compositions in the x() array must be equal to one.
     //          The order of the fluids in this array is given at the top of this module.
@@ -143,7 +141,7 @@ void PressureGERG(const double T, const double D, const std::vector<double> &x, 
     // Outputs:
     //      P - Pressure (kPa)
     //      Z - Compressibility factor
-    // dPdDsave - d(P)/d(D) [kPa/(mol/l)]
+    // dPdDsave - d(P)/d(D) [kPa/(mol/l)] (at constant temperature)
     //          - This variable is cached in the common variables for use in the iterative density solver, but not returned as an argument.
 
     double ar[4][4];
@@ -156,7 +154,7 @@ void PressureGERG(const double T, const double D, const std::vector<double> &x, 
 
 void DensityGERG(const int iFlag, const double T, const double P, const std::vector<double> &x, double &D, int &ierr, std::string &herr)
 {
-    // Sub DensityGERG(iFlag T, P, x, D, ierr, herr)
+    // Sub DensityGERG(iFlag, T, P, x, D, ierr, herr)
 
     // Calculate density as a function of temperature and pressure.  This is an iterative routine that calls PressureGERG
     // to find the correct state point.  Generally only 6 iterations at most are required.
@@ -185,7 +183,7 @@ void DensityGERG(const int iFlag, const double T, const double P, const std::vec
     int nFail, iFail;
     double plog, vlog, P2, Z, dpdlv, vdiff, tolr, vinc;
     double Tcx, Dcx;
-    
+
     double dPdD, d2PdD2, d2PdTD, dPdT, U, H, S, A;
     double Cv, Cp, W, G, JT, Kappa, PP;
 
@@ -204,14 +202,14 @@ void DensityGERG(const int iFlag, const double T, const double P, const std::vec
     else{
         D = std::abs(D);                  // If D<0, then use as initial estimate
     }
-  
+
     plog = log(P);
     vlog = -log(D);
     for (int it = 1; it <= 50; ++it){
         if (vlog < -7 || vlog > 100 || it == 20 || it == 30 || it == 40 || iFail == 1){
             //Current state is bad or iteration is taking too long.  Restart with completely different initial state
             iFail = 0;
-            if (nFail > 2) { 
+            if (nFail > 2) {
                 // Iteration failed (above loop did not find a solution or checks made below indicate possible 2-phase state)
                 ierr = 1;
                 herr = "Calculation failed to converge in GERG method, ideal gas density returned.";
@@ -244,7 +242,7 @@ void DensityGERG(const int iFlag, const double T, const double P, const std::vec
             // log(P) as the known variable and log(v) as the unknown property.
             // See AGA 8 publication for further information.
             dpdlv = -D * dPdDsave;     // d(p)/d[log(v)]
-            vdiff = (log(P2) - plog) * P2 / dpdlv; 
+            vdiff = (log(P2) - plog) * P2 / dpdlv;
             vlog += - vdiff;
             if (std::abs(vdiff) < tolr) {
                 // Check to see if state is possibly 2-phase, and if so restart
@@ -294,7 +292,7 @@ void PropertiesGERG(const double T, const double D, const std::vector<double> &x
     //      Z - Compressibility factor
     //   dPdD - First derivative of pressure with respect to density at constant temperature [kPa/(mol/l)]
     // d2PdD2 - Second derivative of pressure with respect to density at constant temperature [kPa/(mol/l)^2]
-    // d2PdTD - Second derivative of pressure with respect to temperature and density [kPa/(mol/l)/K]    
+    // d2PdTD - Second derivative of pressure with respect to temperature and density [kPa/(mol/l)/K]
     //   dPdT - First derivative of pressure with respect to temperature at constant density (kPa/K)
     //      U - Internal energy (J/mol)
     //      H - Enthalpy (J/mol)
@@ -325,7 +323,7 @@ void PropertiesGERG(const double T, const double D, const std::vector<double> &x
     dPdD = RT * (1 + 2 * ar[0][1] + ar[0][2]);
     dPdT = D * R * (1 + ar[0][1] - ar[1][1]);
     d2PdTD = R * (1 + 2 * ar[0][1] + ar[0][2] - 2 * ar[1][1] - ar[1][2]);
-    A = a0[0] + ar[0][0];
+    A = RT * (a0[0] + ar[0][0]);
     G = RT * (1 + ar[0][1] + a0[0] + ar[0][0]);
     U = RT * (a0[1] + ar[1][0]);
     H = RT * (1 + ar[0][1] + a0[1] + ar[1][0]);
@@ -468,7 +466,6 @@ static void AlpharGERG(const int itau, const int idelta, const double T, const d
     // Inputs:
     //   itau - Set this to 1 to calculate "ar" derivatives with respect to tau [i.e., ar(1,0), ar(1,1), and ar(2,0)], otherwise set it to 0.
     // idelta - Currently not used, but kept as an input for future use in specifing the highest density derivative needed.
-    //  iprop - Set to 1 to return all derivatives or 0 to return only pressure related properties [ar(0,1) and ar(0,2)]
     //      T - Temperature (K)
     //      D - Density (mol/l)
     //    x() - Composition (mole fraction)
@@ -478,9 +475,9 @@ static void AlpharGERG(const int itau, const int idelta, const double T, const d
     //  ar(0,1) -     delta*partial  (ar)/partial(delta)
     //  ar(0,2) -   delta^2*partial^2(ar)/partial(delta)^2
     //  ar(0,3) -   delta^3*partial^3(ar)/partial(delta)^3
-    //  ar(1,0) -     tau*partial  (ar)/partial(tau)
+    //  ar(1,0) -       tau*partial  (ar)/partial(tau)
     //  ar(1,1) - tau*delta*partial^2(ar)/partial(tau)/partial(delta)
-    //  ar(2,0) -   tau^2*partial^2(ar)/partial(tau)^2
+    //  ar(2,0) -     tau^2*partial^2(ar)/partial(tau)^2
 
     int mn;
     double Tr, Dr, del, tau;
@@ -502,8 +499,8 @@ static void AlpharGERG(const int itau, const int idelta, const double T, const d
     }
 
     // If temperature has changed, calculate temperature dependent parts
-    if (std::abs(T - Told) > 0.0000001 || std::abs(Tr - Trold2) > 0.0000001) { 
-		  tTermsGERG(lntau, x); 
+    if (std::abs(T - Told) > 0.0000001 || std::abs(Tr - Trold2) > 0.0000001) {
+        tTermsGERG(lntau, x);
     }
     Told = T;
     Trold2 = Tr;
@@ -599,10 +596,10 @@ static void tTermsGERG(const double lntau, const std::vector<double> &x)
     // Private Sub tTermsGERG(lntau, x)
 
     // Calculate temperature dependent parts of the GERG-2008 equation of state
-  
+
     int i, mn;
     double taup0[12+1];
-  
+
     i = 5;  // Use propane to get exponents for short form of EOS
     for (int k = 1; k <= kpol[i] + kexp[i]; ++k){
         taup0[k] = exp(toik[i][k] * lntau);
@@ -1577,7 +1574,7 @@ int main()
     double _x[] = {0.77824, 0.02, 0.06, 0.08, 0.03, 0.0015, 0.003, 0.0005, 0.00165, 0.00215, 0.00088, 0.00024, 0.00015, 0.00009, 0.004, 0.005, 0.002, 0.0001, 0.0025, 0.007, 0.001};
     std::vector<double> x(_x, _x+NcGERG), xGrs(4,0);
     x.insert(x.begin(), 0.0);
-    
+
     double mm = 0;
     MolarMassGERG(x, mm);
 
@@ -1597,7 +1594,7 @@ int main()
 
     // Sub PropertiesGERG(T, D, x, P, Z, dPdD, dPdD2, d2PdTD, dPdT, U, H, S, Cv, Cp, W, G, JT, Kappa)
     PropertiesGERG(T, D, x, P, Z, dPdD, dPdD2, d2PdTD, dPdT, U, H, S, Cv, Cp, W, G, JT, Kappa, A);
-    
+
     printf("Outputs-----\n");
     printf("Molar mass [g/mol]:                 20.54274450160000 != %0.16g\n",mm);
     printf("Molar density [mol/l]:              12.79828626082062 != %0.16g\n",D);
@@ -1615,6 +1612,6 @@ int main()
     printf("Gibbs energy [J/mol]:               16590.64173014733 != %0.16g\n",G);
     printf("Joule-Thomson coefficient [K/kPa]:  7.155629581480913E-05 != %0.16g\n",JT);
     printf("Isentropic exponent:                2.683820255058032 != %0.16g\n",Kappa);
-    
+
 }
 #endif
