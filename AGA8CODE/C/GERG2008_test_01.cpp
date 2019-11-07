@@ -18,9 +18,9 @@ int main()
     int ierr = 0;
     std::string herr;
     double T = 400, P = 50000, D = 6.36570, Z = 0;
-    double dPdD, dPdD2, d2PdTD, dPdT, U, H, S, Cv, Cp, W, G, JT, Kappa, A;
+    double dPdD, d2PdD2, d2PdTD, dPdT, U, H, S, Cv, Cp, W, G, JT, Kappa, A;
     DensityGERG(0, T, P, x, D, ierr, herr);
-    PropertiesGERG(T, D, x, P, Z, dPdD, dPdD2, d2PdTD, dPdT, U, H, S,
+    PropertiesGERG(T, D, x, P, Z, dPdD, d2PdD2, d2PdTD, dPdT, U, H, S,
         Cv, Cp, W, G, JT, Kappa, A);
 
     int return_value = 0;
@@ -29,7 +29,7 @@ int main()
     double P_reference     = 50000.0;
     double Z_reference     = 1.174690666383717;
     double dPdD_reference  = 7000.694030193327;
-    double dPdD2_reference = 1129.526655214841;
+    double d2PdD2_reference = 1129.526655214841;
     double dPdT_reference  = 235.9832292593096;
     double U_reference     = -2746.492901212530;
     double H_reference     = 1160.280160510973;
@@ -75,10 +75,10 @@ int main()
             dPdD_reference, dPdD);
         return_value = 1;
     }
-    if (fabs(dPdD2_reference - dPdD2) > 0.1)
+    if (fabs(d2PdD2_reference - d2PdD2) > 0.1)
     {
         printf("d^2(P)/d(rho)^2 [kPa/(mol/l)^2]:    %0.16g != %0.16g\n",
-            dPdD2_reference, dPdD2);
+            d2PdD2_reference, d2PdD2);
         return_value = 1;
     }
     if (fabs(dPdT_reference - dPdT) > 0.1)
