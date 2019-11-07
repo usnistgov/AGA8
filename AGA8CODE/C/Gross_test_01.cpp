@@ -43,25 +43,25 @@ int main()
     DensityGross(T,P,xGrs,HCH,D,ierr,herr);
     PressureGross(T,D,xGrs,HCH,pp,Z,ierr,herr);
     printf("Outputs-----\n");
-    if (fabs(mm_reference - mm) > 0.1)
+    if (fabs(mm_reference - mm) > 1.0e-8)
     {
         printf("Molar mass [g/mol]:                 %0.16g != %0.16g\n",
             mm_reference, mm);
         return_value = 1;
     }
-    if (fabs(D_reference - D) > 0.1)
+    if (fabs(D_reference - D) > 1.0e-8)
     {
         printf("Molar density [mol/l]:              %0.16g != %0.16g\n",
             D_reference, D);
         return_value = 1;
     }
-    if (fabs(P_reference - P) > 0.1)
+    if (fabs(P_reference - P) > 1.0e-8)
     {
         printf("Pressure [kPa]:                     %0.16g != %0.16g\n",
             P_reference, P);
         return_value = 1;
     }
-    if (fabs(Z_reference - Z) > 0.01)
+    if (fabs(Z_reference - Z) > 1.0e-8)
     {
         printf("Compressibility factor:             %0.16g != %0.16g\n",
             Z_reference, Z);
@@ -72,43 +72,43 @@ int main()
     GrossHv(x,xGrs,HN,HCH);
     DensityGross(Td,Pd,xGrs,HCH,D,ierr,herr);
     Hv = HN*D;
-    if (fabs(Gr_reference - Gr) > 0.1)
+    if (fabs(Gr_reference - Gr) > 1.0e-8)
     {
         printf("Relative density:                   %0.16g != %0.16g\n",
             Gr_reference, Gr);
         return_value = 1;
     }
-    if (fabs(HN_reference - HN) > 0.1)
+    if (fabs(HN_reference - HN) > 1.0e-8)
     {
         printf("Molar heating value (kJ/mol, 25 C): %0.16g != %0.16g\n",
             HN_reference, HN);
         return_value = 1;
     }
-    if (fabs(HCH_reference - HCH) > 0.1)
+    if (fabs(HCH_reference - HCH) > 1.0e-8)
     {
         printf("HCH (kJ/mol, 25 C):                 %0.16g != %0.16g\n",
             HCH_reference, HCH);
         return_value = 1;
     }
-    if (fabs(xGrs_reference[1] - xGrs[1]) > 0.001)
+    if (fabs(xGrs_reference[1] - xGrs[1]) > 1.0e-8)
     {
         printf("HCH (kJ/mol, 25 C):                 %0.16g != %0.16g\n",
             xGrs_reference[1], xGrs[1]);
         return_value = 1;
     }
-    if (fabs(xGrs_reference[2] - xGrs[2]) > 0.001)
+    if (fabs(xGrs_reference[2] - xGrs[2]) > 1.0e-8)
     {
         printf("nitrogen mole fraction:             %0.16g != %0.16g\n",
             xGrs_reference[2], xGrs[2]);
         return_value = 1;
     }
-    if (fabs(xGrs_reference[3] - xGrs[3]) > 0.001)
+    if (fabs(xGrs_reference[3] - xGrs[3]) > 1.0e-8)
     {
         printf("CO2 mole fraction:                  %0.16g != %0.16g\n",
             xGrs_reference[3], xGrs[3]);
         return_value = 1;
     }
-    if (fabs(Hv_reference - Hv) > 0.1)
+    if (fabs(Hv_reference - Hv) > 1.0e-8)
     {
         printf("Volumetric heating value at Td,Pd:  %0.16g != %0.16g\n",
             Hv_reference, Hv);
@@ -121,13 +121,13 @@ int main()
     DensityGross(T,P,xGrs,HCH,D,ierr,herr);
     printf("Gross method 2-----\n");
     D_reference = 5.197833636353455;
-    if (fabs(D_reference - D) > 0.1)
+    if (fabs(D_reference - D) > 1.0e-8)
     {
         printf("Molar density [mol/l]:              %0.16g != %0.16g\n",
             D_reference, D);
         return_value = 1;
     }
-    if (fabs(Hv2_reference - Hv2) > 0.1)
+    if (fabs(Hv2_reference - Hv2) > 1.0e-8)
     {
         printf("Volumetric heating value at Td,Pd:  %0.16g != %0.16g\n",
             Hv2_reference, Hv2);
@@ -140,7 +140,7 @@ int main()
     DensityGross(T,P,xGrs,HCH,D,ierr,herr);
     printf("Gross method 1-----\n");
     D = 5.144374668159809;
-    if (fabs(D_reference - D) > 0.1)
+    if (fabs(D_reference - D) > 1.0e-8)
     {
         printf("Molar density [mol/l]:              %0.16g != %0.16g\n",
             D_reference, D);
