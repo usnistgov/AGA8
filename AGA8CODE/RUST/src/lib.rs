@@ -152,6 +152,31 @@ pub extern "C" fn aga8_get_density(ptr: *mut AGA8Detail) -> f64 {
 }
 
 #[no_mangle]
+pub extern "C" fn aga8_get_properties(ptr: *const AGA8Detail) -> Aga8_Result {
+    let aga8 = unsafe {
+        assert!(!ptr.is_null());
+        &*ptr
+    };
+    Aga8_Result {
+        d: aga8.d, // Molar concentration [mol/l]
+        mm: aga8.mm,
+        z: aga8.z,
+        dp_dd: aga8.dp_dd,
+        d2p_dd2: aga8.d2p_dd2,
+        dp_dt: aga8.dp_dt,
+        u: aga8.u,
+        h: aga8.h,
+        s: aga8.s,
+        cv: aga8.cv,
+        cp: aga8.cp,
+        w: aga8.w,
+        g: aga8.g,
+        jt: aga8.jt,
+        kappa: aga8.kappa,
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn aga8_calculate_pressure(ptr: *mut AGA8Detail) {
     let aga8 = unsafe {
         assert!(!ptr.is_null());
