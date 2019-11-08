@@ -20,7 +20,7 @@ int main()
     double T = 300, P = 10000, Td = 273.15, Th = 298.15, Pd = 101.325;
     double D = 6.35826, pp = -1, Hv = -1, Hv2 = -1, Gr, HN, HCH, Z=-1;
 
-    int return_value = 0;
+    int return_value = EXIT_SUCCESS;
     double mm_reference     = 20.54333051;
     double D_reference      = 5.117641317088482;
     double P_reference      = 9999.999999999998;
@@ -43,76 +43,76 @@ int main()
     DensityGross(T,P,xGrs,HCH,D,ierr,herr);
     PressureGross(T,D,xGrs,HCH,pp,Z,ierr,herr);
     printf("Outputs-----\n");
-    if (fabs(mm_reference - mm) > 1.0e-8)
+    if (std::abs(mm_reference - mm) > 1.0e-8)
     {
         printf("Molar mass [g/mol]:                 %0.16g != %0.16g\n",
             mm_reference, mm);
-        return_value = 1;
+        return_value = EXIT_FAILURE;
     }
-    if (fabs(D_reference - D) > 1.0e-8)
+    if (std::abs(D_reference - D) > 1.0e-8)
     {
         printf("Molar density [mol/l]:              %0.16g != %0.16g\n",
             D_reference, D);
-        return_value = 1;
+        return_value = EXIT_FAILURE;
     }
-    if (fabs(P_reference - P) > 1.0e-8)
+    if (std::abs(P_reference - P) > 1.0e-8)
     {
         printf("Pressure [kPa]:                     %0.16g != %0.16g\n",
             P_reference, P);
-        return_value = 1;
+        return_value = EXIT_FAILURE;
     }
-    if (fabs(Z_reference - Z) > 1.0e-8)
+    if (std::abs(Z_reference - Z) > 1.0e-8)
     {
         printf("Compressibility factor:             %0.16g != %0.16g\n",
             Z_reference, Z);
-        return_value = 1;
+        return_value = EXIT_FAILURE;
     }
 
     GrossInputs(Td, Pd, x, xGrs, Gr, HN, HCH, ierr, herr);
     GrossHv(x,xGrs,HN,HCH);
     DensityGross(Td,Pd,xGrs,HCH,D,ierr,herr);
     Hv = HN*D;
-    if (fabs(Gr_reference - Gr) > 1.0e-8)
+    if (std::abs(Gr_reference - Gr) > 1.0e-8)
     {
         printf("Relative density:                   %0.16g != %0.16g\n",
             Gr_reference, Gr);
-        return_value = 1;
+        return_value = EXIT_FAILURE;
     }
-    if (fabs(HN_reference - HN) > 1.0e-8)
+    if (std::abs(HN_reference - HN) > 1.0e-8)
     {
         printf("Molar heating value (kJ/mol, 25 C): %0.16g != %0.16g\n",
             HN_reference, HN);
-        return_value = 1;
+        return_value = EXIT_FAILURE;
     }
-    if (fabs(HCH_reference - HCH) > 1.0e-8)
+    if (std::abs(HCH_reference - HCH) > 1.0e-8)
     {
         printf("HCH (kJ/mol, 25 C):                 %0.16g != %0.16g\n",
             HCH_reference, HCH);
-        return_value = 1;
+        return_value = EXIT_FAILURE;
     }
-    if (fabs(xGrs_reference[1] - xGrs[1]) > 1.0e-8)
+    if (std::abs(xGrs_reference[1] - xGrs[1]) > 1.0e-8)
     {
         printf("HCH (kJ/mol, 25 C):                 %0.16g != %0.16g\n",
             xGrs_reference[1], xGrs[1]);
-        return_value = 1;
+        return_value = EXIT_FAILURE;
     }
-    if (fabs(xGrs_reference[2] - xGrs[2]) > 1.0e-8)
+    if (std::abs(xGrs_reference[2] - xGrs[2]) > 1.0e-8)
     {
         printf("nitrogen mole fraction:             %0.16g != %0.16g\n",
             xGrs_reference[2], xGrs[2]);
-        return_value = 1;
+        return_value = EXIT_FAILURE;
     }
-    if (fabs(xGrs_reference[3] - xGrs[3]) > 1.0e-8)
+    if (std::abs(xGrs_reference[3] - xGrs[3]) > 1.0e-8)
     {
         printf("CO2 mole fraction:                  %0.16g != %0.16g\n",
             xGrs_reference[3], xGrs[3]);
-        return_value = 1;
+        return_value = EXIT_FAILURE;
     }
-    if (fabs(Hv_reference - Hv) > 1.0e-8)
+    if (std::abs(Hv_reference - Hv) > 1.0e-8)
     {
         printf("Volumetric heating value at Td,Pd:  %0.16g != %0.16g\n",
             Hv_reference, Hv);
-        return_value = 1;
+        return_value = EXIT_FAILURE;
     }
 
     xGrs[2] = x[2];
@@ -121,17 +121,17 @@ int main()
     DensityGross(T,P,xGrs,HCH,D,ierr,herr);
     printf("Gross method 2-----\n");
     D_reference = 5.197833636353455;
-    if (fabs(D_reference - D) > 1.0e-8)
+    if (std::abs(D_reference - D) > 1.0e-8)
     {
         printf("Molar density [mol/l]:              %0.16g != %0.16g\n",
             D_reference, D);
-        return_value = 1;
+        return_value = EXIT_FAILURE;
     }
-    if (fabs(Hv2_reference - Hv2) > 1.0e-8)
+    if (std::abs(Hv2_reference - Hv2) > 1.0e-8)
     {
         printf("Volumetric heating value at Td,Pd:  %0.16g != %0.16g\n",
             Hv2_reference, Hv2);
-        return_value = 1;
+        return_value = EXIT_FAILURE;
     }
 
     xGrs[2] = x[2];
@@ -140,10 +140,10 @@ int main()
     DensityGross(T,P,xGrs,HCH,D,ierr,herr);
     printf("Gross method 1-----\n");
     D = 5.144374668159809;
-    if (fabs(D_reference - D) > 1.0e-8)
+    if (std::abs(D_reference - D) > 1.0e-8)
     {
         printf("Molar density [mol/l]:              %0.16g != %0.16g\n",
             D_reference, D);
-        return_value = 1;
+        return_value = EXIT_FAILURE;
     }
 }
