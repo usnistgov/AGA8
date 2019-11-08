@@ -1,5 +1,6 @@
 #include <cmath>
 #include <math.h>
+#include <cstdlib>
 #include <cstdio>
 #include "Detail.h"
 
