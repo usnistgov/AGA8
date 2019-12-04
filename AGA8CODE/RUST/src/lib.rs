@@ -61,6 +61,7 @@ pub extern "C" fn aga8_2017(composition: [f64; 21], pressure: f64, temperature: 
 #[no_mangle]
 pub extern "C" fn gerg_2008(composition: [f64; 21], pressure: f64, temperature: f64, result: i32) -> f64 {
     let mut gerg_test: Gerg2008 = Gerg2008::default();
+    gerg_test.setup();
     let mut comp: [f64; 21+1] = [0.0; 21+1];
     //let mut comp: Vec<f64> = Vec::new();
     //comp.push(0.0);
