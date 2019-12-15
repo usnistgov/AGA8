@@ -1,6 +1,6 @@
 //! AGA8 calculations
 
-const NC_DETAIL: usize = 21;
+pub const NC_DETAIL: usize = 21;
 const MAXFLDS: usize  = 21;
 const NTERMS: usize   = 58;
 const EPSILON: f64 = 1e-15;

@@ -83,11 +83,10 @@ fn gerg_api_call() {
         0.007,
         0.001];
 
-
     let temperature = 400.0;
     let pressure = 50000.0;
 
-    let density = gerg_2008(composition, pressure, temperature, 0);
+    let result = gerg_2008(&composition[0], pressure, temperature);
 
-    assert!(f64::abs(density - 12.79828626082062) < 1.0e-10);
+    assert!(f64::abs(result.d - 12.79828626082062) < 1.0e-10);
 }

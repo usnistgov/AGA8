@@ -1,5 +1,5 @@
 const RGERG: f64 = 8.314_472;
-const NC_GERG: usize = 21;
+pub const NC_GERG: usize = 21;
 const MAXFLDS: usize = 21;
 const MAXMDL: usize = 10;
 const MAXTRMM: usize = 12;
@@ -2389,6 +2389,10 @@ impl Default for Gerg2008 {
 }
 
 impl Gerg2008 {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
     pub fn setup(&mut self) {
         const RS : f64 = 8.31451;
         const RSR : f64 = RS / RGERG;
