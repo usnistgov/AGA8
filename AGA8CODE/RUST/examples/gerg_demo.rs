@@ -24,8 +24,11 @@ fn main() {
         0.0001,
         0.0025,
         0.007,
-        0.001];
-    
+        0.001
+        ];
+
+    gerg_test.setup();
+
     gerg_test.molarmass();
 
     gerg_test.t = 400.0;
