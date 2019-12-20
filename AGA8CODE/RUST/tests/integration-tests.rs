@@ -1,4 +1,4 @@
-use aga8_2017::AGA8Detail;
+use aga8::AGA8Detail;
 
 #[test]
 fn test_gas_2() {

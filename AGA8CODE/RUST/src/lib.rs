@@ -1,8 +1,8 @@
-mod aga8;
+mod detail;
 mod gerg2008;
 
-pub use aga8::AGA8Detail;
-pub use gerg2008::Gerg2008;
+pub use crate::detail::AGA8Detail;
+pub use crate::gerg2008::Gerg2008;
 
 use std::slice;
 
@@ -25,18 +25,23 @@ pub struct Result {
     pub kappa: f64,
 }
 
+/// # Safety
 /// composition must be an array of 21 elements.
 #[no_mangle]
-pub extern "C" fn aga8_2017(composition: *const f64, pressure: f64, temperature: f64) -> Result {
-    let array = unsafe {
+pub unsafe extern "C" fn aga8_2017(
+    composition: *const f64,
+    pressure: f64,
+    temperature: f64,
+) -> Result {
+    let array = {
         assert!(!composition.is_null());
-        slice::from_raw_parts(composition, aga8::NC_DETAIL)
+        slice::from_raw_parts(composition, detail::NC_DETAIL)
     };
 
     let mut aga8_test: AGA8Detail = AGA8Detail::new();
     aga8_test.setup();
 
-    aga8_test.x[0..aga8::NC_DETAIL].clone_from_slice(&array[..]);
+    aga8_test.x[0..detail::NC_DETAIL].clone_from_slice(&array[..]);
 
     aga8_test.t = temperature;
     aga8_test.p = pressure;
@@ -67,95 +72,96 @@ pub extern "C" fn aga8_new() -> *mut AGA8Detail {
     Box::into_raw(Box::new(AGA8Detail::new()))
 }
 
+/// # Safety
+///
 #[no_mangle]
-pub extern "C" fn aga8_free(ptr: *mut AGA8Detail) {
-    if ptr.is_null() { return }
-    unsafe { Box::from_raw(ptr); }
+pub unsafe extern "C" fn aga8_free(ptr: *mut AGA8Detail) {
+    if ptr.is_null() {
+        return;
+    }
+    Box::from_raw(ptr);
 }
 
+/// # Safety
+///
 #[no_mangle]
-pub extern "C" fn aga8_setup(ptr: *mut AGA8Detail) {
-    let aga8 = unsafe {
-        assert!(!ptr.is_null());
-        &mut *ptr
-    };
+pub unsafe extern "C" fn aga8_setup(ptr: *mut AGA8Detail) {
+    assert!(!ptr.is_null());
+    let aga8 = &mut *ptr;
     aga8.setup();
 }
 
+/// # Safety
+///
 #[no_mangle]
-pub extern "C" fn aga8_set_composition(ptr: *mut AGA8Detail,
-    composition: *const f64) {
-    let aga8 = unsafe {
-        assert!(!ptr.is_null());
-        &mut *ptr
-    };
-    let array = unsafe {
-        assert!(!composition.is_null());
-        slice::from_raw_parts(composition, aga8::NC_DETAIL)
-    };
-    aga8.x[0..aga8::NC_DETAIL].clone_from_slice(&array[..]);
+pub unsafe extern "C" fn aga8_set_composition(ptr: *mut AGA8Detail, composition: *const f64) {
+    assert!(!ptr.is_null());
+    assert!(!composition.is_null());
+    let aga8 = &mut *ptr;
+    let array = slice::from_raw_parts(composition, detail::NC_DETAIL);
+    aga8.x[0..detail::NC_DETAIL].clone_from_slice(&array[..]);
 }
 
+/// # Safety
+///
 #[no_mangle]
-pub extern "C" fn aga8_set_pressure(ptr: *mut AGA8Detail, pressure: f64) {
-    let aga8 = unsafe {
-        assert!(!ptr.is_null());
-        &mut *ptr
-    };
+pub unsafe extern "C" fn aga8_set_pressure(ptr: *mut AGA8Detail, pressure: f64) {
+    assert!(!ptr.is_null());
+    let aga8 = &mut *ptr;
     aga8.p = pressure;
 }
 
+/// # Safety
+///
 #[no_mangle]
-pub extern "C" fn aga8_get_pressure(ptr: *mut AGA8Detail) -> f64 {
-    let aga8 = unsafe {
-        assert!(!ptr.is_null());
-        &mut *ptr
-    };
+pub unsafe extern "C" fn aga8_get_pressure(ptr: *mut AGA8Detail) -> f64 {
+    assert!(!ptr.is_null());
+    let aga8 = &mut *ptr;
     aga8.p
 }
 
+/// # Safety
+///
 #[no_mangle]
-pub extern "C" fn aga8_set_temperature(ptr: *mut AGA8Detail, temperature: f64) {
-    let aga8 = unsafe {
-        assert!(!ptr.is_null());
-        &mut *ptr
-    };
+pub unsafe extern "C" fn aga8_set_temperature(ptr: *mut AGA8Detail, temperature: f64) {
+    assert!(!ptr.is_null());
+    let aga8 = &mut *ptr;
     aga8.t = temperature;
 }
 
+/// # Safety
+///
 #[no_mangle]
-pub extern "C" fn aga8_get_temperature(ptr: *mut AGA8Detail) -> f64 {
-    let aga8 = unsafe {
-        assert!(!ptr.is_null());
-        &mut *ptr
-    };
+pub unsafe extern "C" fn aga8_get_temperature(ptr: *mut AGA8Detail) -> f64 {
+    assert!(!ptr.is_null());
+    let aga8 = &mut *ptr;
     aga8.t
 }
 
+/// # Safety
+///
 #[no_mangle]
-pub extern "C" fn aga8_set_density(ptr: *mut AGA8Detail, density: f64) {
-    let aga8 = unsafe {
-        assert!(!ptr.is_null());
-        &mut *ptr
-    };
+pub unsafe extern "C" fn aga8_set_density(ptr: *mut AGA8Detail, density: f64) {
+    assert!(!ptr.is_null());
+    let aga8 = &mut *ptr;
     aga8.d = density;
 }
 
+/// # Safety
+///
 #[no_mangle]
-pub extern "C" fn aga8_get_density(ptr: *mut AGA8Detail) -> f64 {
-    let aga8 = unsafe {
-        assert!(!ptr.is_null());
-        &mut *ptr
-    };
+pub unsafe extern "C" fn aga8_get_density(ptr: *mut AGA8Detail) -> f64 {
+    assert!(!ptr.is_null());
+    let aga8 = &mut *ptr;
     aga8.d
 }
 
+/// # Safety
+///
 #[no_mangle]
-pub extern "C" fn aga8_get_properties(ptr: *const AGA8Detail) -> Result {
-    let aga8 = unsafe {
-        assert!(!ptr.is_null());
-        &*ptr
-    };
+pub unsafe extern "C" fn aga8_get_properties(ptr: *const AGA8Detail) -> Result {
+    assert!(!ptr.is_null());
+    let aga8 = &*ptr;
     Result {
         d: aga8.d, // Molar concentration [mol/l]
         mm: aga8.mm,
@@ -175,44 +181,48 @@ pub extern "C" fn aga8_get_properties(ptr: *const AGA8Detail) -> Result {
     }
 }
 
+/// # Safety
+///
 #[no_mangle]
-pub extern "C" fn aga8_calculate_pressure(ptr: *mut AGA8Detail) {
-    let aga8 = unsafe {
-        assert!(!ptr.is_null());
-        &mut *ptr
-    };
+pub unsafe extern "C" fn aga8_calculate_pressure(ptr: *mut AGA8Detail) {
+    assert!(!ptr.is_null());
+    let aga8 = &mut *ptr;
     aga8.pressure_detail();
 }
 
+/// # Safety
+///
 #[no_mangle]
-pub extern "C" fn aga8_calculate_density(ptr: *mut AGA8Detail) {
-    let aga8 = unsafe {
-        assert!(!ptr.is_null());
-        &mut *ptr
-    };
+pub unsafe extern "C" fn aga8_calculate_density(ptr: *mut AGA8Detail) {
+    assert!(!ptr.is_null());
+    let aga8 = &mut *ptr;
     aga8.density_detail();
 }
 
+/// # Safety
+///
 #[no_mangle]
-pub extern "C" fn aga8_calculate_properties(ptr: *mut AGA8Detail) {
-    let aga8 = unsafe {
-        assert!(!ptr.is_null());
-        &mut *ptr
-    };
+pub unsafe extern "C" fn aga8_calculate_properties(ptr: *mut AGA8Detail) {
+    assert!(!ptr.is_null());
+    let aga8 = &mut *ptr;
     aga8.properties_detail();
 }
 
+/// # Safety
+///
 #[no_mangle]
-pub extern "C" fn gerg_2008(composition: *const f64, pressure: f64, temperature: f64) -> Result {
-    let array = unsafe {
-        assert!(!composition.is_null());
-        slice::from_raw_parts(composition, aga8::NC_DETAIL)
-    };
+pub unsafe extern "C" fn gerg_2008(
+    composition: *const f64,
+    pressure: f64,
+    temperature: f64,
+) -> Result {
+    assert!(!composition.is_null());
+    let array = slice::from_raw_parts(composition, detail::NC_DETAIL);
 
     let mut gerg_test: Gerg2008 = Gerg2008::new();
     gerg_test.setup();
 
-    gerg_test.x[1..=aga8::NC_DETAIL].clone_from_slice(&array[..]);
+    gerg_test.x[1..=detail::NC_DETAIL].clone_from_slice(&array[..]);
     gerg_test.t = temperature;
     gerg_test.p = pressure;
     gerg_test.density(0);
@@ -242,95 +252,96 @@ pub extern "C" fn gerg_new() -> *mut Gerg2008 {
     Box::into_raw(Box::new(Gerg2008::new()))
 }
 
+/// # Safety
+///
 #[no_mangle]
-pub extern "C" fn gerg_free(ptr: *mut Gerg2008) {
-    if ptr.is_null() { return }
-    unsafe { Box::from_raw(ptr); }
+pub unsafe extern "C" fn gerg_free(ptr: *mut Gerg2008) {
+    if ptr.is_null() {
+        return;
+    }
+    Box::from_raw(ptr);
 }
 
+/// # Safety
+///
 #[no_mangle]
-pub extern "C" fn gerg_setup(ptr: *mut Gerg2008) {
-    let gerg = unsafe {
-        assert!(!ptr.is_null());
-        &mut *ptr
-    };
+pub unsafe extern "C" fn gerg_setup(ptr: *mut Gerg2008) {
+    assert!(!ptr.is_null());
+    let gerg = &mut *ptr;
     gerg.setup();
 }
 
+/// # Safety
+///
 #[no_mangle]
-pub extern "C" fn gerg_set_composition(ptr: *mut Gerg2008,
-    composition: *const f64) {
-    let gerg = unsafe {
-        assert!(!ptr.is_null());
-        &mut *ptr
-    };
-    let array = unsafe {
-        assert!(!composition.is_null());
-        slice::from_raw_parts(composition, aga8::NC_DETAIL)
-    };
-    gerg.x[1..=aga8::NC_DETAIL].clone_from_slice(&array[..]);
+pub unsafe extern "C" fn gerg_set_composition(ptr: *mut Gerg2008, composition: *const f64) {
+    assert!(!ptr.is_null());
+    assert!(!composition.is_null());
+    let gerg = &mut *ptr;
+    let array = slice::from_raw_parts(composition, detail::NC_DETAIL);
+    gerg.x[1..=detail::NC_DETAIL].clone_from_slice(&array[..]);
 }
 
+/// # Safety
+///
 #[no_mangle]
-pub extern "C" fn gerg_set_pressure(ptr: *mut Gerg2008, pressure: f64) {
-    let aga8 = unsafe {
-        assert!(!ptr.is_null());
-        &mut *ptr
-    };
-    aga8.p = pressure;
+pub unsafe extern "C" fn gerg_set_pressure(ptr: *mut Gerg2008, pressure: f64) {
+    assert!(!ptr.is_null());
+    let gerg = &mut *ptr;
+    gerg.p = pressure;
 }
 
+/// # Safety
+///
 #[no_mangle]
-pub extern "C" fn gerg_get_pressure(ptr: *mut Gerg2008) -> f64 {
-    let gerg = unsafe {
-        assert!(!ptr.is_null());
-        &mut *ptr
-    };
+pub unsafe extern "C" fn gerg_get_pressure(ptr: *mut Gerg2008) -> f64 {
+    assert!(!ptr.is_null());
+    let gerg = &mut *ptr;
     gerg.p
 }
 
+/// # Safety
+///
 #[no_mangle]
-pub extern "C" fn gerg_set_temperature(ptr: *mut Gerg2008, temperature: f64) {
-    let gerg = unsafe {
-        assert!(!ptr.is_null());
-        &mut *ptr
-    };
+pub unsafe extern "C" fn gerg_set_temperature(ptr: *mut Gerg2008, temperature: f64) {
+    assert!(!ptr.is_null());
+    let gerg = &mut *ptr;
     gerg.t = temperature;
 }
 
+/// # Safety
+///
 #[no_mangle]
-pub extern "C" fn gerg_get_temperature(ptr: *mut Gerg2008) -> f64 {
-    let gerg = unsafe {
-        assert!(!ptr.is_null());
-        &mut *ptr
-    };
+pub unsafe extern "C" fn gerg_get_temperature(ptr: *mut Gerg2008) -> f64 {
+    assert!(!ptr.is_null());
+    let gerg = &mut *ptr;
     gerg.t
 }
 
+/// # Safety
+///
 #[no_mangle]
-pub extern "C" fn gerg_set_density(ptr: *mut Gerg2008, density: f64) {
-    let gerg = unsafe {
-        assert!(!ptr.is_null());
-        &mut *ptr
-    };
+pub unsafe extern "C" fn gerg_set_density(ptr: *mut Gerg2008, density: f64) {
+    assert!(!ptr.is_null());
+    let gerg = &mut *ptr;
     gerg.d = density;
 }
 
+/// # Safety
+///
 #[no_mangle]
-pub extern "C" fn gerg_get_density(ptr: *mut Gerg2008) -> f64 {
-    let gerg = unsafe {
-        assert!(!ptr.is_null());
-        &mut *ptr
-    };
+pub unsafe extern "C" fn gerg_get_density(ptr: *mut Gerg2008) -> f64 {
+    assert!(!ptr.is_null());
+    let gerg = &mut *ptr;
     gerg.d
 }
 
+/// # Safety
+///
 #[no_mangle]
-pub extern "C" fn gerg_get_properties(ptr: *const Gerg2008) -> Result {
-    let gerg = unsafe {
-        assert!(!ptr.is_null());
-        &*ptr
-    };
+pub unsafe extern "C" fn gerg_get_properties(ptr: *const Gerg2008) -> Result {
+    assert!(!ptr.is_null());
+    let gerg = &*ptr;
     Result {
         d: gerg.d, // Molar concentration [mol/l]
         mm: gerg.mm,
@@ -350,29 +361,29 @@ pub extern "C" fn gerg_get_properties(ptr: *const Gerg2008) -> Result {
     }
 }
 
+/// # Safety
+///
 #[no_mangle]
-pub extern "C" fn gerg_calculate_pressure(ptr: *mut Gerg2008) {
-    let gerg = unsafe {
-        assert!(!ptr.is_null());
-        &mut *ptr
-    };
+pub unsafe extern "C" fn gerg_calculate_pressure(ptr: *mut Gerg2008) {
+    assert!(!ptr.is_null());
+    let gerg = &mut *ptr;
     gerg.pressure();
 }
 
+/// # Safety
+///
 #[no_mangle]
-pub extern "C" fn gerg_calculate_density(ptr: *mut Gerg2008) {
-    let gerg = unsafe {
-        assert!(!ptr.is_null());
-        &mut *ptr
-    };
+pub unsafe extern "C" fn gerg_calculate_density(ptr: *mut Gerg2008) {
+    assert!(!ptr.is_null());
+    let gerg = &mut *ptr;
     gerg.density(0);
 }
 
+/// # Safety
+///
 #[no_mangle]
-pub extern "C" fn gerg_calculate_properties(ptr: *mut Gerg2008) {
-    let gerg = unsafe {
-        assert!(!ptr.is_null());
-        &mut *ptr
-    };
+pub unsafe extern "C" fn gerg_calculate_properties(ptr: *mut Gerg2008) {
+    assert!(!ptr.is_null());
+    let gerg = &mut *ptr;
     gerg.properties();
 }

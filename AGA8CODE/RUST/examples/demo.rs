@@ -1,4 +1,4 @@
-use aga8_2017::AGA8Detail;
+use aga8::AGA8Detail;
 
 fn main() {
     let mut aga8_test: AGA8Detail = AGA8Detail::default();
