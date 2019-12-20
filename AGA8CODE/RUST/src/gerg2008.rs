@@ -2388,6 +2388,8 @@ impl Default for Gerg2008 {
     }
 }
 
+#[allow(clippy::needless_range_loop)]
+
 impl Gerg2008 {
     pub fn new() -> Self {
         Default::default()
@@ -2827,7 +2829,7 @@ impl Gerg2008 {
                 self.bvij[i][j] = f64::powi(self.bvij[i][j], 2);
                 self.btij[i][j] = f64::powi(self.btij[i][j], 2);
             }
-          }
+        }
 
         for i in 1..=MAXMDL {
             for j in 1..=MAXTRMM {
@@ -2911,10 +2913,7 @@ impl Gerg2008 {
             let p2 = self.pressure();
             if self.dpddsave < EPSILON || p2 < EPSILON {
                 // Current state is 2-phase, try locating a different state that is single phase
-                let mut vinc = 0.1;
-                if self.d > dcx {
-                    vinc = -0.1;
-                }
+                let mut vinc = if self.d > dcx { -0.1 } else { 0.1 };
                 if it > 5 {
                     vinc /= 2.0;
                 }
