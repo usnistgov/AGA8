@@ -1,8 +1,8 @@
-use aga8::AGA8Detail;
+use aga8::Detail;
 
 #[test]
 fn test_gas_2() {
-    let mut aga8_test: AGA8Detail = AGA8Detail::default();
+    let mut aga8_test: Detail = Detail::default();
     aga8_test.setup();
     aga8_test.x = [
         0.996_953_100, // Methane

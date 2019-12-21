@@ -780,8 +780,54 @@ const TH0I: [[f64; 7]; MAXFLDS] = [
 ];
 
 /// Struct doc
+/// # Example
+///
+/// ```
+/// use aga8::Detail;
+///
+/// let mut aga8_test: Detail = Detail::default();
+///
+/// // Run seup() first to set up internal values
+/// aga8_test.setup();
+/// // Set the gas composition in mol fraction
+/// // The sum of all the components must be 1.0
+/// aga8_test.x = [
+///     0.778_240, // Methane
+///     0.020_000, // Nitrogen
+///     0.060_000, // Carbon dioxide
+///     0.080_000, // Ethane
+///     0.030_000, // Propane
+///     0.001_500, // Isobutane
+///     0.003_000, // n-Butane
+///     0.000_500, // Isopentane
+///     0.001_650, // n-Pentane
+///     0.002_150, // Hexane
+///     0.000_880, // Heptane
+///     0.000_240, // Octane
+///     0.000_150, // Nonane
+///     0.000_090, // Decane
+///     0.004_000, // Hydrogen
+///     0.005_000, // Oxygen
+///     0.002_000, // Carbon monoxide
+///     0.000_100, // Water
+///     0.002_500, // Hydrogen sulfide
+///     0.007_000, // Helium
+///     0.001_000, // Argon
+/// ];
+/// // Set pressure in kPA
+/// aga8_test.p = 50_000.0;
+/// // Set temperature in K
+/// aga8_test.t = 400.0;
+/// // Run density_detail to calculate the density in mol/l
+/// aga8_test.density_detail();
+/// // Run properties_detail to calculate all of the
+/// // output properties mentioned below
+/// aga8_test.properties_detail();
+///
+/// assert!(f64::abs(12.807_924_036_488_01 - aga8_test.d) < 1.0e-10);
+/// ```
 
-pub struct AGA8Detail {
+pub struct Detail {
     /// Calculated in the Pressure subroutine,
     /// but not included as an argument since it
     /// is only used internally in the density algorithm.
@@ -846,9 +892,9 @@ pub struct AGA8Detail {
     tun: [f64; NTERMS],
 }
 
-impl Default for AGA8Detail {
+impl Default for Detail {
     fn default() -> Self {
-        AGA8Detail {
+        Detail {
             dp_dd_save: 0.0,
             x: [0.0; NC_DETAIL],
             t: 0.0,
@@ -887,7 +933,7 @@ impl Default for AGA8Detail {
     }
 }
 
-impl AGA8Detail {
+impl Detail {
     pub fn new() -> Self {
         Default::default()
     }
@@ -895,7 +941,7 @@ impl AGA8Detail {
     /// Initialize all the constants and parameters in the DETAIL model.
     ///
     /// Some values are modified for calculations that do not depend
-    /// on T, D, and x in order to speed up the program.
+    /// on [`t`], D, and x in order to speed up the program.
     pub fn setup(&mut self) {
         for i in 0..MAXFLDS {
             self.ki25[i] = KI[i].powf(2.5);
@@ -945,12 +991,6 @@ impl AGA8Detail {
 
     /// Calculate molar mass of the mixture with the compositions
     /// contained in the x() input array
-    /// ## Inputs:
-    ///- x() - Composition (mole fraction)
-    ///
-    ///   Do not send mole percents or mass fractions in the x() array, otherwise the output will be incorrect.
-    ///   The sum of the compositions in the x() array must be equal to one.
-    ///   The order of the fluids in this array is given at the top of this code.
     /// ## Returns:
     /// - mm - Molar mass (g/mol)
     pub fn molar_mass_detail(&mut self) -> f64 {
@@ -963,9 +1003,6 @@ impl AGA8Detail {
     }
 
     /// Calculate terms dependent only on composition
-    ///
-    /// ## Inputs:
-    /// - x() - Composition (mole fraction)
     fn x_terms(&mut self) {
         let mut g: f64;
         let mut q: f64;

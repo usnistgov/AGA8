@@ -4144,13 +4144,11 @@ impl Gerg2008 {
         self.btij[20][21] = 1.0;
         self.gtij[20][21] = 1.0; // He-Ar
 
-        //for(int i = 1; i <= MaxFlds; ++i){
         for i in 1..=MAXFLDS {
             self.bvij[i][i] = 1.0;
             self.btij[i][i] = 1.0;
             self.gvij[i][i] = 1.0 / DC[i];
             self.gtij[i][i] = TC[i];
-            //for (int j = i + 1; j <= MaxFlds; ++j){
             for j in i + 1..=MAXFLDS {
                 self.gvij[i][j] = self.gvij[i][j] * self.bvij[i][j] * f64::powi(vc3[i] + vc3[j], 3);
                 self.gtij[i][j] = self.gtij[i][j] * self.btij[i][j] * tc2[i] * tc2[j];

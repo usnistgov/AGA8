@@ -1,7 +1,7 @@
-use aga8::AGA8Detail;
+use aga8::Detail;
 
 fn main() {
-    let mut aga8_test: AGA8Detail = AGA8Detail::default();
+    let mut aga8_test: Detail = Detail::default();
 
     // Run seup() first to set up internal values
     aga8_test.setup();
