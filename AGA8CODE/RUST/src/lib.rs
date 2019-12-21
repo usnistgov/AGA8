@@ -1,5 +1,6 @@
-//! AGA8 equations of state
-//!
+//! # AGA8 equations of state
+//! Provides methods to calculate thermodynamic properties inlcuding
+//! compressibility factors and densities of natural gases.
 
 mod detail;
 mod gerg2008;
@@ -10,7 +11,7 @@ pub use crate::gerg2008::Gerg2008;
 use std::slice;
 
 #[repr(C)]
-pub struct Result {
+pub struct Properties {
     pub d: f64, // Molar concentration [mol/l]
     pub mm: f64,
     pub z: f64,
@@ -35,7 +36,7 @@ pub unsafe extern "C" fn aga8_2017(
     composition: *const f64,
     pressure: f64,
     temperature: f64,
-) -> Result {
+) -> Properties {
     let array = {
         assert!(!composition.is_null());
         slice::from_raw_parts(composition, detail::NC_DETAIL)
@@ -51,7 +52,7 @@ pub unsafe extern "C" fn aga8_2017(
     aga8_test.density_detail();
     aga8_test.properties_detail();
 
-    Result {
+    Properties {
         d: aga8_test.d, // Molar concentration [mol/l]
         mm: aga8_test.mm,
         z: aga8_test.z,
@@ -162,10 +163,10 @@ pub unsafe extern "C" fn aga8_get_density(ptr: *mut Detail) -> f64 {
 /// # Safety
 ///
 #[no_mangle]
-pub unsafe extern "C" fn aga8_get_properties(ptr: *const Detail) -> Result {
+pub unsafe extern "C" fn aga8_get_properties(ptr: *const Detail) -> Properties {
     assert!(!ptr.is_null());
     let aga8 = &*ptr;
-    Result {
+    Properties {
         d: aga8.d, // Molar concentration [mol/l]
         mm: aga8.mm,
         z: aga8.z,
@@ -213,12 +214,29 @@ pub unsafe extern "C" fn aga8_calculate_properties(ptr: *mut Detail) {
 
 /// # Safety
 ///
+/// # Examples
+/// ```
+/// let composition: [f64; 21] = [
+/// 0.77824, 0.02, 0.06, 0.08, 0.03, 0.0015, 0.003, 0.0005, 0.00165, 0.00215, 0.00088, 0.00024,
+/// 0.00015, 0.00009, 0.004, 0.005, 0.002, 0.0001, 0.0025, 0.007, 0.001,
+/// ];
+///
+/// let temperature = 400.0;
+/// let pressure = 50000.0;
+///
+/// unsafe {
+///     let result = aga8::gerg_2008(&composition[0], pressure, temperature);
+///
+///     assert!(f64::abs(result.d - 12.798_286_260_820_62) < 1.0e-10);
+/// }
+/// ```
+
 #[no_mangle]
 pub unsafe extern "C" fn gerg_2008(
     composition: *const f64,
     pressure: f64,
     temperature: f64,
-) -> Result {
+) -> Properties {
     assert!(!composition.is_null());
     let array = slice::from_raw_parts(composition, detail::NC_DETAIL);
 
@@ -231,7 +249,7 @@ pub unsafe extern "C" fn gerg_2008(
     gerg_test.density(0);
     gerg_test.properties();
 
-    Result {
+    Properties {
         d: gerg_test.d, // Molar concentration [mol/l]
         mm: gerg_test.mm,
         z: gerg_test.z,
@@ -342,10 +360,10 @@ pub unsafe extern "C" fn gerg_get_density(ptr: *mut Gerg2008) -> f64 {
 /// # Safety
 ///
 #[no_mangle]
-pub unsafe extern "C" fn gerg_get_properties(ptr: *const Gerg2008) -> Result {
+pub unsafe extern "C" fn gerg_get_properties(ptr: *const Gerg2008) -> Properties {
     assert!(!ptr.is_null());
     let gerg = &*ptr;
-    Result {
+    Properties {
         d: gerg.d, // Molar concentration [mol/l]
         mm: gerg.mm,
         z: gerg.z,
