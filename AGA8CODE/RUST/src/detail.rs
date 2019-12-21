@@ -785,7 +785,7 @@ const TH0I: [[f64; 7]; MAXFLDS] = [
 /// ```
 /// use aga8::Detail;
 ///
-/// let mut aga8_test: Detail = Detail::default();
+/// let mut aga8_test: Detail = Detail::new();
 ///
 /// // Run seup() first to set up internal values
 /// aga8_test.setup();
