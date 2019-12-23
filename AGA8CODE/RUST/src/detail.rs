@@ -779,7 +779,8 @@ const TH0I: [[f64; 7]; MAXFLDS] = [
     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
 ];
 
-/// Struct doc
+/// Implements the DETAIL equation of state described in
+/// AGA Report No. 8, Part 1, Third Edition, April 2017.
 /// # Example
 ///
 /// ```

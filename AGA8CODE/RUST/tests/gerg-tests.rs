@@ -3,7 +3,7 @@
 
 #[test]
 fn gerg_demo_example() {
-    let mut gerg_test: aga8::Gerg2008 = aga8::Gerg2008::default();
+    let mut gerg_test: aga8::Gerg2008 = aga8::Gerg2008::new();
 
     gerg_test.setup();
 

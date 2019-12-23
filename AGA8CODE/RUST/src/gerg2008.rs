@@ -2287,6 +2287,8 @@ const GTIJ: [[f64; MAXFLDS + 1]; MAXFLDS + 1] = [
     ],
 ];
 
+/// Implements the GERG2008 equation of state described in
+/// AGA Report No. 8, Part 2, First Edition, April 2017.
 pub struct Gerg2008 {
     pub dp_dd: f64,
     pub d2p_dd2: f64,
