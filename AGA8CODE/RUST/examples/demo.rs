@@ -1,7 +1,7 @@
-use aga8_2017::AGA8Detail;
+use aga8::Detail;
 
 fn main() {
-    let mut aga8_test: AGA8Detail = AGA8Detail::default();
+    let mut aga8_test: Detail = Detail::new();
 
     // Run seup() first to set up internal values
     aga8_test.setup();
@@ -42,23 +42,77 @@ fn main() {
     aga8_test.properties_detail();
 
     println!("Inputs-----");
-    println!("Temperature [K]:                    400.0000000000000 != {}",aga8_test.t);
-    println!("Pressure [kPa]:                     50000.00000000000 != {}",aga8_test.p);
+    println!(
+        "Temperature [K]:                    400.0000000000000 != {}",
+        aga8_test.t
+    );
+    println!(
+        "Pressure [kPa]:                     50000.00000000000 != {}",
+        aga8_test.p
+    );
     println!("Outputs-----");
-    println!("Molar mass [g/mol]:                 20.54333051000000 != {}",aga8_test.mm);
-    println!("Molar density [mol/l]:              12.80792403648801 != {}",aga8_test.d);
-    println!("Pressure [kPa]:                     50000.00000000004 != {}",aga8_test.p);
-    println!("Compressibility factor:             1.173801364147326 != {}",aga8_test.z);
-    println!("d(P)/d(rho) [kPa/(mol/l)]:          6971.387690924090 != {}",aga8_test.dp_dd);
-    println!("d^2(P)/d(rho)^2 [kPa/(mol/l)^2]:    1118.803636639520 != {}",aga8_test.d2p_dd2);
-    println!("d(P)/d(T) [kPa/K]:                  235.6641493068212 != {}",aga8_test.dp_dt);
-    println!("Energy [J/mol]:                    -2739.134175817231 != {}",aga8_test.u);
-    println!("Enthalpy [J/mol]:                   1164.699096269404 != {}",aga8_test.h);
-    println!("Entropy [J/mol-K]:                 -38.54882684677111 != {}",aga8_test.s);
-    println!("Isochoric heat capacity [J/mol-K]:  39.12076154430332 != {}",aga8_test.cv);
-    println!("Isobaric heat capacity [J/mol-K]:   58.54617672380667 != {}",aga8_test.cp);
-    println!("Speed of sound [m/s]:               712.6393684057903 != {}",aga8_test.w);
-    println!("Gibbs energy [J/mol]:               16584.22983497785 != {}",aga8_test.g);
-    println!("Joule-Thomson coefficient [K/kPa]:  7.432969304794577E-05 != {}",aga8_test.jt);
-    println!("Isentropic exponent:                2.672509225184606 != {}",aga8_test.kappa);
+    println!(
+        "Molar mass [g/mol]:                 20.54333051000000 != {}",
+        aga8_test.mm
+    );
+    println!(
+        "Molar density [mol/l]:              12.80792403648801 != {}",
+        aga8_test.d
+    );
+    println!(
+        "Pressure [kPa]:                     50000.00000000004 != {}",
+        aga8_test.p
+    );
+    println!(
+        "Compressibility factor:             1.173801364147326 != {}",
+        aga8_test.z
+    );
+    println!(
+        "d(P)/d(rho) [kPa/(mol/l)]:          6971.387690924090 != {}",
+        aga8_test.dp_dd
+    );
+    println!(
+        "d^2(P)/d(rho)^2 [kPa/(mol/l)^2]:    1118.803636639520 != {}",
+        aga8_test.d2p_dd2
+    );
+    println!(
+        "d(P)/d(T) [kPa/K]:                  235.6641493068212 != {}",
+        aga8_test.dp_dt
+    );
+    println!(
+        "Energy [J/mol]:                    -2739.134175817231 != {}",
+        aga8_test.u
+    );
+    println!(
+        "Enthalpy [J/mol]:                   1164.699096269404 != {}",
+        aga8_test.h
+    );
+    println!(
+        "Entropy [J/mol-K]:                 -38.54882684677111 != {}",
+        aga8_test.s
+    );
+    println!(
+        "Isochoric heat capacity [J/mol-K]:  39.12076154430332 != {}",
+        aga8_test.cv
+    );
+    println!(
+        "Isobaric heat capacity [J/mol-K]:   58.54617672380667 != {}",
+        aga8_test.cp
+    );
+    println!(
+        "Speed of sound [m/s]:               712.6393684057903 != {}",
+        aga8_test.w
+    );
+    println!(
+        "Gibbs energy [J/mol]:               16584.22983497785 != {}",
+        aga8_test.g
+    );
+    println!(
+        "Joule-Thomson coefficient [K/kPa]:  7.432969304794577E-05 != {}",
+        aga8_test.jt
+    );
+    println!(
+        "Isentropic exponent:                2.672509225184606 != {}",
+        aga8_test.kappa
+    );
 }

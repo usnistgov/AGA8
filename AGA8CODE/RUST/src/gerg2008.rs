@@ -1,5 +1,5 @@
 const RGERG: f64 = 8.314_472;
-const NC_GERG: usize = 21;
+pub const NC_GERG: usize = 21;
 const MAXFLDS: usize = 21;
 const MAXMDL: usize = 10;
 const MAXTRMM: usize = 12;
@@ -74,7 +74,6 @@ const TC: [f64; MAXFLDS + 1] = [
     0.0, 190.564, 126.192, 304.128_2, 305.322, 369.825, 407.817, 425.125, 460.35, 469.7, 507.82,
     540.13, 569.32, 594.55, 617.7, 33.19, 154.595, 132.86, 647.096, 373.1, 5.195_3, 150.687,
 ];
-
 
 const NOIK: [[f64; MAXTRMP + 1]; MAXFLDS + 1] = [
     [
@@ -2288,6 +2287,8 @@ const GTIJ: [[f64; MAXFLDS + 1]; MAXFLDS + 1] = [
     ],
 ];
 
+/// Implements the GERG2008 equation of state described in
+/// AGA Report No. 8, Part 2, First Edition, April 2017.
 pub struct Gerg2008 {
     pub dp_dd: f64,
     pub d2p_dd2: f64,
@@ -2388,448 +2389,1782 @@ impl Default for Gerg2008 {
     }
 }
 
+#[allow(clippy::needless_range_loop)]
+
 impl Gerg2008 {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
     pub fn setup(&mut self) {
-        const RS : f64 = 8.31451;
-        const RSR : f64 = RS / RGERG;
+        const RS: f64 = 8.31451;
+        const RSR: f64 = RS / RGERG;
         let mut vc3 = [0.0; MAXFLDS + 1];
         let mut tc2 = [0.0; MAXFLDS + 1];
         let mut bijk = [[0.0; MAXTRMM + 1]; MAXMDL + 1];
 
         for i in 1..=MAXFLDS {
-            vc3[i] = 1.0 / f64::powf(DC[i], 1.0/3.0) / 2.0;
+            vc3[i] = 1.0 / f64::powf(DC[i], 1.0 / 3.0) / 2.0;
             tc2[i] = f64::sqrt(TC[i]);
-            self.coik[i][1] = 0;  self.doik[i][1] = 1;  self.toik[i][1] = 0.25;
-            self.coik[i][2] = 0;  self.doik[i][2] = 1;  self.toik[i][2] = 1.125;
-            self.coik[i][3] = 0;  self.doik[i][3] = 1;  self.toik[i][3] = 1.5;
-            self.coik[i][4] = 0;  self.doik[i][4] = 2;  self.toik[i][4] = 1.375;
-            self.coik[i][5] = 0;  self.doik[i][5] = 3;  self.toik[i][5] = 0.25;
-            self.coik[i][6] = 0;  self.doik[i][6] = 7;  self.toik[i][6] = 0.875;
-            self.coik[i][7] = 1;  self.doik[i][7] = 2;  self.toik[i][7] = 0.625;
-            self.coik[i][8] = 1;  self.doik[i][8] = 5;  self.toik[i][8] = 1.75;
-            self.coik[i][9] = 2;  self.doik[i][9] = 1;  self.toik[i][9] = 3.625;
-            self.coik[i][10] = 2; self.doik[i][10] = 4; self.toik[i][10] = 3.625;
-            self.coik[i][11] = 3; self.doik[i][11] = 3; self.toik[i][11] = 14.5;
-            self.coik[i][12] = 3; self.doik[i][12] = 4; self.toik[i][12] = 12.0;
+            self.coik[i][1] = 0;
+            self.doik[i][1] = 1;
+            self.toik[i][1] = 0.25;
+            self.coik[i][2] = 0;
+            self.doik[i][2] = 1;
+            self.toik[i][2] = 1.125;
+            self.coik[i][3] = 0;
+            self.doik[i][3] = 1;
+            self.toik[i][3] = 1.5;
+            self.coik[i][4] = 0;
+            self.doik[i][4] = 2;
+            self.toik[i][4] = 1.375;
+            self.coik[i][5] = 0;
+            self.doik[i][5] = 3;
+            self.toik[i][5] = 0.25;
+            self.coik[i][6] = 0;
+            self.doik[i][6] = 7;
+            self.toik[i][6] = 0.875;
+            self.coik[i][7] = 1;
+            self.doik[i][7] = 2;
+            self.toik[i][7] = 0.625;
+            self.coik[i][8] = 1;
+            self.doik[i][8] = 5;
+            self.toik[i][8] = 1.75;
+            self.coik[i][9] = 2;
+            self.doik[i][9] = 1;
+            self.toik[i][9] = 3.625;
+            self.coik[i][10] = 2;
+            self.doik[i][10] = 4;
+            self.toik[i][10] = 3.625;
+            self.coik[i][11] = 3;
+            self.doik[i][11] = 3;
+            self.toik[i][11] = 14.5;
+            self.coik[i][12] = 3;
+            self.doik[i][12] = 4;
+            self.toik[i][12] = 12.0;
         }
 
         for i in 1..=4 {
             if i != 3 {
-                self.coik[i][1] = 0;  self.doik[i][1] = 1;  self.toik[i][1] = 0.125;
-                self.coik[i][2] = 0;  self.doik[i][2] = 1;  self.toik[i][2] = 1.125;
-                self.coik[i][3] = 0;  self.doik[i][3] = 2;  self.toik[i][3] = 0.375;
-                self.coik[i][4] = 0;  self.doik[i][4] = 2;  self.toik[i][4] = 1.125;
-                self.coik[i][5] = 0;  self.doik[i][5] = 4;  self.toik[i][5] = 0.625;
-                self.coik[i][6] = 0;  self.doik[i][6] = 4;  self.toik[i][6] = 1.5;
-                self.coik[i][7] = 1;  self.doik[i][7] = 1;  self.toik[i][7] = 0.625;
-                self.coik[i][8] = 1;  self.doik[i][8] = 1;  self.toik[i][8] = 2.625;
-                self.coik[i][9] = 1;  self.doik[i][9] = 1;  self.toik[i][9] = 2.75;
-                self.coik[i][10] = 1; self.doik[i][10] = 2; self.toik[i][10] = 2.125;
-                self.coik[i][11] = 1; self.doik[i][11] = 3; self.toik[i][11] = 2.0;
-                self.coik[i][12] = 1; self.doik[i][12] = 6; self.toik[i][12] = 1.75;
-                self.coik[i][13] = 2; self.doik[i][13] = 2; self.toik[i][13] = 4.5;
-                self.coik[i][14] = 2; self.doik[i][14] = 3; self.toik[i][14] = 4.75;
-                self.coik[i][15] = 2; self.doik[i][15] = 3; self.toik[i][15] = 5.0;
-                self.coik[i][16] = 2; self.doik[i][16] = 4; self.toik[i][16] = 4.0;
-                self.coik[i][17] = 2; self.doik[i][17] = 4; self.toik[i][17] = 4.5;
-                self.coik[i][18] = 3; self.doik[i][18] = 2; self.toik[i][18] = 7.5;
-                self.coik[i][19] = 3; self.doik[i][19] = 3; self.toik[i][19] = 14.0;
-                self.coik[i][20] = 3; self.doik[i][20] = 4; self.toik[i][20] = 11.5;
-                self.coik[i][21] = 6; self.doik[i][21] = 5; self.toik[i][21] = 26.0;
-                self.coik[i][22] = 6; self.doik[i][22] = 6; self.toik[i][22] = 28.0;
-                self.coik[i][23] = 6; self.doik[i][23] = 6; self.toik[i][23] = 30.0;
-                self.coik[i][24] = 6; self.doik[i][24] = 7; self.toik[i][24] = 16.0;
+                self.coik[i][1] = 0;
+                self.doik[i][1] = 1;
+                self.toik[i][1] = 0.125;
+                self.coik[i][2] = 0;
+                self.doik[i][2] = 1;
+                self.toik[i][2] = 1.125;
+                self.coik[i][3] = 0;
+                self.doik[i][3] = 2;
+                self.toik[i][3] = 0.375;
+                self.coik[i][4] = 0;
+                self.doik[i][4] = 2;
+                self.toik[i][4] = 1.125;
+                self.coik[i][5] = 0;
+                self.doik[i][5] = 4;
+                self.toik[i][5] = 0.625;
+                self.coik[i][6] = 0;
+                self.doik[i][6] = 4;
+                self.toik[i][6] = 1.5;
+                self.coik[i][7] = 1;
+                self.doik[i][7] = 1;
+                self.toik[i][7] = 0.625;
+                self.coik[i][8] = 1;
+                self.doik[i][8] = 1;
+                self.toik[i][8] = 2.625;
+                self.coik[i][9] = 1;
+                self.doik[i][9] = 1;
+                self.toik[i][9] = 2.75;
+                self.coik[i][10] = 1;
+                self.doik[i][10] = 2;
+                self.toik[i][10] = 2.125;
+                self.coik[i][11] = 1;
+                self.doik[i][11] = 3;
+                self.toik[i][11] = 2.0;
+                self.coik[i][12] = 1;
+                self.doik[i][12] = 6;
+                self.toik[i][12] = 1.75;
+                self.coik[i][13] = 2;
+                self.doik[i][13] = 2;
+                self.toik[i][13] = 4.5;
+                self.coik[i][14] = 2;
+                self.doik[i][14] = 3;
+                self.toik[i][14] = 4.75;
+                self.coik[i][15] = 2;
+                self.doik[i][15] = 3;
+                self.toik[i][15] = 5.0;
+                self.coik[i][16] = 2;
+                self.doik[i][16] = 4;
+                self.toik[i][16] = 4.0;
+                self.coik[i][17] = 2;
+                self.doik[i][17] = 4;
+                self.toik[i][17] = 4.5;
+                self.coik[i][18] = 3;
+                self.doik[i][18] = 2;
+                self.toik[i][18] = 7.5;
+                self.coik[i][19] = 3;
+                self.doik[i][19] = 3;
+                self.toik[i][19] = 14.0;
+                self.coik[i][20] = 3;
+                self.doik[i][20] = 4;
+                self.toik[i][20] = 11.5;
+                self.coik[i][21] = 6;
+                self.doik[i][21] = 5;
+                self.toik[i][21] = 26.0;
+                self.coik[i][22] = 6;
+                self.doik[i][22] = 6;
+                self.toik[i][22] = 28.0;
+                self.coik[i][23] = 6;
+                self.doik[i][23] = 6;
+                self.toik[i][23] = 30.0;
+                self.coik[i][24] = 6;
+                self.doik[i][24] = 7;
+                self.toik[i][24] = 16.0;
             }
         }
 
-        self.coik[3][1] = 0;   self.doik[3][1] = 1;   self.toik[3][1] = 0.0;
-        self.coik[3][2] = 0;   self.doik[3][2] = 1;   self.toik[3][2] = 1.25;
-        self.coik[3][3] = 0;   self.doik[3][3] = 2;   self.toik[3][3] = 1.625;
-        self.coik[3][4] = 0;   self.doik[3][4] = 3;   self.toik[3][4] = 0.375;
-        self.coik[3][5] = 1;   self.doik[3][5] = 3;   self.toik[3][5] = 0.375;
-        self.coik[3][6] = 1;   self.doik[3][6] = 3;   self.toik[3][6] = 1.375;
-        self.coik[3][7] = 1;   self.doik[3][7] = 4;   self.toik[3][7] = 1.125;
-        self.coik[3][8] = 1;   self.doik[3][8] = 5;   self.toik[3][8] = 1.375;
-        self.coik[3][9] = 1;   self.doik[3][9] = 6;   self.toik[3][9] = 0.125;
-        self.coik[3][10] = 1;  self.doik[3][10] = 6;  self.toik[3][10] = 1.625;
-        self.coik[3][11] = 2;  self.doik[3][11] = 1;  self.toik[3][11] = 3.75;
-        self.coik[3][12] = 2;  self.doik[3][12] = 4;  self.toik[3][12] = 3.5;
-        self.coik[3][13] = 3;  self.doik[3][13] = 1;  self.toik[3][13] = 7.5;
-        self.coik[3][14] = 3;  self.doik[3][14] = 1;  self.toik[3][14] = 8.0;
-        self.coik[3][15] = 3;  self.doik[3][15] = 3;  self.toik[3][15] = 6.0;
-        self.coik[3][16] = 3;  self.doik[3][16] = 3;  self.toik[3][16] = 16.0;
-        self.coik[3][17] = 3;  self.doik[3][17] = 4;  self.toik[3][17] = 11.0;
-        self.coik[3][18] = 5;  self.doik[3][18] = 5;  self.toik[3][18] = 24.0;
-        self.coik[3][19] = 5;  self.doik[3][19] = 5;  self.toik[3][19] = 26.0;
-        self.coik[3][20] = 5;  self.doik[3][20] = 5;  self.toik[3][20] = 28.0;
-        self.coik[3][21] = 6;  self.doik[3][21] = 5;  self.toik[3][21] = 24.0;
-        self.coik[3][22] = 6;  self.doik[3][22] = 5;  self.toik[3][22] = 26.0;
+        self.coik[3][1] = 0;
+        self.doik[3][1] = 1;
+        self.toik[3][1] = 0.0;
+        self.coik[3][2] = 0;
+        self.doik[3][2] = 1;
+        self.toik[3][2] = 1.25;
+        self.coik[3][3] = 0;
+        self.doik[3][3] = 2;
+        self.toik[3][3] = 1.625;
+        self.coik[3][4] = 0;
+        self.doik[3][4] = 3;
+        self.toik[3][4] = 0.375;
+        self.coik[3][5] = 1;
+        self.doik[3][5] = 3;
+        self.toik[3][5] = 0.375;
+        self.coik[3][6] = 1;
+        self.doik[3][6] = 3;
+        self.toik[3][6] = 1.375;
+        self.coik[3][7] = 1;
+        self.doik[3][7] = 4;
+        self.toik[3][7] = 1.125;
+        self.coik[3][8] = 1;
+        self.doik[3][8] = 5;
+        self.toik[3][8] = 1.375;
+        self.coik[3][9] = 1;
+        self.doik[3][9] = 6;
+        self.toik[3][9] = 0.125;
+        self.coik[3][10] = 1;
+        self.doik[3][10] = 6;
+        self.toik[3][10] = 1.625;
+        self.coik[3][11] = 2;
+        self.doik[3][11] = 1;
+        self.toik[3][11] = 3.75;
+        self.coik[3][12] = 2;
+        self.doik[3][12] = 4;
+        self.toik[3][12] = 3.5;
+        self.coik[3][13] = 3;
+        self.doik[3][13] = 1;
+        self.toik[3][13] = 7.5;
+        self.coik[3][14] = 3;
+        self.doik[3][14] = 1;
+        self.toik[3][14] = 8.0;
+        self.coik[3][15] = 3;
+        self.doik[3][15] = 3;
+        self.toik[3][15] = 6.0;
+        self.coik[3][16] = 3;
+        self.doik[3][16] = 3;
+        self.toik[3][16] = 16.0;
+        self.coik[3][17] = 3;
+        self.doik[3][17] = 4;
+        self.toik[3][17] = 11.0;
+        self.coik[3][18] = 5;
+        self.doik[3][18] = 5;
+        self.toik[3][18] = 24.0;
+        self.coik[3][19] = 5;
+        self.doik[3][19] = 5;
+        self.toik[3][19] = 26.0;
+        self.coik[3][20] = 5;
+        self.doik[3][20] = 5;
+        self.toik[3][20] = 28.0;
+        self.coik[3][21] = 6;
+        self.doik[3][21] = 5;
+        self.toik[3][21] = 24.0;
+        self.coik[3][22] = 6;
+        self.doik[3][22] = 5;
+        self.toik[3][22] = 26.0;
         // Hydrogen
-        self.coik[15][1] = 0;  self.doik[15][1] = 1;  self.toik[15][1] = 0.5;
-        self.coik[15][2] = 0;  self.doik[15][2] = 1;  self.toik[15][2] = 0.625;
-        self.coik[15][3] = 0;  self.doik[15][3] = 2;  self.toik[15][3] = 0.375;
-        self.coik[15][4] = 0;  self.doik[15][4] = 2;  self.toik[15][4] = 0.625;
-        self.coik[15][5] = 0;  self.doik[15][5] = 4;  self.toik[15][5] = 1.125;
-        self.coik[15][6] = 1;  self.doik[15][6] = 1;  self.toik[15][6] = 2.625;
-        self.coik[15][7] = 1;  self.doik[15][7] = 5;  self.toik[15][7] = 0.0;
-        self.coik[15][8] = 1;  self.doik[15][8] = 5;  self.toik[15][8] = 0.25;
-        self.coik[15][9] = 1;  self.doik[15][9] = 5;  self.toik[15][9] = 1.375;
-        self.coik[15][10] = 2; self.doik[15][10] = 1; self.toik[15][10] = 4.0;
-        self.coik[15][11] = 2; self.doik[15][11] = 1; self.toik[15][11] = 4.25;
-        self.coik[15][12] = 3; self.doik[15][12] = 2; self.toik[15][12] = 5.0;
-        self.coik[15][13] = 3; self.doik[15][13] = 5; self.toik[15][13] = 8.0;
-        self.coik[15][14] = 5; self.doik[15][14] = 1; self.toik[15][14] = 8.0;
+        self.coik[15][1] = 0;
+        self.doik[15][1] = 1;
+        self.toik[15][1] = 0.5;
+        self.coik[15][2] = 0;
+        self.doik[15][2] = 1;
+        self.toik[15][2] = 0.625;
+        self.coik[15][3] = 0;
+        self.doik[15][3] = 2;
+        self.toik[15][3] = 0.375;
+        self.coik[15][4] = 0;
+        self.doik[15][4] = 2;
+        self.toik[15][4] = 0.625;
+        self.coik[15][5] = 0;
+        self.doik[15][5] = 4;
+        self.toik[15][5] = 1.125;
+        self.coik[15][6] = 1;
+        self.doik[15][6] = 1;
+        self.toik[15][6] = 2.625;
+        self.coik[15][7] = 1;
+        self.doik[15][7] = 5;
+        self.toik[15][7] = 0.0;
+        self.coik[15][8] = 1;
+        self.doik[15][8] = 5;
+        self.toik[15][8] = 0.25;
+        self.coik[15][9] = 1;
+        self.doik[15][9] = 5;
+        self.toik[15][9] = 1.375;
+        self.coik[15][10] = 2;
+        self.doik[15][10] = 1;
+        self.toik[15][10] = 4.0;
+        self.coik[15][11] = 2;
+        self.doik[15][11] = 1;
+        self.toik[15][11] = 4.25;
+        self.coik[15][12] = 3;
+        self.doik[15][12] = 2;
+        self.toik[15][12] = 5.0;
+        self.coik[15][13] = 3;
+        self.doik[15][13] = 5;
+        self.toik[15][13] = 8.0;
+        self.coik[15][14] = 5;
+        self.doik[15][14] = 1;
+        self.toik[15][14] = 8.0;
         // Water
-        self.coik[18][1] = 0;  self.doik[18][1] = 1;  self.toik[18][1] = 0.5;
-        self.coik[18][2] = 0;  self.doik[18][2] = 1;  self.toik[18][2] = 1.25;
-        self.coik[18][3] = 0;  self.doik[18][3] = 1;  self.toik[18][3] = 1.875;
-        self.coik[18][4] = 0;  self.doik[18][4] = 2;  self.toik[18][4] = 0.125;
-        self.coik[18][5] = 0;  self.doik[18][5] = 2;  self.toik[18][5] = 1.5;
-        self.coik[18][6] = 0;  self.doik[18][6] = 3;  self.toik[18][6] = 1.0;
-        self.coik[18][7] = 0;  self.doik[18][7] = 4;  self.toik[18][7] = 0.75;
-        self.coik[18][8] = 1;  self.doik[18][8] = 1;  self.toik[18][8] = 1.5;
-        self.coik[18][9] = 1;  self.doik[18][9] = 5;  self.toik[18][9] = 0.625;
-        self.coik[18][10] = 1; self.doik[18][10] = 5; self.toik[18][10] = 2.625;
-        self.coik[18][11] = 2; self.doik[18][11] = 1; self.toik[18][11] = 5.0;
-        self.coik[18][12] = 2; self.doik[18][12] = 2; self.toik[18][12] = 4.0;
-        self.coik[18][13] = 2; self.doik[18][13] = 4; self.toik[18][13] = 4.5;
-        self.coik[18][14] = 3; self.doik[18][14] = 4; self.toik[18][14] = 3.0;
-        self.coik[18][15] = 5; self.doik[18][15] = 1; self.toik[18][15] = 4.0;
-        self.coik[18][16] = 5; self.doik[18][16] = 1; self.toik[18][16] = 6.0;
+        self.coik[18][1] = 0;
+        self.doik[18][1] = 1;
+        self.toik[18][1] = 0.5;
+        self.coik[18][2] = 0;
+        self.doik[18][2] = 1;
+        self.toik[18][2] = 1.25;
+        self.coik[18][3] = 0;
+        self.doik[18][3] = 1;
+        self.toik[18][3] = 1.875;
+        self.coik[18][4] = 0;
+        self.doik[18][4] = 2;
+        self.toik[18][4] = 0.125;
+        self.coik[18][5] = 0;
+        self.doik[18][5] = 2;
+        self.toik[18][5] = 1.5;
+        self.coik[18][6] = 0;
+        self.doik[18][6] = 3;
+        self.toik[18][6] = 1.0;
+        self.coik[18][7] = 0;
+        self.doik[18][7] = 4;
+        self.toik[18][7] = 0.75;
+        self.coik[18][8] = 1;
+        self.doik[18][8] = 1;
+        self.toik[18][8] = 1.5;
+        self.coik[18][9] = 1;
+        self.doik[18][9] = 5;
+        self.toik[18][9] = 0.625;
+        self.coik[18][10] = 1;
+        self.doik[18][10] = 5;
+        self.toik[18][10] = 2.625;
+        self.coik[18][11] = 2;
+        self.doik[18][11] = 1;
+        self.toik[18][11] = 5.0;
+        self.coik[18][12] = 2;
+        self.doik[18][12] = 2;
+        self.toik[18][12] = 4.0;
+        self.coik[18][13] = 2;
+        self.doik[18][13] = 4;
+        self.toik[18][13] = 4.5;
+        self.coik[18][14] = 3;
+        self.doik[18][14] = 4;
+        self.toik[18][14] = 3.0;
+        self.coik[18][15] = 5;
+        self.doik[18][15] = 1;
+        self.toik[18][15] = 4.0;
+        self.coik[18][16] = 5;
+        self.doik[18][16] = 1;
+        self.toik[18][16] = 6.0;
         // Helium
-        self.coik[20][1] = 0;  self.doik[20][1] = 1;  self.toik[20][1] = 0.0;
-        self.coik[20][2] = 0;  self.doik[20][2] = 1;  self.toik[20][2] = 0.125;
-        self.coik[20][3] = 0;  self.doik[20][3] = 1;  self.toik[20][3] = 0.75;
-        self.coik[20][4] = 0;  self.doik[20][4] = 4;  self.toik[20][4] = 1.0;
-        self.coik[20][5] = 1;  self.doik[20][5] = 1;  self.toik[20][5] = 0.75;
-        self.coik[20][6] = 1;  self.doik[20][6] = 3;  self.toik[20][6] = 2.625;
-        self.coik[20][7] = 1;  self.doik[20][7] = 5;  self.toik[20][7] = 0.125;
-        self.coik[20][8] = 1;  self.doik[20][8] = 5;  self.toik[20][8] = 1.25;
-        self.coik[20][9] = 1;  self.doik[20][9] = 5;  self.toik[20][9] = 2.0;
-        self.coik[20][10] = 2; self.doik[20][10] = 2; self.toik[20][10] = 1.0;
-        self.coik[20][11] = 3; self.doik[20][11] = 1; self.toik[20][11] = 4.5;
-        self.coik[20][12] = 3; self.doik[20][12] = 2; self.toik[20][12] = 5.0;
+        self.coik[20][1] = 0;
+        self.doik[20][1] = 1;
+        self.toik[20][1] = 0.0;
+        self.coik[20][2] = 0;
+        self.doik[20][2] = 1;
+        self.toik[20][2] = 0.125;
+        self.coik[20][3] = 0;
+        self.doik[20][3] = 1;
+        self.toik[20][3] = 0.75;
+        self.coik[20][4] = 0;
+        self.doik[20][4] = 4;
+        self.toik[20][4] = 1.0;
+        self.coik[20][5] = 1;
+        self.doik[20][5] = 1;
+        self.toik[20][5] = 0.75;
+        self.coik[20][6] = 1;
+        self.doik[20][6] = 3;
+        self.toik[20][6] = 2.625;
+        self.coik[20][7] = 1;
+        self.doik[20][7] = 5;
+        self.toik[20][7] = 0.125;
+        self.coik[20][8] = 1;
+        self.doik[20][8] = 5;
+        self.toik[20][8] = 1.25;
+        self.coik[20][9] = 1;
+        self.doik[20][9] = 5;
+        self.toik[20][9] = 2.0;
+        self.coik[20][10] = 2;
+        self.doik[20][10] = 2;
+        self.toik[20][10] = 1.0;
+        self.coik[20][11] = 3;
+        self.doik[20][11] = 1;
+        self.toik[20][11] = 4.5;
+        self.coik[20][12] = 3;
+        self.doik[20][12] = 2;
+        self.toik[20][12] = 5.0;
 
         // Exponents in mixture equations
         // Methane-Nitrogen
-        self.dijk[3][1] = 1;  self.tijk[3][1] = 0.0;     self.cijk[3][1] = 0.0;     self.eijk[3][1] = 0.0;    bijk[3][1] = 0.0;    self.gijk[3][1] = 0.0;    self.nijk[3][1] = -9.8038985517335E-03;
-        self.dijk[3][2] = 4;  self.tijk[3][2] = 1.85;  self.cijk[3][2] = 0.0;     self.eijk[3][2] = 0.0;    bijk[3][2] = 0.0;    self.gijk[3][2] = 0.0;    self.nijk[3][2] = 4.2487270143005E-04;
-        self.dijk[3][3] = 1;  self.tijk[3][3] = 7.85;  self.cijk[3][3] = 1.0;     self.eijk[3][3] = 0.5;  bijk[3][3] = 1.0;    self.gijk[3][3] = 0.5;  self.nijk[3][3] = -0.034800214576142;
-        self.dijk[3][4] = 2;  self.tijk[3][4] = 5.4;   self.cijk[3][4] = 1.0;     self.eijk[3][4] = 0.5;  bijk[3][4] = 1.0;    self.gijk[3][4] = 0.5;  self.nijk[3][4] = -0.13333813013896;
-        self.dijk[3][5] = 2;  self.tijk[3][5] = 0.0;     self.cijk[3][5] = 0.25;  self.eijk[3][5] = 0.5;  bijk[3][5] = 2.5;  self.gijk[3][5] = 0.5;  self.nijk[3][5] = -0.011993694974627;
-        self.dijk[3][6] = 2;  self.tijk[3][6] = 0.75;  self.cijk[3][6] = 0.0;     self.eijk[3][6] = 0.5;  bijk[3][6] = 3.0;    self.gijk[3][6] = 0.5;  self.nijk[3][6] = 0.069243379775168;
-        self.dijk[3][7] = 2;  self.tijk[3][7] = 2.8;   self.cijk[3][7] = 0.0;     self.eijk[3][7] = 0.5;  bijk[3][7] = 3.0;    self.gijk[3][7] = 0.5;  self.nijk[3][7] = -0.31022508148249;
-        self.dijk[3][8] = 2;  self.tijk[3][8] = 4.45;  self.cijk[3][8] = 0.0;     self.eijk[3][8] = 0.5;  bijk[3][8] = 3.0;    self.gijk[3][8] = 0.5;  self.nijk[3][8] = 0.24495491753226;
-        self.dijk[3][9] = 3;  self.tijk[3][9] = 4.25;  self.cijk[3][9] = 0.0;     self.eijk[3][9] = 0.5;  bijk[3][9] = 3.0;    self.gijk[3][9] = 0.5;  self.nijk[3][9] = 0.22369816716981;
-        self.dijk[4][1] = 1;  self.tijk[4][1] = 2.6;   self.cijk[4][1] = 0.0;     self.eijk[4][1] = 0.0;    bijk[4][1] = 0.0;    self.gijk[4][1] = 0.0;    self.nijk[4][1] = -0.10859387354942;
-        self.dijk[4][2] = 2;  self.tijk[4][2] = 1.95;  self.cijk[4][2] = 0.0;     self.eijk[4][2] = 0.0;    bijk[4][2] = 0.0;    self.gijk[4][2] = 0.0;    self.nijk[4][2] = 0.080228576727389;
-        self.dijk[4][3] = 3;  self.tijk[4][3] = 0.0;     self.cijk[4][3] = 0.0;     self.eijk[4][3] = 0.0;    bijk[4][3] = 0.0;    self.gijk[4][3] = 0.0;    self.nijk[4][3] = -9.3303985115717E-03;
-        self.dijk[4][4] = 1;  self.tijk[4][4] = 3.95;  self.cijk[4][4] = 1.0;     self.eijk[4][4] = 0.5;  bijk[4][4] = 1.0;    self.gijk[4][4] = 0.5;  self.nijk[4][4] = 0.040989274005848;
-        self.dijk[4][5] = 2;  self.tijk[4][5] = 7.95;  self.cijk[4][5] = 0.5;   self.eijk[4][5] = 0.5;  bijk[4][5] = 2.0;    self.gijk[4][5] = 0.5;  self.nijk[4][5] = -0.24338019772494;
-        self.dijk[4][6] = 3;  self.tijk[4][6] = 8.0;     self.cijk[4][6] = 0.0;     self.eijk[4][6] = 0.5;  bijk[4][6] = 3.0;    self.gijk[4][6] = 0.5;  self.nijk[4][6] = 0.23855347281124;
-        self.dijk[1][1] = 3;  self.tijk[1][1] = 0.65;  self.cijk[1][1] = 0.0;     self.eijk[1][1] = 0.0;    bijk[1][1] = 0.0;    self.gijk[1][1] = 0.0;    self.nijk[1][1] = -8.0926050298746E-04;
-        self.dijk[1][2] = 4;  self.tijk[1][2] = 1.55;  self.cijk[1][2] = 0.0;     self.eijk[1][2] = 0.0;    bijk[1][2] = 0.0;    self.gijk[1][2] = 0.0;    self.nijk[1][2] = -7.5381925080059E-04;
-        self.dijk[1][3] = 1;  self.tijk[1][3] = 3.1;   self.cijk[1][3] = 1.0;     self.eijk[1][3] = 0.5;  bijk[1][3] = 1.0;    self.gijk[1][3] = 0.5;  self.nijk[1][3] = -0.041618768891219;
-        self.dijk[1][4] = 2;  self.tijk[1][4] = 5.9;   self.cijk[1][4] = 1.0;     self.eijk[1][4] = 0.5;  bijk[1][4] = 1.0;    self.gijk[1][4] = 0.5;  self.nijk[1][4] = -0.23452173681569;
-        self.dijk[1][5] = 2;  self.tijk[1][5] = 7.05;  self.cijk[1][5] = 1.0;     self.eijk[1][5] = 0.5;  bijk[1][5] = 1.0;    self.gijk[1][5] = 0.5;  self.nijk[1][5] = 0.14003840584586;
-        self.dijk[1][6] = 2;  self.tijk[1][6] = 3.35;  self.cijk[1][6] = 0.875; self.eijk[1][6] = 0.5;  bijk[1][6] = 1.25; self.gijk[1][6] = 0.5;  self.nijk[1][6] = 0.063281744807738;
-        self.dijk[1][7] = 2;  self.tijk[1][7] = 1.2;   self.cijk[1][7] = 0.75;  self.eijk[1][7] = 0.5;  bijk[1][7] = 1.5;  self.gijk[1][7] = 0.5;  self.nijk[1][7] = -0.034660425848809;
-        self.dijk[1][8] = 2;  self.tijk[1][8] = 5.8;   self.cijk[1][8] = 0.5;   self.eijk[1][8] = 0.5;  bijk[1][8] = 2.0;    self.gijk[1][8] = 0.5;  self.nijk[1][8] = -0.23918747334251;
-        self.dijk[1][9] = 2;  self.tijk[1][9] = 2.7;   self.cijk[1][9] = 0.0;     self.eijk[1][9] = 0.5;  bijk[1][9] = 3.0;    self.gijk[1][9] = 0.5;  self.nijk[1][9] = 1.9855255066891E-03;
-        self.dijk[1][10] = 3; self.tijk[1][10] = 0.45; self.cijk[1][10] = 0.0;    self.eijk[1][10] = 0.5; bijk[1][10] = 3.0;   self.gijk[1][10] = 0.5; self.nijk[1][10] = 6.1777746171555;
-        self.dijk[1][11] = 3; self.tijk[1][11] = 0.55; self.cijk[1][11] = 0.0;    self.eijk[1][11] = 0.5; bijk[1][11] = 3.0;   self.gijk[1][11] = 0.5; self.nijk[1][11] = -6.9575358271105;
-        self.dijk[1][12] = 3; self.tijk[1][12] = 1.95; self.cijk[1][12] = 0.0;    self.eijk[1][12] = 0.5; bijk[1][12] = 3.0;   self.gijk[1][12] = 0.5; self.nijk[1][12] = 1.0630185306388;
-        self.dijk[2][1] = 3;  self.tijk[2][1] = 1.85;  self.cijk[2][1] = 0.0;     self.eijk[2][1] = 0.0;    bijk[2][1] = 0.0;    self.gijk[2][1] = 0.0;    self.nijk[2][1] = 0.013746429958576;
-        self.dijk[2][2] = 3;  self.tijk[2][2] = 3.95;  self.cijk[2][2] = 0.0;     self.eijk[2][2] = 0.0;    bijk[2][2] = 0.0;    self.gijk[2][2] = 0.0;    self.nijk[2][2] = -7.4425012129552E-03;
-        self.dijk[2][3] = 4;  self.tijk[2][3] = 0.0;     self.cijk[2][3] = 0.0;     self.eijk[2][3] = 0.0;    bijk[2][3] = 0.0;    self.gijk[2][3] = 0.0;    self.nijk[2][3] = -4.5516600213685E-03;
-        self.dijk[2][4] = 4;  self.tijk[2][4] = 1.85;  self.cijk[2][4] = 0.0;     self.eijk[2][4] = 0.0;    bijk[2][4] = 0.0;    self.gijk[2][4] = 0.0;    self.nijk[2][4] = -5.4546603350237E-03;
-        self.dijk[2][5] = 4;  self.tijk[2][5] = 3.85;  self.cijk[2][5] = 0.0;     self.eijk[2][5] = 0.0;    bijk[2][5] = 0.0;    self.gijk[2][5] = 0.0;    self.nijk[2][5] = 2.3682016824471E-03;
-        self.dijk[2][6] = 1;  self.tijk[2][6] = 5.25;  self.cijk[2][6] = 0.25;  self.eijk[2][6] = 0.5;  bijk[2][6] = 0.75; self.gijk[2][6] = 0.5;  self.nijk[2][6] = 0.18007763721438;
-        self.dijk[2][7] = 1;  self.tijk[2][7] = 3.85;  self.cijk[2][7] = 0.25;  self.eijk[2][7] = 0.5;  bijk[2][7] = 1.0;    self.gijk[2][7] = 0.5;  self.nijk[2][7] = -0.44773942932486;
-        self.dijk[2][8] = 1;  self.tijk[2][8] = 0.2;   self.cijk[2][8] = 0.0;     self.eijk[2][8] = 0.5;  bijk[2][8] = 2.0;    self.gijk[2][8] = 0.5;  self.nijk[2][8] = 0.0193273748882;
-        self.dijk[2][9] = 2;  self.tijk[2][9] = 6.5;   self.cijk[2][9] = 0.0;     self.eijk[2][9] = 0.5;  bijk[2][9] = 3.0;    self.gijk[2][9] = 0.5;  self.nijk[2][9] = -0.30632197804624;
-        self.dijk[5][1] = 2;  self.tijk[5][1] = 1.85;  self.cijk[5][1] = 0.0;     self.eijk[5][1] = 0.0;    bijk[5][1] = 0.0;    self.gijk[5][1] = 0.0;    self.nijk[5][1] = 0.28661625028399;
-        self.dijk[5][2] = 3;  self.tijk[5][2] = 1.4;   self.cijk[5][2] = 0.0;     self.eijk[5][2] = 0.0;    bijk[5][2] = 0.0;    self.gijk[5][2] = 0.0;    self.nijk[5][2] = -0.10919833861247;
-        self.dijk[5][3] = 1;  self.tijk[5][3] = 3.2;   self.cijk[5][3] = 0.25;  self.eijk[5][3] = 0.5;  bijk[5][3] = 0.75; self.gijk[5][3] = 0.5;  self.nijk[5][3] = -1.137403208227;
-        self.dijk[5][4] = 1;  self.tijk[5][4] = 2.5;   self.cijk[5][4] = 0.25;  self.eijk[5][4] = 0.5;  bijk[5][4] = 1.0;    self.gijk[5][4] = 0.5;  self.nijk[5][4] = 0.76580544237358;
-        self.dijk[5][5] = 1;  self.tijk[5][5] = 8.0;     self.cijk[5][5] = 0.0;     self.eijk[5][5] = 0.5;  bijk[5][5] = 2.0;    self.gijk[5][5] = 0.5;  self.nijk[5][5] = 4.2638000926819E-03;
-        self.dijk[5][6] = 2;  self.tijk[5][6] = 3.75;  self.cijk[5][6] = 0.0;     self.eijk[5][6] = 0.5;  bijk[5][6] = 3.0;    self.gijk[5][6] = 0.5;  self.nijk[5][6] = 0.17673538204534;
-        self.dijk[6][1] = 2;  self.tijk[6][1] = 0.0;     self.cijk[6][1] = 0.0;     self.eijk[6][1] = 0.0;    bijk[6][1] = 0.0;    self.gijk[6][1] = 0.0;    self.nijk[6][1] = -0.47376518126608;
-        self.dijk[6][2] = 2;  self.tijk[6][2] = 0.05;  self.cijk[6][2] = 0.0;     self.eijk[6][2] = 0.0;    bijk[6][2] = 0.0;    self.gijk[6][2] = 0.0;    self.nijk[6][2] = 0.48961193461001;
-        self.dijk[6][3] = 3;  self.tijk[6][3] = 0.0;     self.cijk[6][3] = 0.0;     self.eijk[6][3] = 0.0;    bijk[6][3] = 0.0;    self.gijk[6][3] = 0.0;    self.nijk[6][3] = -5.7011062090535E-03;
-        self.dijk[6][4] = 1;  self.tijk[6][4] = 3.65;  self.cijk[6][4] = 1.0;     self.eijk[6][4] = 0.5;  bijk[6][4] = 1.0;    self.gijk[6][4] = 0.5;  self.nijk[6][4] = -0.1996682004132;
-        self.dijk[6][5] = 2;  self.tijk[6][5] = 4.9;   self.cijk[6][5] = 1.0;     self.eijk[6][5] = 0.5;  bijk[6][5] = 1.0;    self.gijk[6][5] = 0.5;  self.nijk[6][5] = -0.69411103101723;
-        self.dijk[6][6] = 2;  self.tijk[6][6] = 4.45;  self.cijk[6][6] = 0.875; self.eijk[6][6] = 0.5;  bijk[6][6] = 1.25; self.gijk[6][6] = 0.5;  self.nijk[6][6] = 0.69226192739021;
-        self.dijk[7][1] = 1;  self.tijk[7][1] = 2.0;     self.cijk[7][1] = 0.0;     self.eijk[7][1] = 0.0;    bijk[7][1] = 0.0;    self.gijk[7][1] = 0.0;    self.nijk[7][1] = -0.25157134971934;
-        self.dijk[7][2] = 3;  self.tijk[7][2] = -1.0;    self.cijk[7][2] = 0.0;     self.eijk[7][2] = 0.0;    bijk[7][2] = 0.0;    self.gijk[7][2] = 0.0;    self.nijk[7][2] = -6.2203841111983E-03;
-        self.dijk[7][3] = 3;  self.tijk[7][3] = 1.75;  self.cijk[7][3] = 0.0;     self.eijk[7][3] = 0.0;    bijk[7][3] = 0.0;    self.gijk[7][3] = 0.0;    self.nijk[7][3] = 0.088850315184396;
-        self.dijk[7][4] = 4;  self.tijk[7][4] = 1.4;   self.cijk[7][4] = 0.0;     self.eijk[7][4] = 0.0;    bijk[7][4] = 0.0;    self.gijk[7][4] = 0.0;    self.nijk[7][4] = -0.035592212573239;
-        self.dijk[10][1] = 1; self.tijk[10][1] = 1.0;    self.cijk[10][1] = 0.0;    self.eijk[10][1] = 0.0;   bijk[10][1] = 0.0;   self.gijk[10][1] = 0.0;   self.nijk[10][1] = 2.5574776844118;
-        self.dijk[10][2] = 1; self.tijk[10][2] = 1.55; self.cijk[10][2] = 0.0;    self.eijk[10][2] = 0.0;   bijk[10][2] = 0.0;   self.gijk[10][2] = 0.0;   self.nijk[10][2] = -7.9846357136353;
-        self.dijk[10][3] = 1; self.tijk[10][3] = 1.7;  self.cijk[10][3] = 0.0;    self.eijk[10][3] = 0.0;   bijk[10][3] = 0.0;   self.gijk[10][3] = 0.0;   self.nijk[10][3] = 4.7859131465806;
-        self.dijk[10][4] = 2; self.tijk[10][4] = 0.25; self.cijk[10][4] = 0.0;    self.eijk[10][4] = 0.0;   bijk[10][4] = 0.0;   self.gijk[10][4] = 0.0;   self.nijk[10][4] = -0.73265392369587;
-        self.dijk[10][5] = 2; self.tijk[10][5] = 1.35; self.cijk[10][5] = 0.0;    self.eijk[10][5] = 0.0;   bijk[10][5] = 0.0;   self.gijk[10][5] = 0.0;   self.nijk[10][5] = 1.3805471345312;
-        self.dijk[10][6] = 3; self.tijk[10][6] = 0.0;    self.cijk[10][6] = 0.0;    self.eijk[10][6] = 0.0;   bijk[10][6] = 0.0;   self.gijk[10][6] = 0.0;   self.nijk[10][6] = 0.28349603476365;
-        self.dijk[10][7] = 3; self.tijk[10][7] = 1.25; self.cijk[10][7] = 0.0;    self.eijk[10][7] = 0.0;   bijk[10][7] = 0.0;   self.gijk[10][7] = 0.0;   self.nijk[10][7] = -0.49087385940425;
-        self.dijk[10][8] = 4; self.tijk[10][8] = 0.0;    self.cijk[10][8] = 0.0;    self.eijk[10][8] = 0.0;   bijk[10][8] = 0.0;   self.gijk[10][8] = 0.0;   self.nijk[10][8] = -0.10291888921447;
-        self.dijk[10][9] = 4; self.tijk[10][9] = 0.7;  self.cijk[10][9] = 0.0;    self.eijk[10][9] = 0.0;   bijk[10][9] = 0.0;   self.gijk[10][9] = 0.0;   self.nijk[10][9] = 0.11836314681968;
-        self.dijk[10][10] = 4;self.tijk[10][10] = 5.4; self.cijk[10][10] = 0.0;   self.eijk[10][10] = 0.0;  bijk[10][10] = 0.0;  self.gijk[10][10] = 0.0;  self.nijk[10][10] = 5.5527385721943E-05;
+        self.dijk[3][1] = 1;
+        self.tijk[3][1] = 0.0;
+        self.cijk[3][1] = 0.0;
+        self.eijk[3][1] = 0.0;
+        bijk[3][1] = 0.0;
+        self.gijk[3][1] = 0.0;
+        self.nijk[3][1] = -9.803_898_551_733_5E-03;
+        self.dijk[3][2] = 4;
+        self.tijk[3][2] = 1.85;
+        self.cijk[3][2] = 0.0;
+        self.eijk[3][2] = 0.0;
+        bijk[3][2] = 0.0;
+        self.gijk[3][2] = 0.0;
+        self.nijk[3][2] = 4.248_727_014_300_5E-04;
+        self.dijk[3][3] = 1;
+        self.tijk[3][3] = 7.85;
+        self.cijk[3][3] = 1.0;
+        self.eijk[3][3] = 0.5;
+        bijk[3][3] = 1.0;
+        self.gijk[3][3] = 0.5;
+        self.nijk[3][3] = -0.034_800_214_576_142;
+        self.dijk[3][4] = 2;
+        self.tijk[3][4] = 5.4;
+        self.cijk[3][4] = 1.0;
+        self.eijk[3][4] = 0.5;
+        bijk[3][4] = 1.0;
+        self.gijk[3][4] = 0.5;
+        self.nijk[3][4] = -0.133_338_130_138_96;
+        self.dijk[3][5] = 2;
+        self.tijk[3][5] = 0.0;
+        self.cijk[3][5] = 0.25;
+        self.eijk[3][5] = 0.5;
+        bijk[3][5] = 2.5;
+        self.gijk[3][5] = 0.5;
+        self.nijk[3][5] = -0.011_993_694_974_627;
+        self.dijk[3][6] = 2;
+        self.tijk[3][6] = 0.75;
+        self.cijk[3][6] = 0.0;
+        self.eijk[3][6] = 0.5;
+        bijk[3][6] = 3.0;
+        self.gijk[3][6] = 0.5;
+        self.nijk[3][6] = 0.069_243_379_775_168;
+        self.dijk[3][7] = 2;
+        self.tijk[3][7] = 2.8;
+        self.cijk[3][7] = 0.0;
+        self.eijk[3][7] = 0.5;
+        bijk[3][7] = 3.0;
+        self.gijk[3][7] = 0.5;
+        self.nijk[3][7] = -0.310_225_081_482_49;
+        self.dijk[3][8] = 2;
+        self.tijk[3][8] = 4.45;
+        self.cijk[3][8] = 0.0;
+        self.eijk[3][8] = 0.5;
+        bijk[3][8] = 3.0;
+        self.gijk[3][8] = 0.5;
+        self.nijk[3][8] = 0.244_954_917_532_26;
+        self.dijk[3][9] = 3;
+        self.tijk[3][9] = 4.25;
+        self.cijk[3][9] = 0.0;
+        self.eijk[3][9] = 0.5;
+        bijk[3][9] = 3.0;
+        self.gijk[3][9] = 0.5;
+        self.nijk[3][9] = 0.223_698_167_169_81;
+        self.dijk[4][1] = 1;
+        self.tijk[4][1] = 2.6;
+        self.cijk[4][1] = 0.0;
+        self.eijk[4][1] = 0.0;
+        bijk[4][1] = 0.0;
+        self.gijk[4][1] = 0.0;
+        self.nijk[4][1] = -0.108_593_873_549_42;
+        self.dijk[4][2] = 2;
+        self.tijk[4][2] = 1.95;
+        self.cijk[4][2] = 0.0;
+        self.eijk[4][2] = 0.0;
+        bijk[4][2] = 0.0;
+        self.gijk[4][2] = 0.0;
+        self.nijk[4][2] = 0.080_228_576_727_389;
+        self.dijk[4][3] = 3;
+        self.tijk[4][3] = 0.0;
+        self.cijk[4][3] = 0.0;
+        self.eijk[4][3] = 0.0;
+        bijk[4][3] = 0.0;
+        self.gijk[4][3] = 0.0;
+        self.nijk[4][3] = -9.330_398_511_571_7E-03;
+        self.dijk[4][4] = 1;
+        self.tijk[4][4] = 3.95;
+        self.cijk[4][4] = 1.0;
+        self.eijk[4][4] = 0.5;
+        bijk[4][4] = 1.0;
+        self.gijk[4][4] = 0.5;
+        self.nijk[4][4] = 0.040_989_274_005_848;
+        self.dijk[4][5] = 2;
+        self.tijk[4][5] = 7.95;
+        self.cijk[4][5] = 0.5;
+        self.eijk[4][5] = 0.5;
+        bijk[4][5] = 2.0;
+        self.gijk[4][5] = 0.5;
+        self.nijk[4][5] = -0.243_380_197_724_94;
+        self.dijk[4][6] = 3;
+        self.tijk[4][6] = 8.0;
+        self.cijk[4][6] = 0.0;
+        self.eijk[4][6] = 0.5;
+        bijk[4][6] = 3.0;
+        self.gijk[4][6] = 0.5;
+        self.nijk[4][6] = 0.238_553_472_811_24;
+        self.dijk[1][1] = 3;
+        self.tijk[1][1] = 0.65;
+        self.cijk[1][1] = 0.0;
+        self.eijk[1][1] = 0.0;
+        bijk[1][1] = 0.0;
+        self.gijk[1][1] = 0.0;
+        self.nijk[1][1] = -8.092_605_029_874_6E-04;
+        self.dijk[1][2] = 4;
+        self.tijk[1][2] = 1.55;
+        self.cijk[1][2] = 0.0;
+        self.eijk[1][2] = 0.0;
+        bijk[1][2] = 0.0;
+        self.gijk[1][2] = 0.0;
+        self.nijk[1][2] = -7.538_192_508_005_9E-04;
+        self.dijk[1][3] = 1;
+        self.tijk[1][3] = 3.1;
+        self.cijk[1][3] = 1.0;
+        self.eijk[1][3] = 0.5;
+        bijk[1][3] = 1.0;
+        self.gijk[1][3] = 0.5;
+        self.nijk[1][3] = -0.041_618_768_891_219;
+        self.dijk[1][4] = 2;
+        self.tijk[1][4] = 5.9;
+        self.cijk[1][4] = 1.0;
+        self.eijk[1][4] = 0.5;
+        bijk[1][4] = 1.0;
+        self.gijk[1][4] = 0.5;
+        self.nijk[1][4] = -0.234_521_736_815_69;
+        self.dijk[1][5] = 2;
+        self.tijk[1][5] = 7.05;
+        self.cijk[1][5] = 1.0;
+        self.eijk[1][5] = 0.5;
+        bijk[1][5] = 1.0;
+        self.gijk[1][5] = 0.5;
+        self.nijk[1][5] = 0.140_038_405_845_86;
+        self.dijk[1][6] = 2;
+        self.tijk[1][6] = 3.35;
+        self.cijk[1][6] = 0.875;
+        self.eijk[1][6] = 0.5;
+        bijk[1][6] = 1.25;
+        self.gijk[1][6] = 0.5;
+        self.nijk[1][6] = 0.063_281_744_807_738;
+        self.dijk[1][7] = 2;
+        self.tijk[1][7] = 1.2;
+        self.cijk[1][7] = 0.75;
+        self.eijk[1][7] = 0.5;
+        bijk[1][7] = 1.5;
+        self.gijk[1][7] = 0.5;
+        self.nijk[1][7] = -0.034_660_425_848_809;
+        self.dijk[1][8] = 2;
+        self.tijk[1][8] = 5.8;
+        self.cijk[1][8] = 0.5;
+        self.eijk[1][8] = 0.5;
+        bijk[1][8] = 2.0;
+        self.gijk[1][8] = 0.5;
+        self.nijk[1][8] = -0.239_187_473_342_51;
+        self.dijk[1][9] = 2;
+        self.tijk[1][9] = 2.7;
+        self.cijk[1][9] = 0.0;
+        self.eijk[1][9] = 0.5;
+        bijk[1][9] = 3.0;
+        self.gijk[1][9] = 0.5;
+        self.nijk[1][9] = 1.985_525_506_689_1E-03;
+        self.dijk[1][10] = 3;
+        self.tijk[1][10] = 0.45;
+        self.cijk[1][10] = 0.0;
+        self.eijk[1][10] = 0.5;
+        bijk[1][10] = 3.0;
+        self.gijk[1][10] = 0.5;
+        self.nijk[1][10] = 6.177_774_617_155_5;
+        self.dijk[1][11] = 3;
+        self.tijk[1][11] = 0.55;
+        self.cijk[1][11] = 0.0;
+        self.eijk[1][11] = 0.5;
+        bijk[1][11] = 3.0;
+        self.gijk[1][11] = 0.5;
+        self.nijk[1][11] = -6.957_535_827_110_5;
+        self.dijk[1][12] = 3;
+        self.tijk[1][12] = 1.95;
+        self.cijk[1][12] = 0.0;
+        self.eijk[1][12] = 0.5;
+        bijk[1][12] = 3.0;
+        self.gijk[1][12] = 0.5;
+        self.nijk[1][12] = 1.063_018_530_638_8;
+        self.dijk[2][1] = 3;
+        self.tijk[2][1] = 1.85;
+        self.cijk[2][1] = 0.0;
+        self.eijk[2][1] = 0.0;
+        bijk[2][1] = 0.0;
+        self.gijk[2][1] = 0.0;
+        self.nijk[2][1] = 0.013_746_429_958_576;
+        self.dijk[2][2] = 3;
+        self.tijk[2][2] = 3.95;
+        self.cijk[2][2] = 0.0;
+        self.eijk[2][2] = 0.0;
+        bijk[2][2] = 0.0;
+        self.gijk[2][2] = 0.0;
+        self.nijk[2][2] = -7.442_501_212_955_2E-03;
+        self.dijk[2][3] = 4;
+        self.tijk[2][3] = 0.0;
+        self.cijk[2][3] = 0.0;
+        self.eijk[2][3] = 0.0;
+        bijk[2][3] = 0.0;
+        self.gijk[2][3] = 0.0;
+        self.nijk[2][3] = -4.551_660_021_368_5E-03;
+        self.dijk[2][4] = 4;
+        self.tijk[2][4] = 1.85;
+        self.cijk[2][4] = 0.0;
+        self.eijk[2][4] = 0.0;
+        bijk[2][4] = 0.0;
+        self.gijk[2][4] = 0.0;
+        self.nijk[2][4] = -5.454_660_335_023_7E-03;
+        self.dijk[2][5] = 4;
+        self.tijk[2][5] = 3.85;
+        self.cijk[2][5] = 0.0;
+        self.eijk[2][5] = 0.0;
+        bijk[2][5] = 0.0;
+        self.gijk[2][5] = 0.0;
+        self.nijk[2][5] = 2.368_201_682_447_1E-03;
+        self.dijk[2][6] = 1;
+        self.tijk[2][6] = 5.25;
+        self.cijk[2][6] = 0.25;
+        self.eijk[2][6] = 0.5;
+        bijk[2][6] = 0.75;
+        self.gijk[2][6] = 0.5;
+        self.nijk[2][6] = 0.180_077_637_214_38;
+        self.dijk[2][7] = 1;
+        self.tijk[2][7] = 3.85;
+        self.cijk[2][7] = 0.25;
+        self.eijk[2][7] = 0.5;
+        bijk[2][7] = 1.0;
+        self.gijk[2][7] = 0.5;
+        self.nijk[2][7] = -0.447_739_429_324_86;
+        self.dijk[2][8] = 1;
+        self.tijk[2][8] = 0.2;
+        self.cijk[2][8] = 0.0;
+        self.eijk[2][8] = 0.5;
+        bijk[2][8] = 2.0;
+        self.gijk[2][8] = 0.5;
+        self.nijk[2][8] = 0.019_327_374_888_2;
+        self.dijk[2][9] = 2;
+        self.tijk[2][9] = 6.5;
+        self.cijk[2][9] = 0.0;
+        self.eijk[2][9] = 0.5;
+        bijk[2][9] = 3.0;
+        self.gijk[2][9] = 0.5;
+        self.nijk[2][9] = -0.306_321_978_046_24;
+        self.dijk[5][1] = 2;
+        self.tijk[5][1] = 1.85;
+        self.cijk[5][1] = 0.0;
+        self.eijk[5][1] = 0.0;
+        bijk[5][1] = 0.0;
+        self.gijk[5][1] = 0.0;
+        self.nijk[5][1] = 0.286_616_250_283_99;
+        self.dijk[5][2] = 3;
+        self.tijk[5][2] = 1.4;
+        self.cijk[5][2] = 0.0;
+        self.eijk[5][2] = 0.0;
+        bijk[5][2] = 0.0;
+        self.gijk[5][2] = 0.0;
+        self.nijk[5][2] = -0.109_198_338_612_47;
+        self.dijk[5][3] = 1;
+        self.tijk[5][3] = 3.2;
+        self.cijk[5][3] = 0.25;
+        self.eijk[5][3] = 0.5;
+        bijk[5][3] = 0.75;
+        self.gijk[5][3] = 0.5;
+        self.nijk[5][3] = -1.137_403_208_227;
+        self.dijk[5][4] = 1;
+        self.tijk[5][4] = 2.5;
+        self.cijk[5][4] = 0.25;
+        self.eijk[5][4] = 0.5;
+        bijk[5][4] = 1.0;
+        self.gijk[5][4] = 0.5;
+        self.nijk[5][4] = 0.765_805_442_373_58;
+        self.dijk[5][5] = 1;
+        self.tijk[5][5] = 8.0;
+        self.cijk[5][5] = 0.0;
+        self.eijk[5][5] = 0.5;
+        bijk[5][5] = 2.0;
+        self.gijk[5][5] = 0.5;
+        self.nijk[5][5] = 4.263_800_092_681_9E-03;
+        self.dijk[5][6] = 2;
+        self.tijk[5][6] = 3.75;
+        self.cijk[5][6] = 0.0;
+        self.eijk[5][6] = 0.5;
+        bijk[5][6] = 3.0;
+        self.gijk[5][6] = 0.5;
+        self.nijk[5][6] = 0.176_735_382_045_34;
+        self.dijk[6][1] = 2;
+        self.tijk[6][1] = 0.0;
+        self.cijk[6][1] = 0.0;
+        self.eijk[6][1] = 0.0;
+        bijk[6][1] = 0.0;
+        self.gijk[6][1] = 0.0;
+        self.nijk[6][1] = -0.473_765_181_266_08;
+        self.dijk[6][2] = 2;
+        self.tijk[6][2] = 0.05;
+        self.cijk[6][2] = 0.0;
+        self.eijk[6][2] = 0.0;
+        bijk[6][2] = 0.0;
+        self.gijk[6][2] = 0.0;
+        self.nijk[6][2] = 0.489_611_934_610_01;
+        self.dijk[6][3] = 3;
+        self.tijk[6][3] = 0.0;
+        self.cijk[6][3] = 0.0;
+        self.eijk[6][3] = 0.0;
+        bijk[6][3] = 0.0;
+        self.gijk[6][3] = 0.0;
+        self.nijk[6][3] = -5.701_106_209_053_5E-03;
+        self.dijk[6][4] = 1;
+        self.tijk[6][4] = 3.65;
+        self.cijk[6][4] = 1.0;
+        self.eijk[6][4] = 0.5;
+        bijk[6][4] = 1.0;
+        self.gijk[6][4] = 0.5;
+        self.nijk[6][4] = -0.199_668_200_413_2;
+        self.dijk[6][5] = 2;
+        self.tijk[6][5] = 4.9;
+        self.cijk[6][5] = 1.0;
+        self.eijk[6][5] = 0.5;
+        bijk[6][5] = 1.0;
+        self.gijk[6][5] = 0.5;
+        self.nijk[6][5] = -0.694_111_031_017_23;
+        self.dijk[6][6] = 2;
+        self.tijk[6][6] = 4.45;
+        self.cijk[6][6] = 0.875;
+        self.eijk[6][6] = 0.5;
+        bijk[6][6] = 1.25;
+        self.gijk[6][6] = 0.5;
+        self.nijk[6][6] = 0.692_261_927_390_21;
+        self.dijk[7][1] = 1;
+        self.tijk[7][1] = 2.0;
+        self.cijk[7][1] = 0.0;
+        self.eijk[7][1] = 0.0;
+        bijk[7][1] = 0.0;
+        self.gijk[7][1] = 0.0;
+        self.nijk[7][1] = -0.251_571_349_719_34;
+        self.dijk[7][2] = 3;
+        self.tijk[7][2] = -1.0;
+        self.cijk[7][2] = 0.0;
+        self.eijk[7][2] = 0.0;
+        bijk[7][2] = 0.0;
+        self.gijk[7][2] = 0.0;
+        self.nijk[7][2] = -6.220_384_111_198_3E-03;
+        self.dijk[7][3] = 3;
+        self.tijk[7][3] = 1.75;
+        self.cijk[7][3] = 0.0;
+        self.eijk[7][3] = 0.0;
+        bijk[7][3] = 0.0;
+        self.gijk[7][3] = 0.0;
+        self.nijk[7][3] = 0.088_850_315_184_396;
+        self.dijk[7][4] = 4;
+        self.tijk[7][4] = 1.4;
+        self.cijk[7][4] = 0.0;
+        self.eijk[7][4] = 0.0;
+        bijk[7][4] = 0.0;
+        self.gijk[7][4] = 0.0;
+        self.nijk[7][4] = -0.035_592_212_573_239;
+        self.dijk[10][1] = 1;
+        self.tijk[10][1] = 1.0;
+        self.cijk[10][1] = 0.0;
+        self.eijk[10][1] = 0.0;
+        bijk[10][1] = 0.0;
+        self.gijk[10][1] = 0.0;
+        self.nijk[10][1] = 2.557_477_684_411_8;
+        self.dijk[10][2] = 1;
+        self.tijk[10][2] = 1.55;
+        self.cijk[10][2] = 0.0;
+        self.eijk[10][2] = 0.0;
+        bijk[10][2] = 0.0;
+        self.gijk[10][2] = 0.0;
+        self.nijk[10][2] = -7.984_635_713_635_3;
+        self.dijk[10][3] = 1;
+        self.tijk[10][3] = 1.7;
+        self.cijk[10][3] = 0.0;
+        self.eijk[10][3] = 0.0;
+        bijk[10][3] = 0.0;
+        self.gijk[10][3] = 0.0;
+        self.nijk[10][3] = 4.785_913_146_580_6;
+        self.dijk[10][4] = 2;
+        self.tijk[10][4] = 0.25;
+        self.cijk[10][4] = 0.0;
+        self.eijk[10][4] = 0.0;
+        bijk[10][4] = 0.0;
+        self.gijk[10][4] = 0.0;
+        self.nijk[10][4] = -0.732_653_923_695_87;
+        self.dijk[10][5] = 2;
+        self.tijk[10][5] = 1.35;
+        self.cijk[10][5] = 0.0;
+        self.eijk[10][5] = 0.0;
+        bijk[10][5] = 0.0;
+        self.gijk[10][5] = 0.0;
+        self.nijk[10][5] = 1.380_547_134_531_2;
+        self.dijk[10][6] = 3;
+        self.tijk[10][6] = 0.0;
+        self.cijk[10][6] = 0.0;
+        self.eijk[10][6] = 0.0;
+        bijk[10][6] = 0.0;
+        self.gijk[10][6] = 0.0;
+        self.nijk[10][6] = 0.283_496_034_763_65;
+        self.dijk[10][7] = 3;
+        self.tijk[10][7] = 1.25;
+        self.cijk[10][7] = 0.0;
+        self.eijk[10][7] = 0.0;
+        bijk[10][7] = 0.0;
+        self.gijk[10][7] = 0.0;
+        self.nijk[10][7] = -0.490_873_859_404_25;
+        self.dijk[10][8] = 4;
+        self.tijk[10][8] = 0.0;
+        self.cijk[10][8] = 0.0;
+        self.eijk[10][8] = 0.0;
+        bijk[10][8] = 0.0;
+        self.gijk[10][8] = 0.0;
+        self.nijk[10][8] = -0.102_918_889_214_47;
+        self.dijk[10][9] = 4;
+        self.tijk[10][9] = 0.7;
+        self.cijk[10][9] = 0.0;
+        self.eijk[10][9] = 0.0;
+        bijk[10][9] = 0.0;
+        self.gijk[10][9] = 0.0;
+        self.nijk[10][9] = 0.118_363_146_819_68;
+        self.dijk[10][10] = 4;
+        self.tijk[10][10] = 5.4;
+        self.cijk[10][10] = 0.0;
+        self.eijk[10][10] = 0.0;
+        bijk[10][10] = 0.0;
+        self.gijk[10][10] = 0.0;
+        self.nijk[10][10] = 5.552_738_572_194_3E-05;
 
-        self.n0i[1][3] = 4.00088;  self.n0i[1][4] = 0.76315;  self.n0i[1][5] = 0.0046;   self.n0i[1][6] = 8.74432;  self.n0i[1][7] = -4.46921; self.n0i[1][1] = 29.83843397;  self.n0i[1][2] = -15999.69151;
-        self.n0i[2][3] = 3.50031;  self.n0i[2][4] = 0.13732;  self.n0i[2][5] = -0.1466;  self.n0i[2][6] = 0.90066;  self.n0i[2][7] = 0.0;        self.n0i[2][1] = 17.56770785;  self.n0i[2][2] = -2801.729072;
-        self.n0i[3][3] = 3.50002;  self.n0i[3][4] = 2.04452;  self.n0i[3][5] = -1.06044; self.n0i[3][6] = 2.03366;  self.n0i[3][7] = 0.01393;  self.n0i[3][1] = 20.65844696;  self.n0i[3][2] = -4902.171516;
-        self.n0i[4][3] = 4.00263;  self.n0i[4][4] = 4.33939;  self.n0i[4][5] = 1.23722;  self.n0i[4][6] = 13.1974;  self.n0i[4][7] = -6.01989; self.n0i[4][1] = 36.73005938;  self.n0i[4][2] = -23639.65301;
-        self.n0i[5][3] = 4.02939;  self.n0i[5][4] = 6.60569;  self.n0i[5][5] = 3.197;    self.n0i[5][6] = 19.1921;  self.n0i[5][7] = -8.37267; self.n0i[5][1] = 44.70909619;  self.n0i[5][2] = -31236.63551;
-        self.n0i[6][3] = 4.06714;  self.n0i[6][4] = 8.97575;  self.n0i[6][5] = 5.25156;  self.n0i[6][6] = 25.1423;  self.n0i[6][7] = 16.1388;  self.n0i[6][1] = 34.30180349;  self.n0i[6][2] = -38525.50276;
-        self.n0i[7][3] = 4.33944;  self.n0i[7][4] = 9.44893;  self.n0i[7][5] = 6.89406;  self.n0i[7][6] = 24.4618;  self.n0i[7][7] = 14.7824;  self.n0i[7][1] = 36.53237783;  self.n0i[7][2] = -38957.80933;
-        self.n0i[8][3] = 4.0;        self.n0i[8][4] = 11.7618;  self.n0i[8][5] = 20.1101;  self.n0i[8][6] = 33.1688;  self.n0i[8][7] = 0.0;        self.n0i[8][1] = 43.17218626;  self.n0i[8][2] = -51198.30946;
-        self.n0i[9][3] = 4.0;        self.n0i[9][4] = 8.95043;  self.n0i[9][5] = 21.836;   self.n0i[9][6] = 33.4032;  self.n0i[9][7] = 0.0;        self.n0i[9][1] = 42.67837089;  self.n0i[9][2] = -45215.83;
-        self.n0i[10][3] = 4.0;       self.n0i[10][4] = 11.6977; self.n0i[10][5] = 26.8142; self.n0i[10][6] = 38.6164; self.n0i[10][7] = 0.0;       self.n0i[10][1] = 46.99717188; self.n0i[10][2] = -52746.83318;
-        self.n0i[11][3] = 4.0;       self.n0i[11][4] = 13.7266; self.n0i[11][5] = 30.4707; self.n0i[11][6] = 43.5561; self.n0i[11][7] = 0.0;       self.n0i[11][1] = 52.07631631; self.n0i[11][2] = -57104.81056;
-        self.n0i[12][3] = 4.0;       self.n0i[12][4] = 15.6865; self.n0i[12][5] = 33.8029; self.n0i[12][6] = 48.1731; self.n0i[12][7] = 0.0;       self.n0i[12][1] = 57.25830934; self.n0i[12][2] = -60546.76385;
-        self.n0i[13][3] = 4.0;       self.n0i[13][4] = 18.0241; self.n0i[13][5] = 38.1235; self.n0i[13][6] = 53.3415; self.n0i[13][7] = 0.0;       self.n0i[13][1] = 62.09646901; self.n0i[13][2] = -66600.12837;
-        self.n0i[14][3] = 4.0;       self.n0i[14][4] = 21.0069; self.n0i[14][5] = 43.4931; self.n0i[14][6] = 58.3657; self.n0i[14][7] = 0.0;       self.n0i[14][1] = 65.93909154; self.n0i[14][2] = -74131.45483;
-        self.n0i[15][3] = 2.47906; self.n0i[15][4] = 0.95806; self.n0i[15][5] = 0.45444; self.n0i[15][6] = 1.56039; self.n0i[15][7] = -1.3756; self.n0i[15][1] = 13.07520288; self.n0i[15][2] = -5836.943696;
-        self.n0i[16][3] = 3.50146; self.n0i[16][4] = 1.07558; self.n0i[16][5] = 1.01334; self.n0i[16][6] = 0.0;       self.n0i[16][7] = 0.0;       self.n0i[16][1] = 16.8017173;  self.n0i[16][2] = -2318.32269;
-        self.n0i[17][3] = 3.50055; self.n0i[17][4] = 1.02865; self.n0i[17][5] = 0.00493; self.n0i[17][6] = 0.0;       self.n0i[17][7] = 0.0;       self.n0i[17][1] = 17.45786899; self.n0i[17][2] = -2635.244116;
-        self.n0i[18][3] = 4.00392; self.n0i[18][4] = 0.01059; self.n0i[18][5] = 0.98763; self.n0i[18][6] = 3.06904; self.n0i[18][7] = 0.0;       self.n0i[18][1] = 21.57882705; self.n0i[18][2] = -7766.733078;
-        self.n0i[19][3] = 4.0;       self.n0i[19][4] = 3.11942; self.n0i[19][5] = 1.00243; self.n0i[19][6] = 0.0;       self.n0i[19][7] = 0.0;       self.n0i[19][1] = 21.5830944;  self.n0i[19][2] = -6069.035869;
-        self.n0i[20][3] = 2.5;     self.n0i[20][4] = 0.0;       self.n0i[20][5] = 0.0;       self.n0i[20][6] = 0.0;       self.n0i[20][7] = 0.0;       self.n0i[20][1] = 10.04639507; self.n0i[20][2] = -745.375;
-        self.n0i[21][3] = 2.5;     self.n0i[21][4] = 0.0;       self.n0i[21][5] = 0.0;       self.n0i[21][6] = 0.0;       self.n0i[21][7] = 0.0;       self.n0i[21][1] = 10.04639507; self.n0i[21][2] = -745.375;
+        self.n0i[1][3] = 4.000_88;
+        self.n0i[1][4] = 0.763_15;
+        self.n0i[1][5] = 0.004_6;
+        self.n0i[1][6] = 8.744_320;
+        self.n0i[1][7] = -4.469_21;
+        self.n0i[1][1] = 29.838_433_97;
+        self.n0i[1][2] = -15_999.691_51;
+        self.n0i[2][3] = 3.500_31;
+        self.n0i[2][4] = 0.137_320;
+        self.n0i[2][5] = -0.146_6;
+        self.n0i[2][6] = 0.900_66;
+        self.n0i[2][7] = 0.0;
+        self.n0i[2][1] = 17.567_707_85;
+        self.n0i[2][2] = -2_801.729_072;
+        self.n0i[3][3] = 3.500_02;
+        self.n0i[3][4] = 2.044_52;
+        self.n0i[3][5] = -1.060_44;
+        self.n0i[3][6] = 2.033_66;
+        self.n0i[3][7] = 0.013_93;
+        self.n0i[3][1] = 20.658_446_96;
+        self.n0i[3][2] = -4_902.171_516;
+        self.n0i[4][3] = 4.002_63;
+        self.n0i[4][4] = 4.339_39;
+        self.n0i[4][5] = 1.237_22;
+        self.n0i[4][6] = 13.197_4;
+        self.n0i[4][7] = -6.019_89;
+        self.n0i[4][1] = 36.730_059_38;
+        self.n0i[4][2] = -23_639.653_01;
+        self.n0i[5][3] = 4.029_39;
+        self.n0i[5][4] = 6.605_69;
+        self.n0i[5][5] = 3.197;
+        self.n0i[5][6] = 19.192_1;
+        self.n0i[5][7] = -8.372_67;
+        self.n0i[5][1] = 44.709_096_19;
+        self.n0i[5][2] = -31_236.635_51;
+        self.n0i[6][3] = 4.067_14;
+        self.n0i[6][4] = 8.975_75;
+        self.n0i[6][5] = 5.251_56;
+        self.n0i[6][6] = 25.142_3;
+        self.n0i[6][7] = 16.138_8;
+        self.n0i[6][1] = 34.301_803_49;
+        self.n0i[6][2] = -38_525.502_76;
+        self.n0i[7][3] = 4.339_44;
+        self.n0i[7][4] = 9.448_93;
+        self.n0i[7][5] = 6.894_06;
+        self.n0i[7][6] = 24.461_8;
+        self.n0i[7][7] = 14.782_4;
+        self.n0i[7][1] = 36.532_377_83;
+        self.n0i[7][2] = -38_957.809_33;
+        self.n0i[8][3] = 4.0;
+        self.n0i[8][4] = 11.761_8;
+        self.n0i[8][5] = 20.110_1;
+        self.n0i[8][6] = 33.168_8;
+        self.n0i[8][7] = 0.0;
+        self.n0i[8][1] = 43.172_186_26;
+        self.n0i[8][2] = -51_198.309_46;
+        self.n0i[9][3] = 4.0;
+        self.n0i[9][4] = 8.950_43;
+        self.n0i[9][5] = 21.836;
+        self.n0i[9][6] = 33.403_2;
+        self.n0i[9][7] = 0.0;
+        self.n0i[9][1] = 42.678_370_89;
+        self.n0i[9][2] = -45_215.83;
+        self.n0i[10][3] = 4.0;
+        self.n0i[10][4] = 11.697_7;
+        self.n0i[10][5] = 26.814_2;
+        self.n0i[10][6] = 38.616_4;
+        self.n0i[10][7] = 0.0;
+        self.n0i[10][1] = 46.997_171_88;
+        self.n0i[10][2] = -52_746.833_18;
+        self.n0i[11][3] = 4.0;
+        self.n0i[11][4] = 13.726_6;
+        self.n0i[11][5] = 30.470_7;
+        self.n0i[11][6] = 43.556_1;
+        self.n0i[11][7] = 0.0;
+        self.n0i[11][1] = 52.076_316_31;
+        self.n0i[11][2] = -57_104.810_56;
+        self.n0i[12][3] = 4.0;
+        self.n0i[12][4] = 15.686_5;
+        self.n0i[12][5] = 33.802_9;
+        self.n0i[12][6] = 48.173_1;
+        self.n0i[12][7] = 0.0;
+        self.n0i[12][1] = 57.258_309_34;
+        self.n0i[12][2] = -60_546.763_85;
+        self.n0i[13][3] = 4.0;
+        self.n0i[13][4] = 18.024_1;
+        self.n0i[13][5] = 38.123_5;
+        self.n0i[13][6] = 53.341_5;
+        self.n0i[13][7] = 0.0;
+        self.n0i[13][1] = 62.096_469_01;
+        self.n0i[13][2] = -66_600.128_37;
+        self.n0i[14][3] = 4.0;
+        self.n0i[14][4] = 21.006_9;
+        self.n0i[14][5] = 43.493_1;
+        self.n0i[14][6] = 58.365_7;
+        self.n0i[14][7] = 0.0;
+        self.n0i[14][1] = 65.939_091_54;
+        self.n0i[14][2] = -74_131.454_83;
+        self.n0i[15][3] = 2.479_06;
+        self.n0i[15][4] = 0.958_06;
+        self.n0i[15][5] = 0.454_44;
+        self.n0i[15][6] = 1.560_39;
+        self.n0i[15][7] = -1.375_6;
+        self.n0i[15][1] = 13.075_202_88;
+        self.n0i[15][2] = -5_836.943_696;
+        self.n0i[16][3] = 3.501_46;
+        self.n0i[16][4] = 1.075_58;
+        self.n0i[16][5] = 1.013_34;
+        self.n0i[16][6] = 0.0;
+        self.n0i[16][7] = 0.0;
+        self.n0i[16][1] = 16.801_717_3;
+        self.n0i[16][2] = -2_318.322_69;
+        self.n0i[17][3] = 3.500_55;
+        self.n0i[17][4] = 1.028_65;
+        self.n0i[17][5] = 0.004_93;
+        self.n0i[17][6] = 0.0;
+        self.n0i[17][7] = 0.0;
+        self.n0i[17][1] = 17.457_868_99;
+        self.n0i[17][2] = -2_635.244_116;
+        self.n0i[18][3] = 4.003_92;
+        self.n0i[18][4] = 0.010_59;
+        self.n0i[18][5] = 0.987_63;
+        self.n0i[18][6] = 3.069_04;
+        self.n0i[18][7] = 0.0;
+        self.n0i[18][1] = 21.578_827_05;
+        self.n0i[18][2] = -7_766.733_078;
+        self.n0i[19][3] = 4.0;
+        self.n0i[19][4] = 3.119_42;
+        self.n0i[19][5] = 1.002_43;
+        self.n0i[19][6] = 0.0;
+        self.n0i[19][7] = 0.0;
+        self.n0i[19][1] = 21.583_094_4;
+        self.n0i[19][2] = -6_069.035_869;
+        self.n0i[20][3] = 2.5;
+        self.n0i[20][4] = 0.0;
+        self.n0i[20][5] = 0.0;
+        self.n0i[20][6] = 0.0;
+        self.n0i[20][7] = 0.0;
+        self.n0i[20][1] = 10.046_395_07;
+        self.n0i[20][2] = -745.375;
+        self.n0i[21][3] = 2.5;
+        self.n0i[21][4] = 0.0;
+        self.n0i[21][5] = 0.0;
+        self.n0i[21][6] = 0.0;
+        self.n0i[21][7] = 0.0;
+        self.n0i[21][1] = 10.046_395_07;
+        self.n0i[21][2] = -745.375;
 
-        self.bvij[1][2] = 0.998721377;   self.gvij[1][2] = 1.013950311;   self.btij[1][2] = 0.99809883;    self.gtij[1][2] = 0.979273013;   // CH4-N2
-        self.bvij[1][3] = 0.999518072;   self.gvij[1][3] = 1.002806594;   self.btij[1][3] = 1.02262449;    self.gtij[1][3] = 0.975665369;   // CH4-CO2
-        self.bvij[1][4] = 0.997547866;   self.gvij[1][4] = 1.006617867;   self.btij[1][4] = 0.996336508;   self.gtij[1][4] = 1.049707697;   // CH4-C2H6
-        self.bvij[1][5] = 1.00482707;    self.gvij[1][5] = 1.038470657;   self.btij[1][5] = 0.989680305;   self.gtij[1][5] = 1.098655531;   // CH4-C3H8
-        self.bvij[1][6] = 1.011240388;   self.gvij[1][6] = 1.054319053;   self.btij[1][6] = 0.980315756;   self.gtij[1][6] = 1.161117729;   // CH4-i-C4H10
-        self.bvij[1][7] = 0.979105972;   self.gvij[1][7] = 1.045375122;   self.btij[1][7] = 0.99417491;    self.gtij[1][7] = 1.171607691;   // CH4-C4H10
-        self.bvij[1][8] = 1.0;             self.gvij[1][8] = 1.343685343;   self.btij[1][8] = 1.0;             self.gtij[1][8] = 1.188899743;   // CH4-i-C5H12
-        self.bvij[1][9] = 0.94833012;    self.gvij[1][9] = 1.124508039;   self.btij[1][9] = 0.992127525;   self.gtij[1][9] = 1.249173968;   // CH4-C5H12
-        self.bvij[1][10] = 0.958015294;  self.gvij[1][10] = 1.052643846;  self.btij[1][10] = 0.981844797;  self.gtij[1][10] = 1.330570181;  // CH4-C6H14
-        self.bvij[1][11] = 0.962050831;  self.gvij[1][11] = 1.156655935;  self.btij[1][11] = 0.977431529;  self.gtij[1][11] = 1.379850328;  // CH4-C7H16
-        self.bvij[1][12] = 0.994740603;  self.gvij[1][12] = 1.116549372;  self.btij[1][12] = 0.957473785;  self.gtij[1][12] = 1.449245409;  // CH4-C8H18
-        self.bvij[1][13] = 1.002852287;  self.gvij[1][13] = 1.141895355;  self.btij[1][13] = 0.947716769;  self.gtij[1][13] = 1.528532478;  // CH4-C9H20
-        self.bvij[1][14] = 1.033086292;  self.gvij[1][14] = 1.146089637;  self.btij[1][14] = 0.937777823;  self.gtij[1][14] = 1.568231489;  // CH4-C10H22
-        self.bvij[1][15] = 1.0;            self.gvij[1][15] = 1.018702573;  self.btij[1][15] = 1.0;            self.gtij[1][15] = 1.352643115;  // CH4-H2
-        self.bvij[1][16] = 1.0;            self.gvij[1][16] = 1.0;            self.btij[1][16] = 1.0;            self.gtij[1][16] = 0.95;         // CH4-O2
-        self.bvij[1][17] = 0.997340772;  self.gvij[1][17] = 1.006102927;  self.btij[1][17] = 0.987411732;  self.gtij[1][17] = 0.987473033;  // CH4-CO
-        self.bvij[1][18] = 1.012783169;  self.gvij[1][18] = 1.585018334;  self.btij[1][18] = 1.063333913;  self.gtij[1][18] = 0.775810513;  // CH4-H2O
-        self.bvij[1][19] = 1.012599087;  self.gvij[1][19] = 1.040161207;  self.btij[1][19] = 1.011090031;  self.gtij[1][19] = 0.961155729;  // CH4-H2S
-        self.bvij[1][20] = 1.0;            self.gvij[1][20] = 0.881405683;  self.btij[1][20] = 1.0;            self.gtij[1][20] = 3.159776855;  // CH4-He
-        self.bvij[1][21] = 1.034630259;  self.gvij[1][21] = 1.014678542;  self.btij[1][21] = 0.990954281;  self.gtij[1][21] = 0.989843388;  // CH4-Ar
-        self.bvij[2][3] = 0.977794634;   self.gvij[2][3] = 1.047578256;   self.btij[2][3] = 1.005894529;   self.gtij[2][3] = 1.107654104;   // N2-CO2
-        self.bvij[2][4] = 0.978880168;   self.gvij[2][4] = 1.042352891;   self.btij[2][4] = 1.007671428;   self.gtij[2][4] = 1.098650964;   // N2-C2H6
-        self.bvij[2][5] = 0.974424681;   self.gvij[2][5] = 1.081025408;   self.btij[2][5] = 1.002677329;   self.gtij[2][5] = 1.201264026;   // N2-C3H8
-        self.bvij[2][6] = 0.98641583;    self.gvij[2][6] = 1.100576129;   self.btij[2][6] = 0.99286813;    self.gtij[2][6] = 1.284462634;   // N2-i-C4H10
-        self.bvij[2][7] = 0.99608261;    self.gvij[2][7] = 1.146949309;   self.btij[2][7] = 0.994515234;   self.gtij[2][7] = 1.304886838;   // N2-C4H10
-        self.bvij[2][8] = 1.0;             self.gvij[2][8] = 1.154135439;   self.btij[2][8] = 1.0;             self.gtij[2][8] = 1.38177077;    // N2-i-C5H12
-        self.bvij[2][9] = 1.0;             self.gvij[2][9] = 1.078877166;   self.btij[2][9] = 1.0;             self.gtij[2][9] = 1.419029041;   // N2-C5H12
-        self.bvij[2][10] = 1.0;            self.gvij[2][10] = 1.195952177;  self.btij[2][10] = 1.0;            self.gtij[2][10] = 1.472607971;  // N2-C6H14
-        self.bvij[2][11] = 1.0;            self.gvij[2][11] = 1.40455409;   self.btij[2][11] = 1.0;            self.gtij[2][11] = 1.520975334;  // N2-C7H16
-        self.bvij[2][12] = 1.0;            self.gvij[2][12] = 1.186067025;  self.btij[2][12] = 1.0;            self.gtij[2][12] = 1.733280051;  // N2-C8H18
-        self.bvij[2][13] = 1.0;            self.gvij[2][13] = 1.100405929;  self.btij[2][13] = 0.95637945;   self.gtij[2][13] = 1.749119996;  // N2-C9H20
-        self.bvij[2][14] = 1.0;            self.gvij[2][14] = 1.0;            self.btij[2][14] = 0.957934447;  self.gtij[2][14] = 1.822157123;  // N2-C10H22
-        self.bvij[2][15] = 0.972532065;  self.gvij[2][15] = 0.970115357;  self.btij[2][15] = 0.946134337;  self.gtij[2][15] = 1.175696583;  // N2-H2
-        self.bvij[2][16] = 0.99952177;   self.gvij[2][16] = 0.997082328;  self.btij[2][16] = 0.997190589;  self.gtij[2][16] = 0.995157044;  // N2-O2
-        self.bvij[2][17] = 1.0;            self.gvij[2][17] = 1.008690943;  self.btij[2][17] = 1.0;            self.gtij[2][17] = 0.993425388;  // N2-CO
-        self.bvij[2][18] = 1.0;            self.gvij[2][18] = 1.094749685;  self.btij[2][18] = 1.0;            self.gtij[2][18] = 0.968808467;  // N2-H2O
-        self.bvij[2][19] = 0.910394249;  self.gvij[2][19] = 1.256844157;  self.btij[2][19] = 1.004692366;  self.gtij[2][19] = 0.9601742;    // N2-H2S
-        self.bvij[2][20] = 0.969501055;  self.gvij[2][20] = 0.932629867;  self.btij[2][20] = 0.692868765;  self.gtij[2][20] = 1.47183158;   // N2-He
-        self.bvij[2][21] = 1.004166412;  self.gvij[2][21] = 1.002212182;  self.btij[2][21] = 0.999069843;  self.gtij[2][21] = 0.990034831;  // N2-Ar
-        self.bvij[3][4] = 1.002525718;   self.gvij[3][4] = 1.032876701;   self.btij[3][4] = 1.013871147;   self.gtij[3][4] = 0.90094953;    // CO2-C2H6
-        self.bvij[3][5] = 0.996898004;   self.gvij[3][5] = 1.047596298;   self.btij[3][5] = 1.033620538;   self.gtij[3][5] = 0.908772477;   // CO2-C3H8
-        self.bvij[3][6] = 1.076551882;   self.gvij[3][6] = 1.081909003;   self.btij[3][6] = 1.023339824;   self.gtij[3][6] = 0.929982936;   // CO2-i-C4H10
-        self.bvij[3][7] = 1.174760923;   self.gvij[3][7] = 1.222437324;   self.btij[3][7] = 1.018171004;   self.gtij[3][7] = 0.911498231;   // CO2-C4H10
-        self.bvij[3][8] = 1.060793104;   self.gvij[3][8] = 1.116793198;   self.btij[3][8] = 1.019180957;   self.gtij[3][8] = 0.961218039;   // CO2-i-C5H12
-        self.bvij[3][9] = 1.024311498;   self.gvij[3][9] = 1.068406078;   self.btij[3][9] = 1.027000795;   self.gtij[3][9] = 0.979217302;   // CO2-C5H12
-        self.bvij[3][10] = 1.0;            self.gvij[3][10] = 0.851343711;  self.btij[3][10] = 1.0;            self.gtij[3][10] = 1.038675574;  // CO2-C6H14
-        self.bvij[3][11] = 1.205469976;  self.gvij[3][11] = 1.164585914;  self.btij[3][11] = 1.011806317;  self.gtij[3][11] = 1.046169823;  // CO2-C7H16
-        self.bvij[3][12] = 1.026169373;  self.gvij[3][12] = 1.104043935;  self.btij[3][12] = 1.02969078;   self.gtij[3][12] = 1.074455386;  // CO2-C8H18
-        self.bvij[3][13] = 1.0;            self.gvij[3][13] = 0.973386152;  self.btij[3][13] = 1.00768862;   self.gtij[3][13] = 1.140671202;  // CO2-C9H20
-        self.bvij[3][14] = 1.000151132;  self.gvij[3][14] = 1.183394668;  self.btij[3][14] = 1.02002879;   self.gtij[3][14] = 1.145512213;  // CO2-C10H22
-        self.bvij[3][15] = 0.904142159;  self.gvij[3][15] = 1.15279255;   self.btij[3][15] = 0.942320195;  self.gtij[3][15] = 1.782924792;  // CO2-H2
-        self.bvij[3][16] = 1.0;            self.gvij[3][16] = 1.0;            self.btij[3][16] = 1.0;            self.gtij[3][16] = 1.0;            // CO2-O2
-        self.bvij[3][17] = 1.0;            self.gvij[3][17] = 1.0;            self.btij[3][17] = 1.0;            self.gtij[3][17] = 1.0;            // CO2-CO
-        self.bvij[3][18] = 0.949055959;  self.gvij[3][18] = 1.542328793;  self.btij[3][18] = 0.997372205;  self.gtij[3][18] = 0.775453996;  // CO2-H2O
-        self.bvij[3][19] = 0.906630564;  self.gvij[3][19] = 1.024085837;  self.btij[3][19] = 1.016034583;  self.gtij[3][19] = 0.92601888;   // CO2-H2S
-        self.bvij[3][20] = 0.846647561;  self.gvij[3][20] = 0.864141549;  self.btij[3][20] = 0.76837763;   self.gtij[3][20] = 3.207456948;  // CO2-He
-        self.bvij[3][21] = 1.008392428;  self.gvij[3][21] = 1.029205465;  self.btij[3][21] = 0.996512863;  self.gtij[3][21] = 1.050971635;  // CO2-Ar
-        self.bvij[4][5] = 0.997607277;   self.gvij[4][5] = 1.00303472;    self.btij[4][5] = 0.996199694;   self.gtij[4][5] = 1.01473019;    // C2H6-C3H8
-        self.bvij[4][6] = 1.0;             self.gvij[4][6] = 1.006616886;   self.btij[4][6] = 1.0;             self.gtij[4][6] = 1.033283811;   // C2H6-i-C4H10
-        self.bvij[4][7] = 0.999157205;   self.gvij[4][7] = 1.006179146;   self.btij[4][7] = 0.999130554;   self.gtij[4][7] = 1.034832749;   // C2H6-C4H10
-        self.bvij[4][8] = 1.0;             self.gvij[4][8] = 1.045439935;   self.btij[4][8] = 1.0;             self.gtij[4][8] = 1.021150247;   // C2H6-i-C5H12
-        self.bvij[4][9] = 0.993851009;   self.gvij[4][9] = 1.026085655;   self.btij[4][9] = 0.998688946;   self.gtij[4][9] = 1.066665676;   // C2H6-C5H12
-        self.bvij[4][10] = 1.0;            self.gvij[4][10] = 1.169701102;  self.btij[4][10] = 1.0;            self.gtij[4][10] = 1.092177796;  // C2H6-C6H14
-        self.bvij[4][11] = 1.0;            self.gvij[4][11] = 1.057666085;  self.btij[4][11] = 1.0;            self.gtij[4][11] = 1.134532014;  // C2H6-C7H16
-        self.bvij[4][12] = 1.007469726;  self.gvij[4][12] = 1.071917985;  self.btij[4][12] = 0.984068272;  self.gtij[4][12] = 1.168636194;  // C2H6-C8H18
-        self.bvij[4][13] = 1.0;            self.gvij[4][13] = 1.14353473;   self.btij[4][13] = 1.0;            self.gtij[4][13] = 1.05603303;   // C2H6-C9H20
-        self.bvij[4][14] = 0.995676258;  self.gvij[4][14] = 1.098361281;  self.btij[4][14] = 0.970918061;  self.gtij[4][14] = 1.237191558;  // C2H6-C10H22
-        self.bvij[4][15] = 0.925367171;  self.gvij[4][15] = 1.10607204;   self.btij[4][15] = 0.932969831;  self.gtij[4][15] = 1.902008495;  // C2H6-H2
-        self.bvij[4][16] = 1.0;            self.gvij[4][16] = 1.0;            self.btij[4][16] = 1.0;            self.gtij[4][16] = 1.0;            // C2H6-O2
-        self.bvij[4][17] = 1.0;            self.gvij[4][17] = 1.201417898;  self.btij[4][17] = 1.0;            self.gtij[4][17] = 1.069224728;  // C2H6-CO
-        self.bvij[4][18] = 1.0;            self.gvij[4][18] = 1.0;            self.btij[4][18] = 1.0;            self.gtij[4][18] = 1.0;            // C2H6-H2O
-        self.bvij[4][19] = 1.010817909;  self.gvij[4][19] = 1.030988277;  self.btij[4][19] = 0.990197354;  self.gtij[4][19] = 0.90273666;   // C2H6-H2S
-        self.bvij[4][20] = 1.0;            self.gvij[4][20] = 1.0;            self.btij[4][20] = 1.0;            self.gtij[4][20] = 1.0;            // C2H6-He
-        self.bvij[4][21] = 1.0;            self.gvij[4][21] = 1.0;            self.btij[4][21] = 1.0;            self.gtij[4][21] = 1.0;            // C2H6-Ar
-        self.bvij[5][6] = 0.999243146;   self.gvij[5][6] = 1.001156119;   self.btij[5][6] = 0.998012298;   self.gtij[5][6] = 1.005250774;   // C3H8-i-C4H10
-        self.bvij[5][7] = 0.999795868;   self.gvij[5][7] = 1.003264179;   self.btij[5][7] = 1.000310289;   self.gtij[5][7] = 1.007392782;   // C3H8-C4H10
-        self.bvij[5][8] = 1.040459289;   self.gvij[5][8] = 0.999432118;   self.btij[5][8] = 0.994364425;   self.gtij[5][8] = 1.0032695;     // C3H8-i-C5H12
-        self.bvij[5][9] = 1.044919431;   self.gvij[5][9] = 1.019921513;   self.btij[5][9] = 0.996484021;   self.gtij[5][9] = 1.008344412;   // C3H8-C5H12
-        self.bvij[5][10] = 1.0;            self.gvij[5][10] = 1.057872566;  self.btij[5][10] = 1.0;            self.gtij[5][10] = 1.025657518;  // C3H8-C6H14
-        self.bvij[5][11] = 1.0;            self.gvij[5][11] = 1.079648053;  self.btij[5][11] = 1.0;            self.gtij[5][11] = 1.050044169;  // C3H8-C7H16
-        self.bvij[5][12] = 1.0;            self.gvij[5][12] = 1.102764612;  self.btij[5][12] = 1.0;            self.gtij[5][12] = 1.063694129;  // C3H8-C8H18
-        self.bvij[5][13] = 1.0;            self.gvij[5][13] = 1.199769134;  self.btij[5][13] = 1.0;            self.gtij[5][13] = 1.109973833;  // C3H8-C9H20
-        self.bvij[5][14] = 0.984104227;  self.gvij[5][14] = 1.053040574;  self.btij[5][14] = 0.985331233;  self.gtij[5][14] = 1.140905252;  // C3H8-C10H22
-        self.bvij[5][15] = 1.0;            self.gvij[5][15] = 1.07400611;   self.btij[5][15] = 1.0;            self.gtij[5][15] = 2.308215191;  // C3H8-H2
-        self.bvij[5][16] = 1.0;            self.gvij[5][16] = 1.0;            self.btij[5][16] = 1.0;            self.gtij[5][16] = 1.0;            // C3H8-O2
-        self.bvij[5][17] = 1.0;            self.gvij[5][17] = 1.108143673;  self.btij[5][17] = 1.0;            self.gtij[5][17] = 1.197564208;  // C3H8-CO
-        self.bvij[5][18] = 1.0;            self.gvij[5][18] = 1.011759763;  self.btij[5][18] = 1.0;            self.gtij[5][18] = 0.600340961;  // C3H8-H2O
-        self.bvij[5][19] = 0.936811219;  self.gvij[5][19] = 1.010593999;  self.btij[5][19] = 0.992573556;  self.gtij[5][19] = 0.905829247;  // C3H8-H2S
-        self.bvij[5][20] = 1.0;            self.gvij[5][20] = 1.0;            self.btij[5][20] = 1.0;            self.gtij[5][20] = 1.0;            // C3H8-He
-        self.bvij[5][21] = 1.0;            self.gvij[5][21] = 1.0;            self.btij[5][21] = 1.0;            self.gtij[5][21] = 1.0;            // C3H8-Ar
+        self.bvij[1][2] = 0.998_721_377;
+        self.gvij[1][2] = 1.013_950_311;
+        self.btij[1][2] = 0.998_098_83;
+        self.gtij[1][2] = 0.979_273_013; // CH4-N2
+        self.bvij[1][3] = 0.999_518_072;
+        self.gvij[1][3] = 1.002_806_594;
+        self.btij[1][3] = 1.022_624_49;
+        self.gtij[1][3] = 0.975_665_369; // CH4-CO2
+        self.bvij[1][4] = 0.997_547_866;
+        self.gvij[1][4] = 1.006_617_867;
+        self.btij[1][4] = 0.996_336_508;
+        self.gtij[1][4] = 1.049_707_697; // CH4-C2H6
+        self.bvij[1][5] = 1.004_827_07;
+        self.gvij[1][5] = 1.038_470_657;
+        self.btij[1][5] = 0.989_680_305;
+        self.gtij[1][5] = 1.098_655_531; // CH4-C3H8
+        self.bvij[1][6] = 1.011_240_388;
+        self.gvij[1][6] = 1.054_319_053;
+        self.btij[1][6] = 0.980_315_756;
+        self.gtij[1][6] = 1.161_117_729; // CH4-i-C4H10
+        self.bvij[1][7] = 0.979_105_972;
+        self.gvij[1][7] = 1.045_375_122;
+        self.btij[1][7] = 0.994_174_91;
+        self.gtij[1][7] = 1.171_607_691; // CH4-C4H10
+        self.bvij[1][8] = 1.0;
+        self.gvij[1][8] = 1.343_685_343;
+        self.btij[1][8] = 1.0;
+        self.gtij[1][8] = 1.188_899_743; // CH4-i-C5H12
+        self.bvij[1][9] = 0.948_330_12;
+        self.gvij[1][9] = 1.124_508_039;
+        self.btij[1][9] = 0.992_127_525;
+        self.gtij[1][9] = 1.249_173_968; // CH4-C5H12
+        self.bvij[1][10] = 0.958_015_294;
+        self.gvij[1][10] = 1.052_643_846;
+        self.btij[1][10] = 0.981_844_797;
+        self.gtij[1][10] = 1.330_570_181; // CH4-C6H14
+        self.bvij[1][11] = 0.962_050_831;
+        self.gvij[1][11] = 1.156_655_935;
+        self.btij[1][11] = 0.977_431_529;
+        self.gtij[1][11] = 1.379_850_328; // CH4-C7H16
+        self.bvij[1][12] = 0.994_740_603;
+        self.gvij[1][12] = 1.116_549_372;
+        self.btij[1][12] = 0.957_473_785;
+        self.gtij[1][12] = 1.449_245_409; // CH4-C8H18
+        self.bvij[1][13] = 1.002_852_287;
+        self.gvij[1][13] = 1.141_895_355;
+        self.btij[1][13] = 0.947_716_769;
+        self.gtij[1][13] = 1.528_532_478; // CH4-C9H20
+        self.bvij[1][14] = 1.033_086_292;
+        self.gvij[1][14] = 1.146_089_637;
+        self.btij[1][14] = 0.937_777_823;
+        self.gtij[1][14] = 1.568_231_489; // CH4-C10H22
+        self.bvij[1][15] = 1.0;
+        self.gvij[1][15] = 1.018_702_573;
+        self.btij[1][15] = 1.0;
+        self.gtij[1][15] = 1.352_643_115; // CH4-H2
+        self.bvij[1][16] = 1.0;
+        self.gvij[1][16] = 1.0;
+        self.btij[1][16] = 1.0;
+        self.gtij[1][16] = 0.95; // CH4-O2
+        self.bvij[1][17] = 0.997_340_772;
+        self.gvij[1][17] = 1.006_102_927;
+        self.btij[1][17] = 0.987_411_732;
+        self.gtij[1][17] = 0.987_473_033; // CH4-CO
+        self.bvij[1][18] = 1.012_783_169;
+        self.gvij[1][18] = 1.585_018_334;
+        self.btij[1][18] = 1.063_333_913;
+        self.gtij[1][18] = 0.775_810_513; // CH4-H2O
+        self.bvij[1][19] = 1.012_599_087;
+        self.gvij[1][19] = 1.040_161_207;
+        self.btij[1][19] = 1.011_090_031;
+        self.gtij[1][19] = 0.961_155_729; // CH4-H2S
+        self.bvij[1][20] = 1.0;
+        self.gvij[1][20] = 0.881_405_683;
+        self.btij[1][20] = 1.0;
+        self.gtij[1][20] = 3.159_776_855; // CH4-He
+        self.bvij[1][21] = 1.034_630_259;
+        self.gvij[1][21] = 1.014_678_542;
+        self.btij[1][21] = 0.990_954_281;
+        self.gtij[1][21] = 0.989_843_388; // CH4-Ar
+        self.bvij[2][3] = 0.977_794_634;
+        self.gvij[2][3] = 1.047_578_256;
+        self.btij[2][3] = 1.005_894_529;
+        self.gtij[2][3] = 1.107_654_104; // N2-CO2
+        self.bvij[2][4] = 0.978_880_168;
+        self.gvij[2][4] = 1.042_352_891;
+        self.btij[2][4] = 1.007_671_428;
+        self.gtij[2][4] = 1.098_650_964; // N2-C2H6
+        self.bvij[2][5] = 0.974_424_681;
+        self.gvij[2][5] = 1.081_025_408;
+        self.btij[2][5] = 1.002_677_329;
+        self.gtij[2][5] = 1.201_264_026; // N2-C3H8
+        self.bvij[2][6] = 0.986_415_83;
+        self.gvij[2][6] = 1.100_576_129;
+        self.btij[2][6] = 0.992_868_13;
+        self.gtij[2][6] = 1.284_462_634; // N2-i-C4H10
+        self.bvij[2][7] = 0.996_082_61;
+        self.gvij[2][7] = 1.146_949_309;
+        self.btij[2][7] = 0.994_515_234;
+        self.gtij[2][7] = 1.304_886_838; // N2-C4H10
+        self.bvij[2][8] = 1.0;
+        self.gvij[2][8] = 1.154_135_439;
+        self.btij[2][8] = 1.0;
+        self.gtij[2][8] = 1.381_770_77; // N2-i-C5H12
+        self.bvij[2][9] = 1.0;
+        self.gvij[2][9] = 1.078_877_166;
+        self.btij[2][9] = 1.0;
+        self.gtij[2][9] = 1.419_029_041; // N2-C5H12
+        self.bvij[2][10] = 1.0;
+        self.gvij[2][10] = 1.195_952_177;
+        self.btij[2][10] = 1.0;
+        self.gtij[2][10] = 1.472_607_971; // N2-C6H14
+        self.bvij[2][11] = 1.0;
+        self.gvij[2][11] = 1.404_554_09;
+        self.btij[2][11] = 1.0;
+        self.gtij[2][11] = 1.520_975_334; // N2-C7H16
+        self.bvij[2][12] = 1.0;
+        self.gvij[2][12] = 1.186_067_025;
+        self.btij[2][12] = 1.0;
+        self.gtij[2][12] = 1.733_280_051; // N2-C8H18
+        self.bvij[2][13] = 1.0;
+        self.gvij[2][13] = 1.100_405_929;
+        self.btij[2][13] = 0.956_379_45;
+        self.gtij[2][13] = 1.749_119_996; // N2-C9H20
+        self.bvij[2][14] = 1.0;
+        self.gvij[2][14] = 1.0;
+        self.btij[2][14] = 0.957_934_447;
+        self.gtij[2][14] = 1.822_157_123; // N2-C10H22
+        self.bvij[2][15] = 0.972_532_065;
+        self.gvij[2][15] = 0.970_115_357;
+        self.btij[2][15] = 0.946_134_337;
+        self.gtij[2][15] = 1.175_696_583; // N2-H2
+        self.bvij[2][16] = 0.999_521_77;
+        self.gvij[2][16] = 0.997_082_328;
+        self.btij[2][16] = 0.997_190_589;
+        self.gtij[2][16] = 0.995_157_044; // N2-O2
+        self.bvij[2][17] = 1.0;
+        self.gvij[2][17] = 1.008_690_943;
+        self.btij[2][17] = 1.0;
+        self.gtij[2][17] = 0.993_425_388; // N2-CO
+        self.bvij[2][18] = 1.0;
+        self.gvij[2][18] = 1.094_749_685;
+        self.btij[2][18] = 1.0;
+        self.gtij[2][18] = 0.968_808_467; // N2-H2O
+        self.bvij[2][19] = 0.910_394_249;
+        self.gvij[2][19] = 1.256_844_157;
+        self.btij[2][19] = 1.004_692_366;
+        self.gtij[2][19] = 0.960_174_2; // N2-H2S
+        self.bvij[2][20] = 0.969_501_055;
+        self.gvij[2][20] = 0.932_629_867;
+        self.btij[2][20] = 0.692_868_765;
+        self.gtij[2][20] = 1.471_831_58; // N2-He
+        self.bvij[2][21] = 1.004_166_412;
+        self.gvij[2][21] = 1.002_212_182;
+        self.btij[2][21] = 0.999_069_843;
+        self.gtij[2][21] = 0.990_034_831; // N2-Ar
+        self.bvij[3][4] = 1.002_525_718;
+        self.gvij[3][4] = 1.032_876_701;
+        self.btij[3][4] = 1.013_871_147;
+        self.gtij[3][4] = 0.900_949_53; // CO2-C2H6
+        self.bvij[3][5] = 0.996_898_004;
+        self.gvij[3][5] = 1.047_596_298;
+        self.btij[3][5] = 1.033_620_538;
+        self.gtij[3][5] = 0.908_772_477; // CO2-C3H8
+        self.bvij[3][6] = 1.076_551_882;
+        self.gvij[3][6] = 1.081_909_003;
+        self.btij[3][6] = 1.023_339_824;
+        self.gtij[3][6] = 0.929_982_936; // CO2-i-C4H10
+        self.bvij[3][7] = 1.174_760_923;
+        self.gvij[3][7] = 1.222_437_324;
+        self.btij[3][7] = 1.018_171_004;
+        self.gtij[3][7] = 0.911_498_231; // CO2-C4H10
+        self.bvij[3][8] = 1.060_793_104;
+        self.gvij[3][8] = 1.116_793_198;
+        self.btij[3][8] = 1.019_180_957;
+        self.gtij[3][8] = 0.961_218_039; // CO2-i-C5H12
+        self.bvij[3][9] = 1.024_311_498;
+        self.gvij[3][9] = 1.068_406_078;
+        self.btij[3][9] = 1.027_000_795;
+        self.gtij[3][9] = 0.979_217_302; // CO2-C5H12
+        self.bvij[3][10] = 1.0;
+        self.gvij[3][10] = 0.851_343_711;
+        self.btij[3][10] = 1.0;
+        self.gtij[3][10] = 1.038_675_574; // CO2-C6H14
+        self.bvij[3][11] = 1.205_469_976;
+        self.gvij[3][11] = 1.164_585_914;
+        self.btij[3][11] = 1.011_806_317;
+        self.gtij[3][11] = 1.046_169_823; // CO2-C7H16
+        self.bvij[3][12] = 1.026_169_373;
+        self.gvij[3][12] = 1.104_043_935;
+        self.btij[3][12] = 1.029_690_78;
+        self.gtij[3][12] = 1.074_455_386; // CO2-C8H18
+        self.bvij[3][13] = 1.0;
+        self.gvij[3][13] = 0.973_386_152;
+        self.btij[3][13] = 1.007_688_62;
+        self.gtij[3][13] = 1.140_671_202; // CO2-C9H20
+        self.bvij[3][14] = 1.000_151_132;
+        self.gvij[3][14] = 1.183_394_668;
+        self.btij[3][14] = 1.020_028_79;
+        self.gtij[3][14] = 1.145_512_213; // CO2-C10H22
+        self.bvij[3][15] = 0.904_142_159;
+        self.gvij[3][15] = 1.152_792_55;
+        self.btij[3][15] = 0.942_320_195;
+        self.gtij[3][15] = 1.782_924_792; // CO2-H2
+        self.bvij[3][16] = 1.0;
+        self.gvij[3][16] = 1.0;
+        self.btij[3][16] = 1.0;
+        self.gtij[3][16] = 1.0; // CO2-O2
+        self.bvij[3][17] = 1.0;
+        self.gvij[3][17] = 1.0;
+        self.btij[3][17] = 1.0;
+        self.gtij[3][17] = 1.0; // CO2-CO
+        self.bvij[3][18] = 0.949_055_959;
+        self.gvij[3][18] = 1.542_328_793;
+        self.btij[3][18] = 0.997_372_205;
+        self.gtij[3][18] = 0.775_453_996; // CO2-H2O
+        self.bvij[3][19] = 0.906_630_564;
+        self.gvij[3][19] = 1.024_085_837;
+        self.btij[3][19] = 1.016_034_583;
+        self.gtij[3][19] = 0.926_018_88; // CO2-H2S
+        self.bvij[3][20] = 0.846_647_561;
+        self.gvij[3][20] = 0.864_141_549;
+        self.btij[3][20] = 0.768_377_63;
+        self.gtij[3][20] = 3.207_456_948; // CO2-He
+        self.bvij[3][21] = 1.008_392_428;
+        self.gvij[3][21] = 1.029_205_465;
+        self.btij[3][21] = 0.996_512_863;
+        self.gtij[3][21] = 1.050_971_635; // CO2-Ar
+        self.bvij[4][5] = 0.997_607_277;
+        self.gvij[4][5] = 1.003_034_72;
+        self.btij[4][5] = 0.996_199_694;
+        self.gtij[4][5] = 1.014_730_19; // C2H6-C3H8
+        self.bvij[4][6] = 1.0;
+        self.gvij[4][6] = 1.006_616_886;
+        self.btij[4][6] = 1.0;
+        self.gtij[4][6] = 1.033_283_811; // C2H6-i-C4H10
+        self.bvij[4][7] = 0.999_157_205;
+        self.gvij[4][7] = 1.006_179_146;
+        self.btij[4][7] = 0.999_130_554;
+        self.gtij[4][7] = 1.034_832_749; // C2H6-C4H10
+        self.bvij[4][8] = 1.0;
+        self.gvij[4][8] = 1.045_439_935;
+        self.btij[4][8] = 1.0;
+        self.gtij[4][8] = 1.021_150_247; // C2H6-i-C5H12
+        self.bvij[4][9] = 0.993_851_009;
+        self.gvij[4][9] = 1.026_085_655;
+        self.btij[4][9] = 0.998_688_946;
+        self.gtij[4][9] = 1.066_665_676; // C2H6-C5H12
+        self.bvij[4][10] = 1.0;
+        self.gvij[4][10] = 1.169_701_102;
+        self.btij[4][10] = 1.0;
+        self.gtij[4][10] = 1.092_177_796; // C2H6-C6H14
+        self.bvij[4][11] = 1.0;
+        self.gvij[4][11] = 1.057_666_085;
+        self.btij[4][11] = 1.0;
+        self.gtij[4][11] = 1.134_532_014; // C2H6-C7H16
+        self.bvij[4][12] = 1.007_469_726;
+        self.gvij[4][12] = 1.071_917_985;
+        self.btij[4][12] = 0.984_068_272;
+        self.gtij[4][12] = 1.168_636_194; // C2H6-C8H18
+        self.bvij[4][13] = 1.0;
+        self.gvij[4][13] = 1.143_534_73;
+        self.btij[4][13] = 1.0;
+        self.gtij[4][13] = 1.056_033_03; // C2H6-C9H20
+        self.bvij[4][14] = 0.995_676_258;
+        self.gvij[4][14] = 1.098_361_281;
+        self.btij[4][14] = 0.970_918_061;
+        self.gtij[4][14] = 1.237_191_558; // C2H6-C10H22
+        self.bvij[4][15] = 0.925_367_171;
+        self.gvij[4][15] = 1.106_072_04;
+        self.btij[4][15] = 0.932_969_831;
+        self.gtij[4][15] = 1.902_008_495; // C2H6-H2
+        self.bvij[4][16] = 1.0;
+        self.gvij[4][16] = 1.0;
+        self.btij[4][16] = 1.0;
+        self.gtij[4][16] = 1.0; // C2H6-O2
+        self.bvij[4][17] = 1.0;
+        self.gvij[4][17] = 1.201_417_898;
+        self.btij[4][17] = 1.0;
+        self.gtij[4][17] = 1.069_224_728; // C2H6-CO
+        self.bvij[4][18] = 1.0;
+        self.gvij[4][18] = 1.0;
+        self.btij[4][18] = 1.0;
+        self.gtij[4][18] = 1.0; // C2H6-H2O
+        self.bvij[4][19] = 1.010_817_909;
+        self.gvij[4][19] = 1.030_988_277;
+        self.btij[4][19] = 0.990_197_354;
+        self.gtij[4][19] = 0.902_736_66; // C2H6-H2S
+        self.bvij[4][20] = 1.0;
+        self.gvij[4][20] = 1.0;
+        self.btij[4][20] = 1.0;
+        self.gtij[4][20] = 1.0; // C2H6-He
+        self.bvij[4][21] = 1.0;
+        self.gvij[4][21] = 1.0;
+        self.btij[4][21] = 1.0;
+        self.gtij[4][21] = 1.0; // C2H6-Ar
+        self.bvij[5][6] = 0.999_243_146;
+        self.gvij[5][6] = 1.001_156_119;
+        self.btij[5][6] = 0.998_012_298;
+        self.gtij[5][6] = 1.005_250_774; // C3H8-i-C4H10
+        self.bvij[5][7] = 0.999_795_868;
+        self.gvij[5][7] = 1.003_264_179;
+        self.btij[5][7] = 1.000_310_289;
+        self.gtij[5][7] = 1.007_392_782; // C3H8-C4H10
+        self.bvij[5][8] = 1.040_459_289;
+        self.gvij[5][8] = 0.999_432_118;
+        self.btij[5][8] = 0.994_364_425;
+        self.gtij[5][8] = 1.003_269_5; // C3H8-i-C5H12
+        self.bvij[5][9] = 1.044_919_431;
+        self.gvij[5][9] = 1.019_921_513;
+        self.btij[5][9] = 0.996_484_021;
+        self.gtij[5][9] = 1.008_344_412; // C3H8-C5H12
+        self.bvij[5][10] = 1.0;
+        self.gvij[5][10] = 1.057_872_566;
+        self.btij[5][10] = 1.0;
+        self.gtij[5][10] = 1.025_657_518; // C3H8-C6H14
+        self.bvij[5][11] = 1.0;
+        self.gvij[5][11] = 1.079_648_053;
+        self.btij[5][11] = 1.0;
+        self.gtij[5][11] = 1.050_044_169; // C3H8-C7H16
+        self.bvij[5][12] = 1.0;
+        self.gvij[5][12] = 1.102_764_612;
+        self.btij[5][12] = 1.0;
+        self.gtij[5][12] = 1.063_694_129; // C3H8-C8H18
+        self.bvij[5][13] = 1.0;
+        self.gvij[5][13] = 1.199_769_134;
+        self.btij[5][13] = 1.0;
+        self.gtij[5][13] = 1.109_973_833; // C3H8-C9H20
+        self.bvij[5][14] = 0.984_104_227;
+        self.gvij[5][14] = 1.053_040_574;
+        self.btij[5][14] = 0.985_331_233;
+        self.gtij[5][14] = 1.140_905_252; // C3H8-C10H22
+        self.bvij[5][15] = 1.0;
+        self.gvij[5][15] = 1.074_006_11;
+        self.btij[5][15] = 1.0;
+        self.gtij[5][15] = 2.308_215_191; // C3H8-H2
+        self.bvij[5][16] = 1.0;
+        self.gvij[5][16] = 1.0;
+        self.btij[5][16] = 1.0;
+        self.gtij[5][16] = 1.0; // C3H8-O2
+        self.bvij[5][17] = 1.0;
+        self.gvij[5][17] = 1.108_143_673;
+        self.btij[5][17] = 1.0;
+        self.gtij[5][17] = 1.197_564_208; // C3H8-CO
+        self.bvij[5][18] = 1.0;
+        self.gvij[5][18] = 1.011_759_763;
+        self.btij[5][18] = 1.0;
+        self.gtij[5][18] = 0.600_340_961; // C3H8-H2O
+        self.bvij[5][19] = 0.936_811_219;
+        self.gvij[5][19] = 1.010_593_999;
+        self.btij[5][19] = 0.992_573_556;
+        self.gtij[5][19] = 0.905_829_247; // C3H8-H2S
+        self.bvij[5][20] = 1.0;
+        self.gvij[5][20] = 1.0;
+        self.btij[5][20] = 1.0;
+        self.gtij[5][20] = 1.0; // C3H8-He
+        self.bvij[5][21] = 1.0;
+        self.gvij[5][21] = 1.0;
+        self.btij[5][21] = 1.0;
+        self.gtij[5][21] = 1.0; // C3H8-Ar
 
-        // The beta values for isobutane+butane are the reciprocal values of those in the GERG-2008 publication because the order was reversed in this work.
-        self.bvij[6][7] = 0.999120311;   self.gvij[6][7] = 1.00041444;    self.btij[6][7] = 0.999922459;   self.gtij[6][7] = 1.001432824;   // C4H10-i-C4H10
-        self.bvij[6][8] = 1.0;             self.gvij[6][8] = 1.002284353;   self.btij[6][8] = 1.0;             self.gtij[6][8] = 1.001835788;   // i-C4H10-i-C5H1
-        self.bvij[6][9] = 1.0;             self.gvij[6][9] = 1.002779804;   self.btij[6][9] = 1.0;             self.gtij[6][9] = 1.002495889;   // i-C4H10-C5H12
-        self.bvij[6][10] = 1.0;            self.gvij[6][10] = 1.010493989;  self.btij[6][10] = 1.0;            self.gtij[6][10] = 1.006018054;  // i-C4H10-C6H14
-        self.bvij[6][11] = 1.0;            self.gvij[6][11] = 1.021668316;  self.btij[6][11] = 1.0;            self.gtij[6][11] = 1.00988576;   // i-C4H10-C7H16
-        self.bvij[6][12] = 1.0;            self.gvij[6][12] = 1.032807063;  self.btij[6][12] = 1.0;            self.gtij[6][12] = 1.013945424;  // i-C4H10-C8H18
-        self.bvij[6][13] = 1.0;            self.gvij[6][13] = 1.047298475;  self.btij[6][13] = 1.0;            self.gtij[6][13] = 1.017817492;  // i-C4H10-C9H20
-        self.bvij[6][14] = 1.0;            self.gvij[6][14] = 1.060243344;  self.btij[6][14] = 1.0;            self.gtij[6][14] = 1.021624748;  // i-C4H10-C10H22
-        self.bvij[6][15] = 1.0;            self.gvij[6][15] = 1.147595688;  self.btij[6][15] = 1.0;            self.gtij[6][15] = 1.895305393;  // i-C4H10-H2
-        self.bvij[6][16] = 1.0;            self.gvij[6][16] = 1.0;            self.btij[6][16] = 1.0;            self.gtij[6][16] = 1.0;            // i-C4H10-O2
-        self.bvij[6][17] = 1.0;            self.gvij[6][17] = 1.087272232;  self.btij[6][17] = 1.0;            self.gtij[6][17] = 1.161390082;  // i-C4H10-CO
-        self.bvij[6][18] = 1.0;            self.gvij[6][18] = 1.0;            self.btij[6][18] = 1.0;            self.gtij[6][18] = 1.0;            // i-C4H10-H2O
-        self.bvij[6][19] = 1.012994431;  self.gvij[6][19] = 0.988591117;  self.btij[6][19] = 0.974550548;  self.gtij[6][19] = 0.937130844;  // i-C4H10-H2S
-        self.bvij[6][20] = 1.0;            self.gvij[6][20] = 1.0;            self.btij[6][20] = 1.0;            self.gtij[6][20] = 1.0;            // i-C4H10-He
-        self.bvij[6][21] = 1.0;            self.gvij[6][21] = 1.0;            self.btij[6][21] = 1.0;            self.gtij[6][21] = 1.0;            // i-C4H10-Ar
-        self.bvij[7][8] = 1.0;             self.gvij[7][8] = 1.002728434;   self.btij[7][8] = 1.0;             self.gtij[7][8] = 1.000792201;   // C4H10-i-C5H12
-        self.bvij[7][9] = 1.0;             self.gvij[7][9] = 1.01815965;    self.btij[7][9] = 1.0;             self.gtij[7][9] = 1.00214364;    // C4H10-C5H12
-        self.bvij[7][10] = 1.0;            self.gvij[7][10] = 1.034995284;  self.btij[7][10] = 1.0;            self.gtij[7][10] = 1.00915706;   // C4H10-C6H14
-        self.bvij[7][11] = 1.0;            self.gvij[7][11] = 1.019174227;  self.btij[7][11] = 1.0;            self.gtij[7][11] = 1.021283378;  // C4H10-C7H16
-        self.bvij[7][12] = 1.0;            self.gvij[7][12] = 1.046905515;  self.btij[7][12] = 1.0;            self.gtij[7][12] = 1.033180106;  // C4H10-C8H18
-        self.bvij[7][13] = 1.0;            self.gvij[7][13] = 1.049219137;  self.btij[7][13] = 1.0;            self.gtij[7][13] = 1.014096448;  // C4H10-C9H20
-        self.bvij[7][14] = 0.976951968;  self.gvij[7][14] = 1.027845529;  self.btij[7][14] = 0.993688386;  self.gtij[7][14] = 1.076466918;  // C4H10-C10H22
-        self.bvij[7][15] = 1.0;            self.gvij[7][15] = 1.232939523;  self.btij[7][15] = 1.0;            self.gtij[7][15] = 2.509259945;  // C4H10-H2
-        self.bvij[7][16] = 1.0;            self.gvij[7][16] = 1.0;            self.btij[7][16] = 1.0;            self.gtij[7][16] = 1.0;            // C4H10-O2
-        self.bvij[7][17] = 1.0;            self.gvij[7][17] = 1.084740904;  self.btij[7][17] = 1.0;            self.gtij[7][17] = 1.173916162;  // C4H10-CO
-        self.bvij[7][18] = 1.0;            self.gvij[7][18] = 1.223638763;  self.btij[7][18] = 1.0;            self.gtij[7][18] = 0.615512682;  // C4H10-H2O
-        self.bvij[7][19] = 0.908113163;  self.gvij[7][19] = 1.033366041;  self.btij[7][19] = 0.985962886;  self.gtij[7][19] = 0.926156602;  // C4H10-H2S
-        self.bvij[7][20] = 1.0;            self.gvij[7][20] = 1.0;            self.btij[7][20] = 1.0;            self.gtij[7][20] = 1.0;            // C4H10-He
-        self.bvij[7][21] = 1.0;            self.gvij[7][21] = 1.214638734;  self.btij[7][21] = 1.0;            self.gtij[7][21] = 1.245039498;  // C4H10-Ar
-        self.bvij[8][9] = 1.0;             self.gvij[8][9] = 1.000024335;   self.btij[8][9] = 1.0;             self.gtij[8][9] = 1.000050537;   // C5H12-i-C5H12
-        self.bvij[8][10] = 1.0;            self.gvij[8][10] = 1.002995876;  self.btij[8][10] = 1.0;            self.gtij[8][10] = 1.001204174;  // i-C5H12-C6H14
-        self.bvij[8][11] = 1.0;            self.gvij[8][11] = 1.009928206;  self.btij[8][11] = 1.0;            self.gtij[8][11] = 1.003194615;  // i-C5H12-C7H16
-        self.bvij[8][12] = 1.0;            self.gvij[8][12] = 1.017880545;  self.btij[8][12] = 1.0;            self.gtij[8][12] = 1.00564748;   // i-C5H12-C8H18
-        self.bvij[8][13] = 1.0;            self.gvij[8][13] = 1.028994325;  self.btij[8][13] = 1.0;            self.gtij[8][13] = 1.008191499;  // i-C5H12-C9H20
-        self.bvij[8][14] = 1.0;            self.gvij[8][14] = 1.039372957;  self.btij[8][14] = 1.0;            self.gtij[8][14] = 1.010825138;  // i-C5H12-C10H22
-        self.bvij[8][15] = 1.0;            self.gvij[8][15] = 1.184340443;  self.btij[8][15] = 1.0;            self.gtij[8][15] = 1.996386669;  // i-C5H12-H2
-        self.bvij[8][16] = 1.0;            self.gvij[8][16] = 1.0;            self.btij[8][16] = 1.0;            self.gtij[8][16] = 1.0;            // i-C5H12-O2
-        self.bvij[8][17] = 1.0;            self.gvij[8][17] = 1.116694577;  self.btij[8][17] = 1.0;            self.gtij[8][17] = 1.199326059;  // i-C5H12-CO
-        self.bvij[8][18] = 1.0;            self.gvij[8][18] = 1.0;            self.btij[8][18] = 1.0;            self.gtij[8][18] = 1.0;            // i-C5H12-H2O
-        self.bvij[8][19] = 1.0;            self.gvij[8][19] = 0.835763343;  self.btij[8][19] = 1.0;            self.gtij[8][19] = 0.982651529;  // i-C5H12-H2S
-        self.bvij[8][20] = 1.0;            self.gvij[8][20] = 1.0;            self.btij[8][20] = 1.0;            self.gtij[8][20] = 1.0;            // i-C5H12-He
-        self.bvij[8][21] = 1.0;            self.gvij[8][21] = 1.0;            self.btij[8][21] = 1.0;            self.gtij[8][21] = 1.0;            // i-C5H12-Ar
-        self.bvij[9][10] = 1.0;            self.gvij[9][10] = 1.002480637;  self.btij[9][10] = 1.0;            self.gtij[9][10] = 1.000761237;  // C5H12-C6H14
-        self.bvij[9][11] = 1.0;            self.gvij[9][11] = 1.008972412;  self.btij[9][11] = 1.0;            self.gtij[9][11] = 1.002441051;  // C5H12-C7H16
-        self.bvij[9][12] = 1.0;            self.gvij[9][12] = 1.069223964;  self.btij[9][12] = 1.0;            self.gtij[9][12] = 1.016422347;  // C5H12-C8H18
-        self.bvij[9][13] = 1.0;            self.gvij[9][13] = 1.034910633;  self.btij[9][13] = 1.0;            self.gtij[9][13] = 1.103421755;  // C5H12-C9H20
-        self.bvij[9][14] = 1.0;            self.gvij[9][14] = 1.016370338;  self.btij[9][14] = 1.0;            self.gtij[9][14] = 1.049035838;  // C5H12-C10H22
-        self.bvij[9][15] = 1.0;            self.gvij[9][15] = 1.188334783;  self.btij[9][15] = 1.0;            self.gtij[9][15] = 2.013859174;  // C5H12-H2
-        self.bvij[9][16] = 1.0;            self.gvij[9][16] = 1.0;            self.btij[9][16] = 1.0;            self.gtij[9][16] = 1.0;            // C5H12-O2
-        self.bvij[9][17] = 1.0;            self.gvij[9][17] = 1.119954454;  self.btij[9][17] = 1.0;            self.gtij[9][17] = 1.206043295;  // C5H12-CO
-        self.bvij[9][18] = 1.0;            self.gvij[9][18] = 0.95667731;   self.btij[9][18] = 1.0;            self.gtij[9][18] = 0.447666011;  // C5H12-H2O
-        self.bvij[9][19] = 0.984613203;  self.gvij[9][19] = 1.076539234;  self.btij[9][19] = 0.962006651;  self.gtij[9][19] = 0.959065662;  // C5H12-H2S
-        self.bvij[9][20] = 1.0;            self.gvij[9][20] = 1.0;            self.btij[9][20] = 1.0;            self.gtij[9][20] = 1.0;            // C5H12-He
-        self.bvij[9][21] = 1.0;            self.gvij[9][21] = 1.0;            self.btij[9][21] = 1.0;            self.gtij[9][21] = 1.0;            // C5H12-Ar
-        self.bvij[10][11] = 1.0;           self.gvij[10][11] = 1.001508227; self.btij[10][11] = 1.0;           self.gtij[10][11] = 0.999762786; // C6H14-C7H16
-        self.bvij[10][12] = 1.0;           self.gvij[10][12] = 1.006268954; self.btij[10][12] = 1.0;           self.gtij[10][12] = 1.001633952; // C6H14-C8H18
-        self.bvij[10][13] = 1.0;           self.gvij[10][13] = 1.02076168;  self.btij[10][13] = 1.0;           self.gtij[10][13] = 1.055369591; // C6H14-C9H20
-        self.bvij[10][14] = 1.001516371; self.gvij[10][14] = 1.013511439; self.btij[10][14] = 0.99764101;  self.gtij[10][14] = 1.028939539; // C6H14-C10H22
-        self.bvij[10][15] = 1.0;           self.gvij[10][15] = 1.243461678; self.btij[10][15] = 1.0;           self.gtij[10][15] = 3.021197546; // C6H14-H2
-        self.bvij[10][16] = 1.0;           self.gvij[10][16] = 1.0;           self.btij[10][16] = 1.0;           self.gtij[10][16] = 1.0;           // C6H14-O2
-        self.bvij[10][17] = 1.0;           self.gvij[10][17] = 1.155145836; self.btij[10][17] = 1.0;           self.gtij[10][17] = 1.233272781; // C6H14-CO
-        self.bvij[10][18] = 1.0;           self.gvij[10][18] = 1.170217596; self.btij[10][18] = 1.0;           self.gtij[10][18] = 0.569681333; // C6H14-H2O
-        self.bvij[10][19] = 0.754473958; self.gvij[10][19] = 1.339283552; self.btij[10][19] = 0.985891113; self.gtij[10][19] = 0.956075596; // C6H14-H2S
-        self.bvij[10][20] = 1.0;           self.gvij[10][20] = 1.0;           self.btij[10][20] = 1.0;           self.gtij[10][20] = 1.0;           // C6H14-He
-        self.bvij[10][21] = 1.0;           self.gvij[10][21] = 1.0;           self.btij[10][21] = 1.0;           self.gtij[10][21] = 1.0;           // C6H14-Ar
-        self.bvij[11][12] = 1.0;           self.gvij[11][12] = 1.006767176; self.btij[11][12] = 1.0;           self.gtij[11][12] = 0.998793111; // C7H16-C8H18
-        self.bvij[11][13] = 1.0;           self.gvij[11][13] = 1.001370076; self.btij[11][13] = 1.0;           self.gtij[11][13] = 1.001150096; // C7H16-C9H20
-        self.bvij[11][14] = 1.0;           self.gvij[11][14] = 1.002972346; self.btij[11][14] = 1.0;           self.gtij[11][14] = 1.002229938; // C7H16-C10H22
-        self.bvij[11][15] = 1.0;           self.gvij[11][15] = 1.159131722; self.btij[11][15] = 1.0;           self.gtij[11][15] = 3.169143057; // C7H16-H2
-        self.bvij[11][16] = 1.0;           self.gvij[11][16] = 1.0;           self.btij[11][16] = 1.0;           self.gtij[11][16] = 1.0;           // C7H16-O2
-        self.bvij[11][17] = 1.0;           self.gvij[11][17] = 1.190354273; self.btij[11][17] = 1.0;           self.gtij[11][17] = 1.256123503; // C7H16-CO
-        self.bvij[11][18] = 1.0;           self.gvij[11][18] = 1.0;           self.btij[11][18] = 1.0;           self.gtij[11][18] = 1.0;           // C7H16-H2O
-        self.bvij[11][19] = 0.828967164; self.gvij[11][19] = 1.087956749; self.btij[11][19] = 0.988937417; self.gtij[11][19] = 1.013453092; // C7H16-H2S
-        self.bvij[11][20] = 1.0;           self.gvij[11][20] = 1.0;           self.btij[11][20] = 1.0;           self.gtij[11][20] = 1.0;           // C7H16-He
-        self.bvij[11][21] = 1.0;           self.gvij[11][21] = 1.0;           self.btij[11][21] = 1.0;           self.gtij[11][21] = 1.0;           // C7H16-Ar
-        self.bvij[12][13] = 1.0;           self.gvij[12][13] = 1.001357085; self.btij[12][13] = 1.0;           self.gtij[12][13] = 1.000235044; // C8H18-C9H20
-        self.bvij[12][14] = 1.0;           self.gvij[12][14] = 1.002553544; self.btij[12][14] = 1.0;           self.gtij[12][14] = 1.007186267; // C8H18-C10H22
-        self.bvij[12][15] = 1.0;           self.gvij[12][15] = 1.305249405; self.btij[12][15] = 1.0;           self.gtij[12][15] = 2.191555216; // C8H18-H2
-        self.bvij[12][16] = 1.0;           self.gvij[12][16] = 1.0;           self.btij[12][16] = 1.0;           self.gtij[12][16] = 1.0;           // C8H18-O2
-        self.bvij[12][17] = 1.0;           self.gvij[12][17] = 1.219206702; self.btij[12][17] = 1.0;           self.gtij[12][17] = 1.276565536; // C8H18-CO
-        self.bvij[12][18] = 1.0;           self.gvij[12][18] = 0.599484191; self.btij[12][18] = 1.0;           self.gtij[12][18] = 0.662072469; // C8H18-H2O
-        self.bvij[12][19] = 1.0;           self.gvij[12][19] = 1.0;           self.btij[12][19] = 1.0;           self.gtij[12][19] = 1.0;           // C8H18-H2S
-        self.bvij[12][20] = 1.0;           self.gvij[12][20] = 1.0;           self.btij[12][20] = 1.0;           self.gtij[12][20] = 1.0;           // C8H18-He
-        self.bvij[12][21] = 1.0;           self.gvij[12][21] = 1.0;           self.btij[12][21] = 1.0;           self.gtij[12][21] = 1.0;           // C8H18-Ar
-        self.bvij[13][14] = 1.0;           self.gvij[13][14] = 1.00081052;  self.btij[13][14] = 1.0;           self.gtij[13][14] = 1.000182392; // C9H20-C10H22
-        self.bvij[13][15] = 1.0;           self.gvij[13][15] = 1.342647661; self.btij[13][15] = 1.0;           self.gtij[13][15] = 2.23435404;  // C9H20-H2
-        self.bvij[13][16] = 1.0;           self.gvij[13][16] = 1.0;           self.btij[13][16] = 1.0;           self.gtij[13][16] = 1.0;           // C9H20-O2
-        self.bvij[13][17] = 1.0;           self.gvij[13][17] = 1.252151449; self.btij[13][17] = 1.0;           self.gtij[13][17] = 1.294070556; // C9H20-CO
-        self.bvij[13][18] = 1.0;           self.gvij[13][18] = 1.0;           self.btij[13][18] = 1.0;           self.gtij[13][18] = 1.0;           // C9H20-H2O
-        self.bvij[13][19] = 1.0;           self.gvij[13][19] = 1.082905109; self.btij[13][19] = 1.0;           self.gtij[13][19] = 1.086557826; // C9H20-H2S
-        self.bvij[13][20] = 1.0;           self.gvij[13][20] = 1.0;           self.btij[13][20] = 1.0;           self.gtij[13][20] = 1.0;           // C9H20-He
-        self.bvij[13][21] = 1.0;           self.gvij[13][21] = 1.0;           self.btij[13][21] = 1.0;           self.gtij[13][21] = 1.0;           // C9H20-Ar
-        self.bvij[14][15] = 1.695358382; self.gvij[14][15] = 1.120233729; self.btij[14][15] = 1.064818089; self.gtij[14][15] = 3.786003724; // C10H22-H2
-        self.bvij[14][16] = 1.0;           self.gvij[14][16] = 1.0;           self.btij[14][16] = 1.0;           self.gtij[14][16] = 1.0;           // C10H22-O2
-        self.bvij[14][17] = 1.0;           self.gvij[14][17] = 0.87018496;  self.btij[14][17] = 1.049594632; self.gtij[14][17] = 1.803567587; // C10H22-CO
-        self.bvij[14][18] = 1.0;           self.gvij[14][18] = 0.551405318; self.btij[14][18] = 0.897162268; self.gtij[14][18] = 0.740416402; // C10H22-H2O
-        self.bvij[14][19] = 0.975187766; self.gvij[14][19] = 1.171714677; self.btij[14][19] = 0.973091413; self.gtij[14][19] = 1.103693489; // C10H22-H2S
-        self.bvij[14][20] = 1.0;           self.gvij[14][20] = 1.0;           self.btij[14][20] = 1.0;           self.gtij[14][20] = 1.0;           // C10H22-He
-        self.bvij[14][21] = 1.0;           self.gvij[14][21] = 1.0;           self.btij[14][21] = 1.0;           self.gtij[14][21] = 1.0;           // C10H22-Ar
-        self.bvij[15][16] = 1.0;           self.gvij[15][16] = 1.0;           self.btij[15][16] = 1.0;           self.gtij[15][16] = 1.0;           // H2-O2
-        self.bvij[15][17] = 1.0;           self.gvij[15][17] = 1.121416201; self.btij[15][17] = 1.0;           self.gtij[15][17] = 1.377504607; // H2-CO
-        self.bvij[15][18] = 1.0;           self.gvij[15][18] = 1.0;           self.btij[15][18] = 1.0;           self.gtij[15][18] = 1.0;           // H2-H2O
-        self.bvij[15][19] = 1.0;           self.gvij[15][19] = 1.0;           self.btij[15][19] = 1.0;           self.gtij[15][19] = 1.0;           // H2-H2S
-        self.bvij[15][20] = 1.0;           self.gvij[15][20] = 1.0;           self.btij[15][20] = 1.0;           self.gtij[15][20] = 1.0;           // H2-He
-        self.bvij[15][21] = 1.0;           self.gvij[15][21] = 1.0;           self.btij[15][21] = 1.0;           self.gtij[15][21] = 1.0;           // H2-Ar
-        self.bvij[16][17] = 1.0;           self.gvij[16][17] = 1.0;           self.btij[16][17] = 1.0;           self.gtij[16][17] = 1.0;           // O2-CO
-        self.bvij[16][18] = 1.0;           self.gvij[16][18] = 1.143174289; self.btij[16][18] = 1.0;           self.gtij[16][18] = 0.964767932; // O2-H2O
-        self.bvij[16][19] = 1.0;           self.gvij[16][19] = 1.0;           self.btij[16][19] = 1.0;           self.gtij[16][19] = 1.0;           // O2-H2S
-        self.bvij[16][20] = 1.0;           self.gvij[16][20] = 1.0;           self.btij[16][20] = 1.0;           self.gtij[16][20] = 1.0;           // O2-He
-        self.bvij[16][21] = 0.999746847; self.gvij[16][21] = 0.993907223; self.btij[16][21] = 1.000023103; self.gtij[16][21] = 0.990430423; // O2-Ar
-        self.bvij[17][18] = 1.0;           self.gvij[17][18] = 1.0;           self.btij[17][18] = 1.0;           self.gtij[17][18] = 1.0;           // CO-H2O
-        self.bvij[17][19] = 0.795660392; self.gvij[17][19] = 1.101731308; self.btij[17][19] = 1.025536736; self.gtij[17][19] = 1.022749748; // CO-H2S
-        self.bvij[17][20] = 1.0;           self.gvij[17][20] = 1.0;           self.btij[17][20] = 1.0;           self.gtij[17][20] = 1.0;           // CO-He
-        self.bvij[17][21] = 1.0;           self.gvij[17][21] = 1.159720623; self.btij[17][21] = 1.0;           self.gtij[17][21] = 0.954215746; // CO-Ar
-        self.bvij[18][19] = 1.0;           self.gvij[18][19] = 1.014832832; self.btij[18][19] = 1.0;           self.gtij[18][19] = 0.940587083; // H2O-H2S
-        self.bvij[18][20] = 1.0;           self.gvij[18][20] = 1.0;           self.btij[18][20] = 1.0;           self.gtij[18][20] = 1.0;           // H2O-He
-        self.bvij[18][21] = 1.0;           self.gvij[18][21] = 1.038993495; self.btij[18][21] = 1.0;           self.gtij[18][21] = 1.070941866; // H2O-Ar
-        self.bvij[19][20] = 1.0;           self.gvij[19][20] = 1.0;           self.btij[19][20] = 1.0;           self.gtij[19][20] = 1.0;           // H2S-He
-        self.bvij[19][21] = 1.0;           self.gvij[19][21] = 1.0;           self.btij[19][21] = 1.0;           self.gtij[19][21] = 1.0;           // H2S-Ar
-        self.bvij[20][21] = 1.0;           self.gvij[20][21] = 1.0;           self.btij[20][21] = 1.0;           self.gtij[20][21] = 1.0;           // He-Ar
+        // The beta values for isobutane+butane are the reciprocal values of
+        // those in the GERG-2008 publication because the order was reversed in this work.
+        self.bvij[6][7] = 0.999_120_311;
+        self.gvij[6][7] = 1.000_414_44;
+        self.btij[6][7] = 0.999_922_459;
+        self.gtij[6][7] = 1.001_432_824; // C4H10-i-C4H10
+        self.bvij[6][8] = 1.0;
+        self.gvij[6][8] = 1.002_284_353;
+        self.btij[6][8] = 1.0;
+        self.gtij[6][8] = 1.001_835_788; // i-C4H10-i-C5H1
+        self.bvij[6][9] = 1.0;
+        self.gvij[6][9] = 1.002_779_804;
+        self.btij[6][9] = 1.0;
+        self.gtij[6][9] = 1.002_495_889; // i-C4H10-C5H12
+        self.bvij[6][10] = 1.0;
+        self.gvij[6][10] = 1.010_493_989;
+        self.btij[6][10] = 1.0;
+        self.gtij[6][10] = 1.006_018_054; // i-C4H10-C6H14
+        self.bvij[6][11] = 1.0;
+        self.gvij[6][11] = 1.021_668_316;
+        self.btij[6][11] = 1.0;
+        self.gtij[6][11] = 1.009_885_76; // i-C4H10-C7H16
+        self.bvij[6][12] = 1.0;
+        self.gvij[6][12] = 1.032_807_063;
+        self.btij[6][12] = 1.0;
+        self.gtij[6][12] = 1.013_945_424; // i-C4H10-C8H18
+        self.bvij[6][13] = 1.0;
+        self.gvij[6][13] = 1.047_298_475;
+        self.btij[6][13] = 1.0;
+        self.gtij[6][13] = 1.017_817_492; // i-C4H10-C9H20
+        self.bvij[6][14] = 1.0;
+        self.gvij[6][14] = 1.060_243_344;
+        self.btij[6][14] = 1.0;
+        self.gtij[6][14] = 1.021_624_748; // i-C4H10-C10H22
+        self.bvij[6][15] = 1.0;
+        self.gvij[6][15] = 1.147_595_688;
+        self.btij[6][15] = 1.0;
+        self.gtij[6][15] = 1.895_305_393; // i-C4H10-H2
+        self.bvij[6][16] = 1.0;
+        self.gvij[6][16] = 1.0;
+        self.btij[6][16] = 1.0;
+        self.gtij[6][16] = 1.0; // i-C4H10-O2
+        self.bvij[6][17] = 1.0;
+        self.gvij[6][17] = 1.087_272_232;
+        self.btij[6][17] = 1.0;
+        self.gtij[6][17] = 1.161_390_082; // i-C4H10-CO
+        self.bvij[6][18] = 1.0;
+        self.gvij[6][18] = 1.0;
+        self.btij[6][18] = 1.0;
+        self.gtij[6][18] = 1.0; // i-C4H10-H2O
+        self.bvij[6][19] = 1.012_994_431;
+        self.gvij[6][19] = 0.988_591_117;
+        self.btij[6][19] = 0.974_550_548;
+        self.gtij[6][19] = 0.937_130_844; // i-C4H10-H2S
+        self.bvij[6][20] = 1.0;
+        self.gvij[6][20] = 1.0;
+        self.btij[6][20] = 1.0;
+        self.gtij[6][20] = 1.0; // i-C4H10-He
+        self.bvij[6][21] = 1.0;
+        self.gvij[6][21] = 1.0;
+        self.btij[6][21] = 1.0;
+        self.gtij[6][21] = 1.0; // i-C4H10-Ar
+        self.bvij[7][8] = 1.0;
+        self.gvij[7][8] = 1.002_728_434;
+        self.btij[7][8] = 1.0;
+        self.gtij[7][8] = 1.000_792_201; // C4H10-i-C5H12
+        self.bvij[7][9] = 1.0;
+        self.gvij[7][9] = 1.018_159_65;
+        self.btij[7][9] = 1.0;
+        self.gtij[7][9] = 1.002_143_640; // C4H10-C5H12
+        self.bvij[7][10] = 1.0;
+        self.gvij[7][10] = 1.034_995_284;
+        self.btij[7][10] = 1.0;
+        self.gtij[7][10] = 1.009_157_06; // C4H10-C6H14
+        self.bvij[7][11] = 1.0;
+        self.gvij[7][11] = 1.019_174_227;
+        self.btij[7][11] = 1.0;
+        self.gtij[7][11] = 1.021_283_378; // C4H10-C7H16
+        self.bvij[7][12] = 1.0;
+        self.gvij[7][12] = 1.046_905_515;
+        self.btij[7][12] = 1.0;
+        self.gtij[7][12] = 1.033_180_106; // C4H10-C8H18
+        self.bvij[7][13] = 1.0;
+        self.gvij[7][13] = 1.049_219_137;
+        self.btij[7][13] = 1.0;
+        self.gtij[7][13] = 1.014_096_448; // C4H10-C9H20
+        self.bvij[7][14] = 0.976_951_968;
+        self.gvij[7][14] = 1.027_845_529;
+        self.btij[7][14] = 0.993_688_386;
+        self.gtij[7][14] = 1.076_466_918; // C4H10-C10H22
+        self.bvij[7][15] = 1.0;
+        self.gvij[7][15] = 1.232_939_523;
+        self.btij[7][15] = 1.0;
+        self.gtij[7][15] = 2.509_259_945; // C4H10-H2
+        self.bvij[7][16] = 1.0;
+        self.gvij[7][16] = 1.0;
+        self.btij[7][16] = 1.0;
+        self.gtij[7][16] = 1.0; // C4H10-O2
+        self.bvij[7][17] = 1.0;
+        self.gvij[7][17] = 1.084_740_904;
+        self.btij[7][17] = 1.0;
+        self.gtij[7][17] = 1.173_916_162; // C4H10-CO
+        self.bvij[7][18] = 1.0;
+        self.gvij[7][18] = 1.223_638_763;
+        self.btij[7][18] = 1.0;
+        self.gtij[7][18] = 0.615_512_682; // C4H10-H2O
+        self.bvij[7][19] = 0.908_113_163;
+        self.gvij[7][19] = 1.033_366_041;
+        self.btij[7][19] = 0.985_962_886;
+        self.gtij[7][19] = 0.926_156_602; // C4H10-H2S
+        self.bvij[7][20] = 1.0;
+        self.gvij[7][20] = 1.0;
+        self.btij[7][20] = 1.0;
+        self.gtij[7][20] = 1.0; // C4H10-He
+        self.bvij[7][21] = 1.0;
+        self.gvij[7][21] = 1.214_638_734;
+        self.btij[7][21] = 1.0;
+        self.gtij[7][21] = 1.245_039_498; // C4H10-Ar
+        self.bvij[8][9] = 1.0;
+        self.gvij[8][9] = 1.000_024_335;
+        self.btij[8][9] = 1.0;
+        self.gtij[8][9] = 1.000_050_537; // C5H12-i-C5H12
+        self.bvij[8][10] = 1.0;
+        self.gvij[8][10] = 1.002_995_876;
+        self.btij[8][10] = 1.0;
+        self.gtij[8][10] = 1.001_204_174; // i-C5H12-C6H14
+        self.bvij[8][11] = 1.0;
+        self.gvij[8][11] = 1.009_928_206;
+        self.btij[8][11] = 1.0;
+        self.gtij[8][11] = 1.003_194_615; // i-C5H12-C7H16
+        self.bvij[8][12] = 1.0;
+        self.gvij[8][12] = 1.017_880_545;
+        self.btij[8][12] = 1.0;
+        self.gtij[8][12] = 1.005_647_48; // i-C5H12-C8H18
+        self.bvij[8][13] = 1.0;
+        self.gvij[8][13] = 1.028_994_325;
+        self.btij[8][13] = 1.0;
+        self.gtij[8][13] = 1.008_191_499; // i-C5H12-C9H20
+        self.bvij[8][14] = 1.0;
+        self.gvij[8][14] = 1.039_372_957;
+        self.btij[8][14] = 1.0;
+        self.gtij[8][14] = 1.010_825_138; // i-C5H12-C10H22
+        self.bvij[8][15] = 1.0;
+        self.gvij[8][15] = 1.184_340_443;
+        self.btij[8][15] = 1.0;
+        self.gtij[8][15] = 1.996_386_669; // i-C5H12-H2
+        self.bvij[8][16] = 1.0;
+        self.gvij[8][16] = 1.0;
+        self.btij[8][16] = 1.0;
+        self.gtij[8][16] = 1.0; // i-C5H12-O2
+        self.bvij[8][17] = 1.0;
+        self.gvij[8][17] = 1.116_694_577;
+        self.btij[8][17] = 1.0;
+        self.gtij[8][17] = 1.199_326_059; // i-C5H12-CO
+        self.bvij[8][18] = 1.0;
+        self.gvij[8][18] = 1.0;
+        self.btij[8][18] = 1.0;
+        self.gtij[8][18] = 1.0; // i-C5H12-H2O
+        self.bvij[8][19] = 1.0;
+        self.gvij[8][19] = 0.835_763_343;
+        self.btij[8][19] = 1.0;
+        self.gtij[8][19] = 0.982_651_529; // i-C5H12-H2S
+        self.bvij[8][20] = 1.0;
+        self.gvij[8][20] = 1.0;
+        self.btij[8][20] = 1.0;
+        self.gtij[8][20] = 1.0; // i-C5H12-He
+        self.bvij[8][21] = 1.0;
+        self.gvij[8][21] = 1.0;
+        self.btij[8][21] = 1.0;
+        self.gtij[8][21] = 1.0; // i-C5H12-Ar
+        self.bvij[9][10] = 1.0;
+        self.gvij[9][10] = 1.002_480_637;
+        self.btij[9][10] = 1.0;
+        self.gtij[9][10] = 1.000_761_237; // C5H12-C6H14
+        self.bvij[9][11] = 1.0;
+        self.gvij[9][11] = 1.008_972_412;
+        self.btij[9][11] = 1.0;
+        self.gtij[9][11] = 1.002_441_051; // C5H12-C7H16
+        self.bvij[9][12] = 1.0;
+        self.gvij[9][12] = 1.069_223_964;
+        self.btij[9][12] = 1.0;
+        self.gtij[9][12] = 1.016_422_347; // C5H12-C8H18
+        self.bvij[9][13] = 1.0;
+        self.gvij[9][13] = 1.034_910_633;
+        self.btij[9][13] = 1.0;
+        self.gtij[9][13] = 1.103_421_755; // C5H12-C9H20
+        self.bvij[9][14] = 1.0;
+        self.gvij[9][14] = 1.016_370_338;
+        self.btij[9][14] = 1.0;
+        self.gtij[9][14] = 1.049_035_838; // C5H12-C10H22
+        self.bvij[9][15] = 1.0;
+        self.gvij[9][15] = 1.188_334_783;
+        self.btij[9][15] = 1.0;
+        self.gtij[9][15] = 2.013_859_174; // C5H12-H2
+        self.bvij[9][16] = 1.0;
+        self.gvij[9][16] = 1.0;
+        self.btij[9][16] = 1.0;
+        self.gtij[9][16] = 1.0; // C5H12-O2
+        self.bvij[9][17] = 1.0;
+        self.gvij[9][17] = 1.119_954_454;
+        self.btij[9][17] = 1.0;
+        self.gtij[9][17] = 1.206_043_295; // C5H12-CO
+        self.bvij[9][18] = 1.0;
+        self.gvij[9][18] = 0.956_677_31;
+        self.btij[9][18] = 1.0;
+        self.gtij[9][18] = 0.447_666_011; // C5H12-H2O
+        self.bvij[9][19] = 0.984_613_203;
+        self.gvij[9][19] = 1.076_539_234;
+        self.btij[9][19] = 0.962_006_651;
+        self.gtij[9][19] = 0.959_065_662; // C5H12-H2S
+        self.bvij[9][20] = 1.0;
+        self.gvij[9][20] = 1.0;
+        self.btij[9][20] = 1.0;
+        self.gtij[9][20] = 1.0; // C5H12-He
+        self.bvij[9][21] = 1.0;
+        self.gvij[9][21] = 1.0;
+        self.btij[9][21] = 1.0;
+        self.gtij[9][21] = 1.0; // C5H12-Ar
+        self.bvij[10][11] = 1.0;
+        self.gvij[10][11] = 1.001_508_227;
+        self.btij[10][11] = 1.0;
+        self.gtij[10][11] = 0.999_762_786; // C6H14-C7H16
+        self.bvij[10][12] = 1.0;
+        self.gvij[10][12] = 1.006_268_954;
+        self.btij[10][12] = 1.0;
+        self.gtij[10][12] = 1.001_633_952; // C6H14-C8H18
+        self.bvij[10][13] = 1.0;
+        self.gvij[10][13] = 1.020_761_68;
+        self.btij[10][13] = 1.0;
+        self.gtij[10][13] = 1.055_369_591; // C6H14-C9H20
+        self.bvij[10][14] = 1.001_516_371;
+        self.gvij[10][14] = 1.013_511_439;
+        self.btij[10][14] = 0.997_641_01;
+        self.gtij[10][14] = 1.028_939_539; // C6H14-C10H22
+        self.bvij[10][15] = 1.0;
+        self.gvij[10][15] = 1.243_461_678;
+        self.btij[10][15] = 1.0;
+        self.gtij[10][15] = 3.021_197_546; // C6H14-H2
+        self.bvij[10][16] = 1.0;
+        self.gvij[10][16] = 1.0;
+        self.btij[10][16] = 1.0;
+        self.gtij[10][16] = 1.0; // C6H14-O2
+        self.bvij[10][17] = 1.0;
+        self.gvij[10][17] = 1.155_145_836;
+        self.btij[10][17] = 1.0;
+        self.gtij[10][17] = 1.233_272_781; // C6H14-CO
+        self.bvij[10][18] = 1.0;
+        self.gvij[10][18] = 1.170_217_596;
+        self.btij[10][18] = 1.0;
+        self.gtij[10][18] = 0.569_681_333; // C6H14-H2O
+        self.bvij[10][19] = 0.754_473_958;
+        self.gvij[10][19] = 1.339_283_552;
+        self.btij[10][19] = 0.985_891_113;
+        self.gtij[10][19] = 0.956_075_596; // C6H14-H2S
+        self.bvij[10][20] = 1.0;
+        self.gvij[10][20] = 1.0;
+        self.btij[10][20] = 1.0;
+        self.gtij[10][20] = 1.0; // C6H14-He
+        self.bvij[10][21] = 1.0;
+        self.gvij[10][21] = 1.0;
+        self.btij[10][21] = 1.0;
+        self.gtij[10][21] = 1.0; // C6H14-Ar
+        self.bvij[11][12] = 1.0;
+        self.gvij[11][12] = 1.006_767_176;
+        self.btij[11][12] = 1.0;
+        self.gtij[11][12] = 0.998_793_111; // C7H16-C8H18
+        self.bvij[11][13] = 1.0;
+        self.gvij[11][13] = 1.001_370_076;
+        self.btij[11][13] = 1.0;
+        self.gtij[11][13] = 1.001_150_096; // C7H16-C9H20
+        self.bvij[11][14] = 1.0;
+        self.gvij[11][14] = 1.002_972_346;
+        self.btij[11][14] = 1.0;
+        self.gtij[11][14] = 1.002_229_938; // C7H16-C10H22
+        self.bvij[11][15] = 1.0;
+        self.gvij[11][15] = 1.159_131_722;
+        self.btij[11][15] = 1.0;
+        self.gtij[11][15] = 3.169_143_057; // C7H16-H2
+        self.bvij[11][16] = 1.0;
+        self.gvij[11][16] = 1.0;
+        self.btij[11][16] = 1.0;
+        self.gtij[11][16] = 1.0; // C7H16-O2
+        self.bvij[11][17] = 1.0;
+        self.gvij[11][17] = 1.190_354_273;
+        self.btij[11][17] = 1.0;
+        self.gtij[11][17] = 1.256_123_503; // C7H16-CO
+        self.bvij[11][18] = 1.0;
+        self.gvij[11][18] = 1.0;
+        self.btij[11][18] = 1.0;
+        self.gtij[11][18] = 1.0; // C7H16-H2O
+        self.bvij[11][19] = 0.828_967_164;
+        self.gvij[11][19] = 1.087_956_749;
+        self.btij[11][19] = 0.988_937_417;
+        self.gtij[11][19] = 1.013_453_092; // C7H16-H2S
+        self.bvij[11][20] = 1.0;
+        self.gvij[11][20] = 1.0;
+        self.btij[11][20] = 1.0;
+        self.gtij[11][20] = 1.0; // C7H16-He
+        self.bvij[11][21] = 1.0;
+        self.gvij[11][21] = 1.0;
+        self.btij[11][21] = 1.0;
+        self.gtij[11][21] = 1.0; // C7H16-Ar
+        self.bvij[12][13] = 1.0;
+        self.gvij[12][13] = 1.001_357_085;
+        self.btij[12][13] = 1.0;
+        self.gtij[12][13] = 1.000_235_044; // C8H18-C9H20
+        self.bvij[12][14] = 1.0;
+        self.gvij[12][14] = 1.002_553_544;
+        self.btij[12][14] = 1.0;
+        self.gtij[12][14] = 1.007_186_267; // C8H18-C10H22
+        self.bvij[12][15] = 1.0;
+        self.gvij[12][15] = 1.305_249_405;
+        self.btij[12][15] = 1.0;
+        self.gtij[12][15] = 2.191_555_216; // C8H18-H2
+        self.bvij[12][16] = 1.0;
+        self.gvij[12][16] = 1.0;
+        self.btij[12][16] = 1.0;
+        self.gtij[12][16] = 1.0; // C8H18-O2
+        self.bvij[12][17] = 1.0;
+        self.gvij[12][17] = 1.219_206_702;
+        self.btij[12][17] = 1.0;
+        self.gtij[12][17] = 1.276_565_536; // C8H18-CO
+        self.bvij[12][18] = 1.0;
+        self.gvij[12][18] = 0.599_484_191;
+        self.btij[12][18] = 1.0;
+        self.gtij[12][18] = 0.662_072_469; // C8H18-H2O
+        self.bvij[12][19] = 1.0;
+        self.gvij[12][19] = 1.0;
+        self.btij[12][19] = 1.0;
+        self.gtij[12][19] = 1.0; // C8H18-H2S
+        self.bvij[12][20] = 1.0;
+        self.gvij[12][20] = 1.0;
+        self.btij[12][20] = 1.0;
+        self.gtij[12][20] = 1.0; // C8H18-He
+        self.bvij[12][21] = 1.0;
+        self.gvij[12][21] = 1.0;
+        self.btij[12][21] = 1.0;
+        self.gtij[12][21] = 1.0; // C8H18-Ar
+        self.bvij[13][14] = 1.0;
+        self.gvij[13][14] = 1.000_810_52;
+        self.btij[13][14] = 1.0;
+        self.gtij[13][14] = 1.000_182_392; // C9H20-C10H22
+        self.bvij[13][15] = 1.0;
+        self.gvij[13][15] = 1.342_647_661;
+        self.btij[13][15] = 1.0;
+        self.gtij[13][15] = 2.234_354_04; // C9H20-H2
+        self.bvij[13][16] = 1.0;
+        self.gvij[13][16] = 1.0;
+        self.btij[13][16] = 1.0;
+        self.gtij[13][16] = 1.0; // C9H20-O2
+        self.bvij[13][17] = 1.0;
+        self.gvij[13][17] = 1.252_151_449;
+        self.btij[13][17] = 1.0;
+        self.gtij[13][17] = 1.294_070_556; // C9H20-CO
+        self.bvij[13][18] = 1.0;
+        self.gvij[13][18] = 1.0;
+        self.btij[13][18] = 1.0;
+        self.gtij[13][18] = 1.0; // C9H20-H2O
+        self.bvij[13][19] = 1.0;
+        self.gvij[13][19] = 1.082_905_109;
+        self.btij[13][19] = 1.0;
+        self.gtij[13][19] = 1.086_557_826; // C9H20-H2S
+        self.bvij[13][20] = 1.0;
+        self.gvij[13][20] = 1.0;
+        self.btij[13][20] = 1.0;
+        self.gtij[13][20] = 1.0; // C9H20-He
+        self.bvij[13][21] = 1.0;
+        self.gvij[13][21] = 1.0;
+        self.btij[13][21] = 1.0;
+        self.gtij[13][21] = 1.0; // C9H20-Ar
+        self.bvij[14][15] = 1.695_358_382;
+        self.gvij[14][15] = 1.120_233_729;
+        self.btij[14][15] = 1.064_818_089;
+        self.gtij[14][15] = 3.786_003_724; // C10H22-H2
+        self.bvij[14][16] = 1.0;
+        self.gvij[14][16] = 1.0;
+        self.btij[14][16] = 1.0;
+        self.gtij[14][16] = 1.0; // C10H22-O2
+        self.bvij[14][17] = 1.0;
+        self.gvij[14][17] = 0.870_184_96;
+        self.btij[14][17] = 1.049_594_632;
+        self.gtij[14][17] = 1.803_567_587; // C10H22-CO
+        self.bvij[14][18] = 1.0;
+        self.gvij[14][18] = 0.551_405_318;
+        self.btij[14][18] = 0.897_162_268;
+        self.gtij[14][18] = 0.740_416_402; // C10H22-H2O
+        self.bvij[14][19] = 0.975_187_766;
+        self.gvij[14][19] = 1.171_714_677;
+        self.btij[14][19] = 0.973_091_413;
+        self.gtij[14][19] = 1.103_693_489; // C10H22-H2S
+        self.bvij[14][20] = 1.0;
+        self.gvij[14][20] = 1.0;
+        self.btij[14][20] = 1.0;
+        self.gtij[14][20] = 1.0; // C10H22-He
+        self.bvij[14][21] = 1.0;
+        self.gvij[14][21] = 1.0;
+        self.btij[14][21] = 1.0;
+        self.gtij[14][21] = 1.0; // C10H22-Ar
+        self.bvij[15][16] = 1.0;
+        self.gvij[15][16] = 1.0;
+        self.btij[15][16] = 1.0;
+        self.gtij[15][16] = 1.0; // H2-O2
+        self.bvij[15][17] = 1.0;
+        self.gvij[15][17] = 1.121_416_201;
+        self.btij[15][17] = 1.0;
+        self.gtij[15][17] = 1.377_504_607; // H2-CO
+        self.bvij[15][18] = 1.0;
+        self.gvij[15][18] = 1.0;
+        self.btij[15][18] = 1.0;
+        self.gtij[15][18] = 1.0; // H2-H2O
+        self.bvij[15][19] = 1.0;
+        self.gvij[15][19] = 1.0;
+        self.btij[15][19] = 1.0;
+        self.gtij[15][19] = 1.0; // H2-H2S
+        self.bvij[15][20] = 1.0;
+        self.gvij[15][20] = 1.0;
+        self.btij[15][20] = 1.0;
+        self.gtij[15][20] = 1.0; // H2-He
+        self.bvij[15][21] = 1.0;
+        self.gvij[15][21] = 1.0;
+        self.btij[15][21] = 1.0;
+        self.gtij[15][21] = 1.0; // H2-Ar
+        self.bvij[16][17] = 1.0;
+        self.gvij[16][17] = 1.0;
+        self.btij[16][17] = 1.0;
+        self.gtij[16][17] = 1.0; // O2-CO
+        self.bvij[16][18] = 1.0;
+        self.gvij[16][18] = 1.143_174_289;
+        self.btij[16][18] = 1.0;
+        self.gtij[16][18] = 0.964_767_932; // O2-H2O
+        self.bvij[16][19] = 1.0;
+        self.gvij[16][19] = 1.0;
+        self.btij[16][19] = 1.0;
+        self.gtij[16][19] = 1.0; // O2-H2S
+        self.bvij[16][20] = 1.0;
+        self.gvij[16][20] = 1.0;
+        self.btij[16][20] = 1.0;
+        self.gtij[16][20] = 1.0; // O2-He
+        self.bvij[16][21] = 0.999_746_847;
+        self.gvij[16][21] = 0.993_907_223;
+        self.btij[16][21] = 1.000_023_103;
+        self.gtij[16][21] = 0.990_430_423; // O2-Ar
+        self.bvij[17][18] = 1.0;
+        self.gvij[17][18] = 1.0;
+        self.btij[17][18] = 1.0;
+        self.gtij[17][18] = 1.0; // CO-H2O
+        self.bvij[17][19] = 0.795_660_392;
+        self.gvij[17][19] = 1.101_731_308;
+        self.btij[17][19] = 1.025_536_736;
+        self.gtij[17][19] = 1.022_749_748; // CO-H2S
+        self.bvij[17][20] = 1.0;
+        self.gvij[17][20] = 1.0;
+        self.btij[17][20] = 1.0;
+        self.gtij[17][20] = 1.0; // CO-He
+        self.bvij[17][21] = 1.0;
+        self.gvij[17][21] = 1.159_720_623;
+        self.btij[17][21] = 1.0;
+        self.gtij[17][21] = 0.954_215_746; // CO-Ar
+        self.bvij[18][19] = 1.0;
+        self.gvij[18][19] = 1.014_832_832;
+        self.btij[18][19] = 1.0;
+        self.gtij[18][19] = 0.940_587_083; // H2O-H2S
+        self.bvij[18][20] = 1.0;
+        self.gvij[18][20] = 1.0;
+        self.btij[18][20] = 1.0;
+        self.gtij[18][20] = 1.0; // H2O-He
+        self.bvij[18][21] = 1.0;
+        self.gvij[18][21] = 1.038_993_495;
+        self.btij[18][21] = 1.0;
+        self.gtij[18][21] = 1.070_941_866; // H2O-Ar
+        self.bvij[19][20] = 1.0;
+        self.gvij[19][20] = 1.0;
+        self.btij[19][20] = 1.0;
+        self.gtij[19][20] = 1.0; // H2S-He
+        self.bvij[19][21] = 1.0;
+        self.gvij[19][21] = 1.0;
+        self.btij[19][21] = 1.0;
+        self.gtij[19][21] = 1.0; // H2S-Ar
+        self.bvij[20][21] = 1.0;
+        self.gvij[20][21] = 1.0;
+        self.btij[20][21] = 1.0;
+        self.gtij[20][21] = 1.0; // He-Ar
 
-        //for(int i = 1; i <= MaxFlds; ++i){
         for i in 1..=MAXFLDS {
             self.bvij[i][i] = 1.0;
             self.btij[i][i] = 1.0;
             self.gvij[i][i] = 1.0 / DC[i];
             self.gtij[i][i] = TC[i];
-            //for (int j = i + 1; j <= MaxFlds; ++j){
             for j in i + 1..=MAXFLDS {
                 self.gvij[i][j] = self.gvij[i][j] * self.bvij[i][j] * f64::powi(vc3[i] + vc3[j], 3);
                 self.gtij[i][j] = self.gtij[i][j] * self.btij[i][j] * tc2[i] * tc2[j];
                 self.bvij[i][j] = f64::powi(self.bvij[i][j], 2);
                 self.btij[i][j] = f64::powi(self.btij[i][j], 2);
             }
-          }
+        }
 
         for i in 1..=MAXMDL {
             for j in 1..=MAXTRMM {
-              self.gijk[i][j] = -self.cijk[i][j] * f64::powi(self.eijk[i][j], 2) + bijk[i][j] * self.gijk[i][j];
-              self.eijk[i][j] = 2.0 * self.cijk[i][j] * self.eijk[i][j] - bijk[i][j];
-              self.cijk[i][j] = -self.cijk[i][j];
+                self.gijk[i][j] =
+                    -self.cijk[i][j] * f64::powi(self.eijk[i][j], 2) + bijk[i][j] * self.gijk[i][j];
+                self.eijk[i][j] = 2.0 * self.cijk[i][j] * self.eijk[i][j] - bijk[i][j];
+                self.cijk[i][j] = -self.cijk[i][j];
             }
         }
 
@@ -2907,10 +4242,7 @@ impl Gerg2008 {
             let p2 = self.pressure();
             if self.dpddsave < EPSILON || p2 < EPSILON {
                 // Current state is 2-phase, try locating a different state that is single phase
-                let mut vinc = 0.1;
-                if self.d > dcx {
-                    vinc = -0.1;
-                }
+                let mut vinc = if self.d > dcx { -0.1 } else { 0.1 };
                 if it > 5 {
                     vinc /= 2.0;
                 }
@@ -3086,7 +4418,8 @@ impl Gerg2008 {
                     }
                 }
                 self.a0[0] += self.x[i]
-                    * (logxd + self.n0i[i][1] + self.n0i[i][2] / self.t - self.n0i[i][3] * logt + sumhyp0);
+                    * (logxd + self.n0i[i][1] + self.n0i[i][2] / self.t - self.n0i[i][3] * logt
+                        + sumhyp0);
                 self.a0[1] += self.x[i] * (self.n0i[i][3] + self.n0i[i][2] / self.t + sumhyp1);
                 self.a0[2] += -self.x[i] * (self.n0i[i][3] + sumhyp2);
             }
@@ -3105,7 +4438,6 @@ impl Gerg2008 {
         let mut xijf: f64;
         let mut delp: [f64; 7 + 1] = [0.0; 7 + 1];
         let mut expd: [f64; 7 + 1] = [0.0; 7 + 1];
-
 
         for i in 0..=3 {
             for j in 0..=3 {
@@ -3146,13 +4478,15 @@ impl Gerg2008 {
                         self.ar[1][0] += ndtt;
                         self.ar[2][0] += ndtt * (self.toik[i][k] - 1.0);
                         self.ar[1][1] += ndtt * self.doik[i][k] as f64;
-                        self.ar[1][2] += ndtt * self.doik[i][k] as f64 * (self.doik[i][k] as f64 - 1.0);
+                        self.ar[1][2] +=
+                            ndtt * self.doik[i][k] as f64 * (self.doik[i][k] as f64 - 1.0);
                         self.ar[0][3] +=
                             ndtd * (self.doik[i][k] as f64 - 1.0) * (self.doik[i][k] as f64 - 2.0);
                     }
                 }
                 for k in 1 + KPOL[i]..=KPOL[i] + KEXP[i] {
-                    ndt = self.x[i] * delp[self.doik[i][k]] * self.taup[i][k] * expd[self.coik[i][k]];
+                    ndt =
+                        self.x[i] * delp[self.doik[i][k]] * self.taup[i][k] * expd[self.coik[i][k]];
                     ex = self.coik[i][k] as f64 * delp[self.coik[i][k]];
                     ex2 = self.doik[i][k] as f64 - ex;
                     ex3 = ex2 * (ex2 - 1.0);
@@ -3167,7 +4501,8 @@ impl Gerg2008 {
                         self.ar[1][2] += ndtt * (ex3 - self.coik[i][k] as f64 * ex);
                         self.ar[0][3] += ndt
                             * (ex3 * (ex2 - 2.0)
-                                - ex * (3.0 * ex2 - 3.0 + self.coik[i][k] as f64) * self.coik[i][k] as f64);
+                                - ex * (3.0 * ex2 - 3.0 + self.coik[i][k] as f64)
+                                    * self.coik[i][k] as f64);
                     }
                 }
             }
@@ -3192,8 +4527,9 @@ impl Gerg2008 {
                                     self.ar[1][0] += ndtt;
                                     self.ar[2][0] += ndtt * (self.tijk[mn][k] - 1.0);
                                     self.ar[1][1] += ndtt * self.dijk[mn][k] as f64;
-                                    self.ar[1][2] +=
-                                        ndtt * self.dijk[mn][k] as f64 * (self.dijk[mn][k] as f64 - 1.0);
+                                    self.ar[1][2] += ndtt
+                                        * self.dijk[mn][k] as f64
+                                        * (self.dijk[mn][k] as f64 - 1.0);
                                     self.ar[0][3] += ndtd
                                         * (self.dijk[mn][k] as f64 - 1.0)
                                         * (self.dijk[mn][k] as f64 - 2.0);
@@ -3205,7 +4541,9 @@ impl Gerg2008 {
                                 ndt = xijf
                                     * self.nijk[mn][k]
                                     * delp[self.dijk[mn][k]]
-                                    * f64::exp(cij0 + eij0 + self.gijk[mn][k] + self.tijk[mn][k] * lntau);
+                                    * f64::exp(
+                                        cij0 + eij0 + self.gijk[mn][k] + self.tijk[mn][k] * lntau,
+                                    );
                                 ex = self.dijk[mn][k] as f64 + 2.0 * cij0 + eij0;
                                 ex2 = ex * ex - self.dijk[mn][k] as f64 + 2.0 * cij0;
                                 self.ar[0][1] += ndt * ex;
@@ -3218,7 +4556,8 @@ impl Gerg2008 {
                                     self.ar[1][1] += ndtt * ex;
                                     self.ar[1][2] += ndtt * ex2;
                                     self.ar[0][3] += ndt
-                                        * (ex * (ex2 - 2.0 * (self.dijk[mn][k] as f64 - 2.0 * cij0))
+                                        * (ex
+                                            * (ex2 - 2.0 * (self.dijk[mn][k] as f64 - 2.0 * cij0))
                                             + 2.0 * self.dijk[mn][k] as f64);
                                 }
                             }
@@ -3258,7 +4597,8 @@ impl Gerg2008 {
                         let mn = MNUMB[i][j];
                         if mn > 0 {
                             for k in 1..=KPOLIJ[mn] {
-                                self.taupijk[mn][k] = self.nijk[mn][k] * f64::exp(self.tijk[mn][k] * lntau);
+                                self.taupijk[mn][k] =
+                                    self.nijk[mn][k] * f64::exp(self.tijk[mn][k] * lntau);
                             }
                         }
                     }
