@@ -438,7 +438,7 @@ static void AlpharDetail(const int itau, const int idel, const double T, const d
     double CoefD1[NTerms+1], CoefD2[NTerms+1], CoefD3[NTerms+1];
     double CoefT1[NTerms+1], CoefT2[NTerms+1];
 
-    for (int i = 0; i <3; ++i){ for (int j = 0; j <3; ++j){ ar[i][j] = 0; } }
+    for (int i = 0; i <= 3; ++i){ for (int j = 0; j <= 3; ++j){ ar[i][j] = 0; } }
     if (std::abs(T - Told) > 0.0000001){
         for (int n = 1; n <= 58; ++n){
             Tun[n] = pow(T, -un[n]);
