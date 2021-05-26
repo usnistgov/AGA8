@@ -8,7 +8,7 @@
   
 ## AUTREADINGBOX.js
 
-  Automatic lecture of the copy/paste box.
+  Automatic lecture of gas composition in the copy/paste box.
 
 ## GERG2008.js  
 ## DETAIL.js  
