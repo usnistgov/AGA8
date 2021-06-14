@@ -1,4 +1,4 @@
-//Version 2.0 of routines for the calculation of thermodynamic
+// Version 2.0 of routines for the calculation of thermodynamic
 // properties from the AGA 8 Part 2 GERG-2008 equation of state.
 // April, 2017
 
@@ -102,7 +102,7 @@ let GERG={
     //    Mm - Molar mass (g/mol)
     let Mm = 0;
     for (let i = 1; i <= NcGERG; i++){Mm = Mm + x[i] * MMiGERG[i]}
-    return Mm;
+    GERG.Mm=Mm;
   },
   PressureGERG( T, D, x){
     //Sub PressureGERG(T, D, x, P, Z)
@@ -127,7 +127,8 @@ let GERG={
     Z = 1 + ar[0][1];
     P = D * RGERG * T * Z;
     dPdDsave = RGERG * T * (1 + 2 * ar[0][1] + ar[0][2]);
-    return([P,Z]);
+    GERG.Pressure=P;
+    GERG.CompressibilityFactor=Z;
   },
   CalculateDensity(iFlag,T,P,x){
     //Sub DensityGERG(iFlag, T, P, x, D, ierr, herr)
@@ -183,7 +184,7 @@ let GERG={
     let it=1;
     nFail = 0;
     iFail = 0;
-    if(P < Epsilon) {D=0;return[D,ierr,herr]}
+    if(P < Epsilon) {D=0;return}
     tolr = 0.0000001;
     [Tcx, Dcx]=GERG.PseudoCriticalPointGERG(x);
     if (D > -Epsilon){
@@ -210,7 +211,9 @@ let GERG={
         vlog = -Math.log(D)
       }
       D = Math.exp(-vlog);
-      [P2,Z]=GERG.PressureGERG( T, D, x);
+      GERG.PressureGERG( T, D, x);
+      P2=GERG.Pressure;
+      Z=GERG.CompressibilityFactor;
       //PressureGERG(T, D, x, P2, Z)
       if (dPdDsave < Epsilon || P2 < Epsilon){
         //Current state is 2-phase, try locating a different state that is single phase
@@ -237,27 +240,53 @@ let GERG={
         }
       }
     }
-    return [D,ierr,herr];
+    GERG.Density=D;
+    GERG.ierr=ierr;
+    GERG.herr=herr;
     //Iteration failed (above loop did not find a solution or checks made below indicate possible 2-phase state)
     function GoToDError(){
       ierr = 1;
       herr = 'Calculation failed to converge in GERG method, ideal gas density returned.'
       D = P / RGERG / T;
       it = 51;
-      return [D,ierr,herr];
+      GERG.Density=D;
+      GERG.ierr=ierr;
+      GERG.herr=herr;
     }
     //Iteration converged
     function GoToConverged(){
       //If requested, check to see if point is possibly 2-phase
       if (iFlag > 0) {
-        [ Mm, PP, Z, dPdD, d2PdD2, d2PdTD, dPdT, U, H, S, Cv, Cp, W, G, JT, Kappa, A]=GERG.CalculateProperties(T, D, x);
-        //PropertiesGERG(T, D, x, PP, Z, dPdD, d2PdD2, d2PdTD, dPdT, U, H, S, Cv, Cp, W, G, JT, Kappa);
+        GERG.CalculateProperties(T, D, x);
+        Mm = GERG.MolarMass;
+        P = GERG.Pressure;
+        Z = GERG.CompressibilityFactor;
+        dPdD = GERG.dPdD;
+        d2PdD2 = GERG.d2PdD2;
+        d2PdTD = GERG.d2PdTD;
+        dPdT = GERG.dPdT;
+        U = GERG.U;
+        H = GERG.H;
+        S = GERG.S;
+        Cv = GERG.Cv;
+        Cp = GERG.Cp;
+        W = GERG.SpeedOfSound;
+        G = GERG.G;
+        JT = GERG.JouleThomson;
+        Kappa = GERG.Kappa;
+        A = GERG.A;
+            //PropertiesGERG(T, D, x, PP, Z, dPdD, d2PdD2, d2PdTD, dPdT, U, H, S, Cv, Cp, W, G, JT, Kappa);
         if(PP <= 0 || dPdD <= 0 || d2PdTD <= 0){GoToDError()};
         if(Cv <= 0 || Cp <= 0 || W <= 0){GoToDError()};
         it = 51;
-        return[ D, ierr, herr];
+        GERG.Density=D;
+        GERG.ierr=ierr;
+        GERG.herr=herr;
+        return;
       }
-      return [ D, ierr, herr];
+      GERG.Density=D;
+      GERG.ierr=ierr;
+      GERG.herr=herr;
     }
   },
   CalculateProperties(T,D,x){
@@ -308,7 +337,8 @@ let GERG={
     let R;
     let RT;
     //Calculate molar mass
-    Mm=GERG.MolarMassGERG(x);
+    GERG.MolarMassGERG(x);
+    Mm = GERG.Mm;
     //Calculate the ideal gas Helmholtz energy, and its first and second derivatives with respect to temperature.
     a0=GERG.Alpha0GERG(T, D, x);
     //Calculate the real gas Helmholtz energy, and its derivatives with respect to temperature and/or density.
@@ -339,7 +369,23 @@ let GERG={
     if (W < 0) {W = 0};
     W = Math.sqrt(W);
     Kappa = Math.pow(W,2) * Mm / (RT * 1000 * Z);
-    return[ Mm, P, Z, dPdD, d2PdD2, d2PdTD, dPdT, U, H, S, Cv, Cp, W, G, JT, Kappa, A];
+    GERG.MolarMass = Mm;
+    GERG.Pressure = P;
+    GERG.CompressibilityFactor = Z;
+    GERG.dPdD = dPdD;
+    GERG.d2PdD2 = d2PdD2;
+    GERG.d2PdTD = d2PdTD;
+    GERG.dPdT = dPdT;
+    GERG.U = U;
+    GERG.H = H;
+    GERG.S = S;
+    GERG.Cv = Cv;
+    GERG.Cp = Cp;
+    GERG.SpeedOfSound = W;
+    GERG.G = G;
+    GERG.JouleThomson = JT;
+    GERG.Kappa = Kappa;
+    GERG.A = A;
   },
   //The following routines are low-level routines that should not be called outside of this code.
   ReducingParametersGERG(x, Tr, Dr){

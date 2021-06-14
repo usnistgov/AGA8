@@ -66,8 +66,20 @@ let Gij5=zeros([MaxFlds, MaxFlds]);
 let Tun=Array(NTerms+1).fill(0);
 let MMiDetail=Array(MaxFlds+1).fill(0);
 let K3=0;
+let mN2=0;
+let mCO2=0;
+let xHN=Array(MaxFlds+1).fill(0);
+let MMiGross=Array(MaxFlds+1).fill(0);
+let b0=zeros([3, 3]);
+let b1=zeros([3, 3]);
+let b2=zeros([3, 3]);
+let bCHx=zeros([2, 2]);
+let cCHx=zeros([2, 2]);
+let c0=zeros([3, 3, 3]);
+let c1=zeros([3, 3, 3]);
+let c2=zeros([3, 3, 3]);
 let x=Array(22).fill(0);
-let InputFromXLS={InputTextArea:0};
+let InputFromXLS=null;
 function Tanh(xx){
     return (Math.exp(xx) - Math.exp(-xx)) / (Math.exp(xx) + Math.exp(-xx));
 } 

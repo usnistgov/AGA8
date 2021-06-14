@@ -87,7 +87,7 @@ let Detail={
     //    Mm - Molar mass (g/mol)
     let Mm = 0;
     for(let i = 1 ; i <= NcDetail ; i++){Mm = Mm + x[i] * MMiDetail[i]}
-    return Mm;
+    Detail.MolarMass = Mm;
   },
   CalculatePressure(T, D, x){
     //Sub PressureDetail(T, D, x, P, Z)
@@ -111,7 +111,8 @@ let Detail={
     Z = 1 + ar[0][1] / RDetail / T;         //ar(0,1) is the first derivative of alpha(r) with respect to density
     P = D * RDetail * T * Z;
     dPdDsave = RDetail * T + 2 * ar[0][1] + ar[0][2];  //d(P)/d(D) for use in density iteration
-    return[P,Z];
+    Detail.Pressure = P;
+    Detail.CompressibilityFactor = Z;
   },
   DensityDetail(T, P, x){
     //Sub DensityDetail(T, P, x, D, ierr, herr)
@@ -139,7 +140,11 @@ let Detail={
     let dpdlv;
     let vdiff;
     let tolr;
-    if(Math.abs(P) < Epsilon){D = 0; return[D, ierr, herr]}
+    //***NEW for JS Version
+    Told=0
+    xold=Array(MaxFlds+1).fill(0);
+    //
+    if(Math.abs(P) < Epsilon){D = 0; return}
     tolr = 0.0000001;
     if (D > -Epsilon){
       D = P / RDetail / T;  //Ideal gas estimate
@@ -147,11 +152,13 @@ let Detail={
       D = Math.abs(D);         //If D<0, then use as initial estimate
     }
     plog = Math.log(P);
-    vlog = -1*Math.log(D);
+    vlog = -1 * Math.log(D);
     for(let it = 1; it <= 20; it++){
       if(vlog < -7 || vlog > 100){GoToDError()}
       D = Math.exp(-vlog);
-      [P2, Z]=Detail.CalculatePressure(T, D, x);
+      Detail.CalculatePressure(T, D, x);
+      P2 = Detail.Pressure;
+      Z = Detail.CompressibilityFactor;
       if(dPdDsave < Epsilon || P2 < Epsilon){
         vlog = vlog + 0.1;
       }else{
@@ -163,16 +170,22 @@ let Detail={
         vlog = vlog - vdiff;
         if (Math.abs(vdiff) < tolr){
           D = Math.exp(-vlog);
-          return [D, ierr, herr];             //Iteration converged
+          Detail.Density = D;
+          Detail.ierr = ierr;
+          Detail.herr = herr;           //Iteration converged
         }
       }
-    return [D, ierr, herr];
     }
+    Detail.Density = D;
+    Detail.ierr = ierr;
+    Detail.herr = herr;
     function GoToDError(){
       ierr = 1;
       herr = 'Calculation failed to converge in DETAIL method, ideal gas density returned.';
       D = P / RDetail / T;
-      return [D, ierr, herr];
+      Detail.Density = D;
+      Detail.ierr = ierr;
+      Detail.herr = herr;
     }
   },
   PropertiesDetail(T, D, x){
@@ -224,7 +237,12 @@ let Detail={
     let Mm;
     let R;
     let RT;
-    Mm = Detail.MolarMassDetail(x);
+    //***NEW for JS Version
+    Told=0
+    xold=Array(MaxFlds+1).fill(0);
+    //
+    Detail.MolarMassDetail(x);
+    Mm = Detail.MolarMass;
     Detail.xTermsDetail(x);
     //Calculate the ideal gas Helmholtz energy, and its first and second derivatives with respect to temperature.
     a0 = Detail.Alpha0Detail(T, D, x);
@@ -258,7 +276,23 @@ let Detail={
     W = Math.sqrt(W);
     Kappa = Math.pow(W , 2) * Mm / (RT * 1000 * Z);
     d2PdTD = 0;
-    return[Mm, P, Z, dPdD, d2PdD2, d2PdTD, dPdT, U, H, S, Cv, Cp, W, G, JT, Kappa, A];
+    Detail.MolarMass = Mm;
+    Detail.Pressure = P;
+    Detail.CompressibilityFactor = Z;
+    Detail.dPdD = dPdD;
+    Detail.d2PdD2 = d2PdD2;
+    Detail.d2PdTD = d2PdTD;
+    Detail.dPdT = dPdT;
+    Detail.U = U;
+    Detail.H = H;
+    Detail.S = S;
+    Detail.Cv = Cv;
+    Detail.Cp = Cp;
+    Detail.SpeedOfSound = W;
+    Detail.G = G;
+    Detail.JouleThomson = JT;
+    Detail.Kappa = Kappa;
+    Detail.A = A;
   },
   //The following routines are low-level routines that should not be called outside of this code.
   xTermsDetail(x){
@@ -333,7 +367,6 @@ let Detail={
       if (qn[n] == 1){Csn[n] = Csn[n] * Q2}
       if (fn[n] == 1){Csn[n] = Csn[n] * F}
     }
-    return;
   },
   Alpha0Detail(T, D, x){
   //Private Sub Alpha0Detail(T, D, x, a0)
@@ -422,8 +455,6 @@ let Detail={
     // ar(1,0) -     partial  (ar)/partial(T) [J/(mol-K)]
     // ar(1,1) -   D*partial^2(ar)/partial(D)/partial(T) [J/(mol-K)]
     // ar(2,0) -   T*partial^2(ar)/partial(T)^2 [J/(mol-K)]
-    let i;
-    let j;
     let n;
     let ckd;
     let bkd;
@@ -956,7 +987,7 @@ let Detail={
           if (fn[n] == 1){Bsnij = Bsnij * Fi[i] * Fi[j]};
           if (sn[n] == 1){Bsnij = Bsnij * Si[i] * Si[j]};
           if (wn[n] == 1){Bsnij = Bsnij * Wi[i] * Wi[j]};
-          Bsnij2[i][j][n] = an[n] * (Eij[i][j] * Math.sqrt(Ei[i] * Math.pow(Ei[j])) , un[n]) * Math.pow((Ki[i] * Ki[j]), 1.5) * Bsnij;
+          Bsnij2[i][j][n] = an[n] * Math.pow((Eij[i][j] * Math.sqrt(Ei[i] * Ei[j])) , un[n]) * Math.pow((Ki[i] * Ki[j]), 1.5) * Bsnij;
         }
         Kij5[i][j] = (Math.pow(Kij[i][j], 5) - 1) * Ki25[i] * Ki25[j];
         Uij5[i][j] = (Math.pow(Uij[i][j], 5) - 1) * Ei25[i] * Ei25[j];
