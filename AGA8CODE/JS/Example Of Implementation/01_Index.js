@@ -171,7 +171,6 @@ function draw(){
     webButtons[14].drawMe();
     webButtons[15].drawMe();
     webButtons[16].drawMe();
-    CalculateDrawedData();
 }
 function TellMeWichScreenAmISeen(){
     if(webButtons[3].activated && webButtons[3].visible){
