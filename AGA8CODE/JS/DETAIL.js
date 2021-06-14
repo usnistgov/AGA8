@@ -141,7 +141,7 @@ let Detail={
     let vdiff;
     let tolr;
     //***NEW for JS Version
-    Told=0
+    Told=0;
     xold=Array(MaxFlds+1).fill(0);
     //
     if(Math.abs(P) < Epsilon){D = 0; return}
@@ -238,7 +238,7 @@ let Detail={
     let R;
     let RT;
     //***NEW for JS Version
-    Told=0
+    Told=0;
     xold=Array(MaxFlds+1).fill(0);
     //
     Detail.MolarMassDetail(x);
