@@ -135,7 +135,6 @@ function CreateInputsIn00(){
     aux=aux+30;
 }
 function mousePressed(){
-    if (event.type != 'touchstart') return true;
     webButtons[0].checkIfThisClickIsForMe();
     webButtons[1].checkIfThisClickIsForMe();
     webButtons[2].checkIfThisClickIsForMe();
