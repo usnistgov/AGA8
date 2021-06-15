@@ -152,7 +152,6 @@ function mousePressed(){
     webButtons[14].checkIfThisClickIsForMe();
     webButtons[15].checkIfThisClickIsForMe();
     webButtons[16].checkIfThisClickIsForMe();
-    return false;
 }
 function draw(){
     background(255);
