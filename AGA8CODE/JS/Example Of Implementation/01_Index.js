@@ -10,6 +10,7 @@ function preload(){
     Background[1] = loadImage('99_Images/Background_1.png');
     Background[2] = loadImage('99_Images/Background_2.png');
     Background[3] = loadImage('99_Images/Background_3.png');
+    Background[4] = loadImage('99_Images/Background_4.png');
     webButtons[0] = new WebButton([20,100],loadImage('99_Images/Gas_Composition_A.jpg'),loadImage('99_Images/Gas_Composition_B.jpg'),loadImage('99_Images/Gas_Composition_C.jpg'));
     webButtons[1] = new WebButton([230,100],loadImage('99_Images/Numerical_Results_A.jpg'),loadImage('99_Images/Numerical_Results_B.jpg'),loadImage('99_Images/Numerical_Results_C.jpg'));
     webButtons[2] = new WebButton([440,100],loadImage('99_Images/Charts_A.jpg'),loadImage('99_Images/Charts_B.jpg'),loadImage('99_Images/Charts_C.jpg'));
@@ -135,7 +136,6 @@ function CreateInputsIn00(){
     aux=aux+30;
 }
 function mousePressed(){
-    //if (event.type != 'mousedown') return true;   //Avoid double click problem on mobile devices.
     webButtons[0].checkIfThisClickIsForMe();
     webButtons[1].checkIfThisClickIsForMe();
     webButtons[2].checkIfThisClickIsForMe();
@@ -291,7 +291,7 @@ function TellMeWichScreenAmISeen(){
     }
     disappearTheDOMs(true);
     disappearTheTextArea(true);
-    image(Background[0],0,0);
+    image(Background[4],0,0);
 }
 function RunGERG2008(){
     UploadTheInputs();
@@ -649,6 +649,7 @@ class WebButton {
         this.pressAndHold = false;
         this.favoriteSon = null;
         this.WhatShouldIDoAfterYouCallMe = null;
+        this.AvoidDoubleClickProblemsOnMobiles = 0;
     }
     shouldIBeVisible(){
         if(this.father != null){
@@ -660,18 +661,24 @@ class WebButton {
         }
     }
     checkIfThisClickIsForMe(){
-        if(mouseX > this.position[0] && mouseX < this.position[0] + this.width){
-            if(mouseY > this.position[1] && mouseY < this.position[1] + this.height){
-                if (Array.isArray(this.brothers)){
-                    for(let i = 0; i < this.brothers.length; i++){
-                        this.brothers[i].activated=false;
-                    }
-                }else if(this.brothers != null){this.brothers.activated=false;}
-                this.activated = !this.activated;
-                this.activateMyFavoriteSon();
-                if(this.WhatShouldIDoAfterYouCallMe != null){this.WhatShouldIDoAfterYouCallMe()}
+        if(this.AvoidDoubleClickProblemsOnMobiles == 0){
+            if(mouseX > this.position[0] && mouseX < this.position[0] + this.width){
+                if(mouseY > this.position[1] && mouseY < this.position[1] + this.height){
+                    this.activateMe();
+                }
             }
         }
+    }
+    activateMe(){
+        if (Array.isArray(this.brothers)){
+            for(let i = 0; i < this.brothers.length; i++){
+                this.brothers[i].activated=false;
+            }
+        }else if(this.brothers != null){this.brothers.activated=false;}
+        this.activated = !this.activated;
+        this.activateMyFavoriteSon();
+        if(this.WhatShouldIDoAfterYouCallMe != null){this.WhatShouldIDoAfterYouCallMe()}
+        this.AvoidDoubleClickProblemsOnMobiles = 15;
     }
     activateMyFavoriteSon(){
         if (this.favoriteSon != null && this.activated == true){
@@ -693,6 +700,7 @@ class WebButton {
     }
     drawMe(){
         if(this.pressAndHold){this.activated=false}
+        if(this.AvoidDoubleClickProblemsOnMobiles>0){this.AvoidDoubleClickProblemsOnMobiles=this.AvoidDoubleClickProblemsOnMobiles-1}
         this.shouldIBeVisible();
         if (this.visible){
             this.height = this.picture_standby.height;
