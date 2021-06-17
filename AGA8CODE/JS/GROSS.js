@@ -1,6 +1,5 @@
 //Version 2.0 of routines for the calculation of thermodynamic
 // properties from the AGA 8 Part 1 GROSS equation of state.
-// April, 2017
 
 //Written by Eric W. Lemmon
 //Applied Chemicals and Materials Division
@@ -205,7 +204,6 @@ let GROSS={
         }
     },
     CalculateHv(x){
-        //Sub GrossHv(x, xGrs, HN, HCH)
         //Calculate ideal heating values based on composition.  The mole fractions in the mixture are required in this routine, not
         //  just xCH, xN2, and xCO2.
         //
@@ -233,8 +231,6 @@ let GROSS={
         GROSS.HCH = HCH;
     },
     CalculateInputs(T,P,x){
-        //Sub GrossInputs(T, P, x, xGrs, Gr, HN, HCH, ierr, herr)
-
         //Calculate relative density and heating values based on composition.  This routine should only be used to get these
         //  two values for use as inputs to Method 1 or Method 2, and not for the relative density for any T and P.
         //  All of the mole fractions in the mixture are required in this routine, not just xCH, xN2, and xCO2.
@@ -362,8 +358,6 @@ let GROSS={
         return [B, C, ierr, herr];
     },
     Method1(Th,Td,Pd,xGrs,Gr,Hv){
-        //Sub GrossMethod1(Th, Td, Pd, xGrs, Gr, Hv, Mm, HCH, HN, ierr, herr)
-
         //Initialize variables required in the GROSS equation with Method 1 of the AGA 8 Part 1 publication.
         //Method 1 requires inputs of volumetric gross heating value, relative density, and mole fraction of CO2.
         //
@@ -417,7 +411,6 @@ let GROSS={
         GROSS.herr = herr;
     },
     Method2(Th,Td,Pd,xGrs,Gr){
-        //Sub GrossMethod2(Th, Td, Pd, xGrs, Gr, Hv, Mm, HCH, HN, ierr, herr)
         //Initialize variables required in the GROSS equation with Method 2 of the AGA 8 Part 1 publication.
         //Method 2 requires inputs of relative density and mole fractions of nitrogen and CO2.
         //Inputs:

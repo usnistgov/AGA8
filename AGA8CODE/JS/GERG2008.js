@@ -1,6 +1,5 @@
 // Version 2.0 of routines for the calculation of thermodynamic
 // properties from the AGA 8 Part 2 GERG-2008 equation of state.
-// April, 2017
 
 //Written by Eric W. Lemmon
 //Applied Chemicals and Materials Division
@@ -63,7 +62,6 @@
 
 //For example, a mixture of 94% methane, 5% CO2, and 1% helium would be (in mole fractions);
 //x(1)=0.94, x(3)=0.05, x(20)=0.01
-//[js]=> x[1]=0.94; x[3]=0.05; x[20]=0.01
 //Variables containing the common parameters in the GERG-2008 equations
 let GERG={
   Pressure:400, //KPa
@@ -89,7 +87,6 @@ let GERG={
   ierr:0,
   herr:'',
   MolarMassGERG(x){
-    //Sub MolarMassGERG(x)
     //Calculate molar mass of the mixture with the compositions contained in the x() input array
     //
     //Inputs;
@@ -105,7 +102,6 @@ let GERG={
     GERG.Mm=Mm;
   },
   PressureGERG( T, D, x){
-    //Sub PressureGERG(T, D, x, P, Z)
     //Calculate pressure as a function of temperature and density.  The derivative d(P)/d(D) is also calculated
     //for use in the iterative DensityGERG subroutine (and is only returned as a common variable).
     //
@@ -131,7 +127,6 @@ let GERG={
     GERG.CompressibilityFactor=Z;
   },
   CalculateDensity(iFlag,T,P,x){
-    //Sub DensityGERG(iFlag, T, P, x, D, ierr, herr)
     //Calculate density as a function of temperature and pressure.  This is an iterative routine that calls PressureGERG
     //to find the correct state point.  Generally only 6 iterations at most are required.
     //If the iteration fails to converge, the ideal gas density and an error message are returned.
@@ -290,7 +285,6 @@ let GERG={
     }
   },
   CalculateProperties(T,D,x){
-    //Sub PropertiesGERG(T, D, x, P, Z, dPdD, d2PdD2, d2PdTD, dPdT, U, H, S, Cv, Cp, W, G, JT, Kappa, Optional A)
     //Calculate thermodynamic properties as a function of temperature and density.
     //If the density is not known, call subroutine DensityGERG first with the known values of pressure and temperature.
     //Many of the formulas below do not appear in Part 2 of AGA 8, but rather in Part 1, which uses a dimensional Helmholtz equation with more direct formulas for quick calculation.
@@ -389,7 +383,6 @@ let GERG={
   },
   //The following routines are low-level routines that should not be called outside of this code.
   ReducingParametersGERG(x, Tr, Dr){
-    //Private Sub ReducingParametersGERG(x, Tr, Dr)
     //Calculate reducing variables.  Only need to call this if the composition has changed.
     //
     //Inputs;
@@ -440,7 +433,6 @@ let GERG={
     return [Tr,Dr];
   },
   Alpha0GERG(T,D,x){
-    //Private Sub Alpha0GERG(T, D, x, a0)
     //Calculate the ideal gas Helmholtz energy and its derivatives with respect to tau and delta.
     //This routine is not needed when only P (or Z) is calculated.
     //Inputs;
@@ -500,7 +492,6 @@ let GERG={
     return a0;
   },
   AlpharGERG(itau,idel,T,D,x){
-    //Private Sub AlpharGERG(itau, idel, T, D, x, ar)
     //Calculate dimensionless residual Helmholtz energy and its derivatives with respect to tau and delta.
     //Inputs;
     //  itau - Set this to 1 to calculate "ar" derivatives with respect to tau [i.e., ar(1,0), ar(1,1), and ar(2,0)], otherwise set it to 0.
@@ -635,7 +626,6 @@ let GERG={
     return ar;
   },
   tTermsGERG(lntau,x){
-    //Private Sub tTermsGERG(lntau, x)
     //Calculate temperature dependent parts of the GERG-2008 equation of state
     let i;
     let j;
@@ -676,7 +666,6 @@ let GERG={
     return;
   },
   PseudoCriticalPointGERG(x){
-    //Sub PseudoCriticalPointGERG(x, Tcx, Dcx)
     //Calculate a pseudo critical point as the mole fraction average of the critical temperatures and critical volumes
     let Vcx=0;
     Tcx = 0;
@@ -1366,8 +1355,6 @@ let GERG={
     }
   },
   Setup2(){
-  //The GERG setup routines are split in two to avoid "procedure too large" errors.
-
     //Mixture parameters for reducing variables
     bvij[1][2] = 0.998721377;   gvij[1][2] = 1.013950311;   btij[1][2] = 0.99809883;    gtij[1][2] = 0.979273013;   //CH4-N2
     bvij[1][3] = 0.999518072;   gvij[1][3] = 1.002806594;   btij[1][3] = 1.02262449;    gtij[1][3] = 0.975665369;   //CH4-CO2

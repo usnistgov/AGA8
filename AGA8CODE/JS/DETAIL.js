@@ -1,6 +1,5 @@
 //Version 2.0 of routines for the calculation of thermodynamic
 // properties from the AGA 8 Part 1 DETAIL equation of state.
-// April, 2017
 
 //Written by Eric W. Lemmon
 //Applied Chemicals and Materials Division
@@ -90,7 +89,6 @@ let Detail={
     Detail.MolarMass = Mm;
   },
   CalculatePressure(T, D, x){
-    //Sub PressureDetail(T, D, x, P, Z)
     //Calculate pressure as a function of temperature and density.  The derivative d(P)/d(D) is also calculated
     //for use in the iterative DensityDetail subroutine (and is only returned as a common variable).
     //
@@ -115,7 +113,6 @@ let Detail={
     Detail.CompressibilityFactor = Z;
   },
   DensityDetail(T, P, x){
-    //Sub DensityDetail(T, P, x, D, ierr, herr)
     //Calculate density as a function of temperature and pressure.  This is an iterative routine that calls PressureDetail
     //to find the correct state point.  Generally only 6 iterations at most are required.
     //If the iteration fails to converge, the ideal gas density and an error message are returned.
@@ -140,10 +137,8 @@ let Detail={
     let dpdlv;
     let vdiff;
     let tolr;
-    //***NEW for JS Version
-    Told=0;
+    Told=0
     xold=Array(MaxFlds+1).fill(0);
-    //
     if(Math.abs(P) < Epsilon){D = 0; return}
     tolr = 0.0000001;
     if (D > -Epsilon){
@@ -189,7 +184,6 @@ let Detail={
     }
   },
   PropertiesDetail(T, D, x){
-    //Sub PropertiesDetail(T, D, x, P, Z, dPdD, d2PdD2, d2PdTD, dPdT, U, H, S, Cv, Cp, W, G, JT, Kappa, Optional A)
     //Calculate thermodynamic properties as a function of temperature and density.  Calls are made to the subroutines
     //Molarmass, Alpha0Detail, and AlpharDetail.  If the density is not known, call subroutine DensityDetail first
     //with the known values of pressure and temperature.
@@ -237,10 +231,8 @@ let Detail={
     let Mm;
     let R;
     let RT;
-    //***NEW for JS Version
-    Told=0;
+    Told=0
     xold=Array(MaxFlds+1).fill(0);
-    //
     Detail.MolarMassDetail(x);
     Mm = Detail.MolarMass;
     Detail.xTermsDetail(x);
@@ -369,7 +361,6 @@ let Detail={
     }
   },
   Alpha0Detail(T, D, x){
-  //Private Sub Alpha0Detail(T, D, x, a0)
   //Calculate the ideal gas Helmholtz energy and its derivatives with respect to T and D.
   //This routine is not needed when only P (or Z) is calculated.
   //
@@ -437,7 +428,6 @@ let Detail={
     return a0;
   },
   AlpharDetail(itau, idel, T, D){
-    //Private Sub AlpharDetail(itau, idel, T, D, ar)
     //Calculate the derivatives of the residual Helmholtz energy (ar) with respect to T and D.
     //Outputs are returned in the array ar.
     //Subroutine xTerms must be called before this routine if x has changed
@@ -474,7 +464,6 @@ let Detail={
     let CoefD3=Array(NTerms+1).fill(0);
     let CoefT1=Array(NTerms+1).fill(0);
     let CoefT2=Array(NTerms+1).fill(0);
-    //For i = 0 To 3: For j = 0 To 3: ar(i, j) = 0: Next: Next
     let ar=zeros([3,3]);
     if (Math.abs(T - Told) > 0.0000001){
       for(n = 1; n <= 58; n++){
@@ -994,7 +983,6 @@ let Detail={
         Gij5[i][j] = (Gij[i][j] - 1) * (Gi[i] + Gi[j]) / 2;
       }
     }
-
     //Ideal gas terms
     T0 = 298.15;
     d0 = 101.325 / RDetail / T0;
@@ -1004,7 +992,7 @@ let Detail={
     }
     return;
     //Code to produce nearly exact values for n0(1) and n0(2)
-    //This is not called in the current code, but included below to show how the values were calculated.  The Exit Sub above can be removed to call this code.
+    //This is not called in the current code, but included below to show how the values were calculated.  The 'return;' above can be removed to call this code.
     T0 = 298.15;
     d0 = 101.325 / RDetail / T0;
     for(i = 1; i <= MaxFlds; i++){

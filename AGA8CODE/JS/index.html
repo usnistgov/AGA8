@@ -1,0 +1,140 @@
+<!DOCTYPE html><html lang="en"><head>
+  <title>Example of Implementation of the Equation Of State : GERG 2008</title>  
+</head>
+<body>
+  <script src="Globals.js"></script>
+  <script src="GERG2008.js"></script>
+  <script src="GROSS.js"></script>
+  <script src="DETAIL.js"></script>
+  <script>
+    GERG.Setup();
+    Detail.Setup();
+    GROSS.Setup();
+    x[1]=0.94; x[3]=0.05; x[20]=0.01;
+    console.log('Gas Composition');
+    console.log(' ');
+    console.log('Methane [%vol] : ' + x[1].toFixed(2));
+    console.log('Nitrogen [%vol] : ' + x[2].toFixed(2));
+    console.log('CarbonDioxide [%vol] : ' + x[3].toFixed(2));
+    console.log('Ethane [%vol] : ' + x[4].toFixed(2));
+    console.log('Propane [%vol] : ' + x[5].toFixed(2));
+    console.log('IsoButane [%vol] : ' + x[6].toFixed(2));
+    console.log('nButane [%vol] : ' + x[7].toFixed(2));
+    console.log('Isopentane [%vol] : ' + x[8].toFixed(2));    
+    console.log('nPentane [%vol] : ' + x[9].toFixed(2));
+    console.log('Hexane [%vol] : ' + x[10].toFixed(2));
+    console.log('Heptane [%vol] : ' + x[11].toFixed(2));
+    console.log('Octane [%vol] : ' + x[12].toFixed(2));
+    console.log('Nonane [%vol] : ' + x[13].toFixed(2));
+    console.log('Decane [%vol] : ' + x[14].toFixed(2));
+    console.log('Hydrogen [%vol] : ' + x[15].toFixed(2));
+    console.log('Oxygen [%vol] : ' + x[16].toFixed(2));
+    console.log('Carbon Monoxide [%vol] : ' + x[17].toFixed(2));
+    console.log('Water [%vol] : ' + x[18].toFixed(2));
+    console.log('Hydrogen Sulfide [%vol] : ' + x[19].toFixed(2));
+    console.log('Helium [%vol] : ' + x[20].toFixed(2));
+    console.log('Argon [%vol] : ' + x[21].toFixed(2));
+    console.log(' ');
+    GERG.Pressure = 400;
+    GERG.Temperature = 298.15;
+    GERG.CalculateDensity(1,GERG.Temperature,GERG.Pressure,x);
+    console.log('Model: GERG 2008');
+    console.log(' ');
+    console.log('Inputs:');
+    console.log('Pressure: '+ GERG.Pressure.toFixed(2) + ' kPa');
+    console.log('Temperature: '+ GERG.Temperature.toFixed(2) + ' °K');
+    console.log(' ');
+    console.log('Outputs:');
+    console.log('Molar Mass: '+ GERG.MolarMass.toFixed(2) + ' g/mol');
+    console.log('Density: '+ GERG.Density.toFixed(3) + ' mol/l');
+    console.log('Compressibility Factor: '+ GERG.CompressibilityFactor.toFixed(2));
+    console.log('dPdD: '+ GERG.dPdD.toFixed(0) + ' kPa/(mol/l)');
+    console.log('dPdT: '+ GERG.dPdT.toFixed(2) + ' kPa/K');
+    console.log('Internal Energy: '+ GERG.U.toFixed(1) + ' J/mol');
+    console.log('Entalphy: '+ GERG.H.toFixed(1) + ' J/mol');
+    console.log('Entropy: '+ GERG.S.toFixed(1) + ' J/mol');
+    console.log('Cv: '+ GERG.Cv.toFixed(3) + ' J/(mol-K)');
+    console.log('Cp: '+ GERG.Cp.toFixed(3) + ' J/(mol-K)');
+    console.log('Speed Of Sound: '+ GERG.SpeedOfSound.toFixed(1) + ' (m/s)');
+    console.log('Gibbs Free Energy: '+ GERG.G.toFixed(1) + ' (J/mol)');
+    console.log('Joule Thomson: '+ GERG.JouleThomson.toFixed(3) + ' (K/kPa)');
+    if(GERG.ierr>0){
+      console.log('Errors Found: '+ GERG.herr);
+    }
+    console.log(' ');
+    Detail.Pressure=400;
+    Detail.Temperature=298.15;
+    Detail.DensityDetail(Detail.Temperature,Detail.Pressure,x);
+    Detail.PropertiesDetail(Detail.Temperature,Detail.Density,x);
+    console.log('Model: Detail');
+    console.log(' ');
+    console.log('Inputs:');
+    console.log('Pressure: '+ Detail.Pressure.toFixed(2) + ' kPa');
+    console.log('Temperature: '+ Detail.Temperature.toFixed(2) + ' °K');
+    console.log(' ');
+    console.log('Outputs:');
+    console.log('Molar Mass: '+ Detail.MolarMass.toFixed(2) + ' g/mol');
+    console.log('Density: '+ Detail.Density.toFixed(3) + ' mol/l');
+    console.log('Compressibility Factor: '+ Detail.CompressibilityFactor.toFixed(2));
+    console.log('dPdD: '+ Detail.dPdD.toFixed(0) + ' kPa/(mol/l)');
+    console.log('dPdT: '+ Detail.dPdT.toFixed(2) + ' kPa/K');
+    console.log('Internal Energy: '+ Detail.U.toFixed(1) + ' J/mol');
+    console.log('Entalphy: '+ Detail.H.toFixed(1) + ' J/mol');
+    console.log('Entropy: '+ Detail.S.toFixed(1) + ' J/mol');
+    console.log('Cv: '+ Detail.Cv.toFixed(3) + ' J/(mol-K)');
+    console.log('Cp: '+ Detail.Cp.toFixed(3) + ' J/(mol-K)');
+    console.log('Speed Of Sound: '+ Detail.SpeedOfSound.toFixed(1) + ' (m/s)');
+    console.log('Gibbs Free Energy: '+ Detail.G.toFixed(1) + ' (J/mol)');
+    console.log('Joule Thomson: '+ Detail.JouleThomson.toFixed(3) + ' (K/kPa)');
+    if(Detail.ierr>0){
+      console.log('Errors Found: '+ Detail.herr);
+    }
+    console.log(' ');
+    GROSS.Pressure=400;
+    GROSS.Temperature=298.15;
+    GROSS.CalculateInputs(GROSS.Temperature,GROSS.Pressure,x);
+    GROSS.Pd = GROSS.Pressure;
+    GROSS.Hv = GROSS.HN * GROSS.Density;
+    GROSS.Method1(GROSS.Th,GROSS.Td,GROSS.Pd,GROSS.xGrs,GROSS.Gr,GROSS.Hv);
+    console.log('Model: GROSS Method 1');
+    console.log(' ');
+    console.log('Inputs:');
+    console.log('Pressure: '+ GROSS.Pressure.toFixed(2) + ' kPa');
+    console.log('Temperature: '+ GROSS.Temperature.toFixed(2) + ' °K');
+    console.log(' ');
+    console.log('Intermediate Calculations: ');
+    console.log('Relative Density: '+ GROSS.Gr.toFixed(3));
+    console.log('Volumetric Heating Value: '+ GROSS.Hv.toFixed(3) + ' MJ/m^3');
+    console.log(' ');
+    console.log('Outputs:');
+    console.log('Molar Mass: '+ GROSS.MolarMass.toFixed(2) + ' g/mol');
+    console.log('Density: '+ GROSS.Density.toFixed(3) + ' mol/l');
+    console.log('Compressibility Factor: '+ GROSS.CompressibilityFactor.toFixed(2));
+    console.log('dPdD: '+ GROSS.dPdD.toFixed(0) + ' kPa/(mol/l)');
+    if(GROSS.ierr>0){
+      console.log('Errors Found: '+ GROSS.herr);
+    }
+    console.log(' ');
+    GROSS.Pd = GROSS.Pressure;
+    GROSS.Hv = GROSS.HN * GROSS.Density;
+    GROSS.Method2(GROSS.Th,GROSS.Td,GROSS.Pd,GROSS.xGrs,GROSS.Gr);
+    console.log('Model: GROSS Method 2');
+    console.log(' ');
+    console.log('Inputs:');
+    console.log('Pressure: '+ GROSS.Pressure.toFixed(2) + ' kPa');
+    console.log('Temperature: '+ GROSS.Temperature.toFixed(2) + ' °K');
+    console.log(' ');
+    console.log('Intermediate Calculations: ');
+    console.log('Relative Density: '+ GROSS.Gr.toFixed(3));
+    console.log(' ');
+    console.log('Outputs:');
+    console.log('Molar Mass: '+ GROSS.MolarMass.toFixed(2) + ' g/mol');
+    console.log('Density: '+ GROSS.Density.toFixed(3) + ' mol/l');
+    console.log('Compressibility Factor: '+ GROSS.CompressibilityFactor.toFixed(2));
+    console.log('dPdD: '+ GROSS.dPdD.toFixed(0) + ' kPa/(mol/l)');
+    if(GROSS.ierr>0){
+      console.log('Errors Found: '+ GROSS.herr);
+    }
+    console.log(' ');  
+  </script>
+</body></html>
