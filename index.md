@@ -22,6 +22,10 @@ This zipped file contains three subdirectories, each containing identical code o
 
 To access this file, use the link: [Link to AGA8 sample code]({{ site.url }}/AGA8/downloads/AGA8CODE.ZIP) .  If you have difficulties, right-click on the link, then select ``Save As...``, or equivalent in your browser.
 
+## Other implementations
+
+* There is a community-provided Python implementation at: https://github.com/Dseal95/AGA8_Detail
+
 ## Test data
 
 This zipped file contains test data obtained from evaluation of the models comprising AGA8
