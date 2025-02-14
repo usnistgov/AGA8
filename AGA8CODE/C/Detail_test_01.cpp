@@ -89,7 +89,7 @@ int main()
             dPdT_reference, dPdT);
         return_value = EXIT_FAILURE;
     }
-    if (std::abs(s_reference - S) > 1.0e-8)
+    if (std::abs(U_reference - U) > 1.0e-8)
     {
         printf("Energy [J/mol]:                     %0.16g != %0.16g\n",
             U_reference, U);
