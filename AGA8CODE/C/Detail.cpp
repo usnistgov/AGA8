@@ -94,6 +94,7 @@ static double MMiDetail[MaxFlds+1], K3, xold[MaxFlds+1];
 static double dPdDsave; //Calculated in the Pressure subroutine, but not included as an argument since it is only used internally in the density algorithm.
 
 inline double sq(double x) { return x*x; }
+inline double pow5(double x) { return x*x*x*x*x; }
 
 void MolarMassDetail(const std::vector<double> &x, double &Mm)
 {
@@ -943,8 +944,8 @@ void SetupDetail()
                 if (wn[n] == 1) { Bsnij = Bsnij * Wi[i] * Wi[j]; }
                 Bsnij2[i][j][n] = an[n] * pow(Eij[i][j]*sqrt(Ei[i]*Ei[j]), un[n]) * pow(Ki[i]*Ki[j], 1.5) * Bsnij;
             }
-            Kij5[i][j] = (pow(Kij[i][j], 5) - 1)*Ki25[i]*Ki25[j];
-            Uij5[i][j] = (pow(Uij[i][j], 5) - 1)*Ei25[i]*Ei25[j];
+            Kij5[i][j] = (pow5(Kij[i][j]) - 1)*Ki25[i]*Ki25[j];
+            Uij5[i][j] = (pow5(Uij[i][j]) - 1)*Ei25[i]*Ei25[j];
             Gij5[i][j] = (Gij[i][j] - 1)*(Gi[i] + Gi[j])/2;
         }
     }

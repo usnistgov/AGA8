@@ -4,6 +4,7 @@
 #include <math.h>
 #include <cmath>
 #include <iostream>
+#include <cstdlib>
 
 // Version 2.01 of routines for the calculation of thermodynamic
 // properties from the AGA 8 Part 2 GERG-2008 equation of state.
@@ -89,7 +90,8 @@ static const int NcGERG = 21, MaxFlds = 21, MaxMdl = 10, MaxTrmM = 12, MaxTrmP =
 static const double epsilon = 1e-15;
 static int coik[MaxFlds+1][MaxTrmP+1], doik[MaxFlds+1][MaxTrmP+1], dijk[MaxMdl+1][MaxTrmM+1];
 static double Drold, Trold, Told, Trold2, xold[MaxFlds+1];
-static int mNumb[MaxFlds+1][MaxFlds+1], kpol[MaxFlds+1], kexp[MaxFlds+1], kpolij[MaxMdl+1], kexpij[MaxMdl+1];
+static int mNumb[MaxFlds+1][MaxFlds+1];
+static std::size_t kpol[MaxFlds+1], kexp[MaxFlds+1], kpolij[MaxMdl+1], kexpij[MaxMdl+1];
 static double Dc[MaxFlds+1], Tc[MaxFlds+1], MMiGERG[MaxFlds+1], Vc3[MaxFlds+1], Tc2[MaxFlds+1];
 static double noik[MaxFlds+1][MaxTrmP+1], toik[MaxFlds+1][MaxTrmP+1];
 static double cijk[MaxMdl+1][MaxTrmM+1];
@@ -99,9 +101,8 @@ static double fij[MaxFlds+1][MaxFlds+1], th0i[MaxFlds+1][7+1], n0i[MaxFlds+1][7+
 static double taup[MaxFlds+1][MaxTrmP+1], taupijk[MaxFlds+1][MaxTrmM+1];
 static double dPdDsave; //Calculated in the PressureGERG subroutine, but not included as an argument since it is only used internally in the density algorithm.
 
-inline double Tanh(double xx){ return (exp(xx) - exp(-xx)) / (exp(xx) + exp(-xx)); }
-inline double Sinh(double xx){ return (exp(xx) - exp(-xx)) / 2; }
-inline double Cosh(double xx){ return (exp(xx) + exp(-xx)) / 2; }
+inline double sq(double x) { return x*x; }
+inline double cb(double x) { return x*x*x; }
 
 void MolarMassGERG(const std::vector<double> &x, double &Mm)
 {
@@ -119,7 +120,7 @@ void MolarMassGERG(const std::vector<double> &x, double &Mm)
     //     Mm - Molar mass (g/mol)
 
     Mm = 0;
-    for (int i = 1; i <= NcGERG; ++i){
+    for (std::size_t i = 1; i <= NcGERG; ++i){
         Mm += x[i] * MMiGERG[i];
     }
 }
@@ -205,7 +206,7 @@ void DensityGERG(const int iFlag, const double T, const double P, const std::vec
 
     plog = log(P);
     vlog = -log(D);
-    for (int it = 1; it <= 50; ++it){
+    for (std::size_t it = 1; it <= 50; ++it){
         if (vlog < -7 || vlog > 100 || it == 20 || it == 30 || it == 40 || iFail == 1){
             //Current state is bad or iteration is taking too long.  Restart with completely different initial state
             iFail = 0;
@@ -342,7 +343,7 @@ void PropertiesGERG(const double T, const double D, const std::vector<double> &x
     W = 1000 * Cp / Cv * dPdD / Mm;
     if (W < 0) { W = 0; }
     W = sqrt(W);
-    Kappa = pow(W, 2) * Mm / (RT * 1000 * Z);
+    Kappa = sq(W) * Mm / (RT * 1000 * Z);
 }
 
 
@@ -365,7 +366,7 @@ static void ReducingParametersGERG(const std::vector<double> &x, double &Tr, dou
 
   // Check to see if a component fraction has changed.  If x is the same as the previous call, then exit.
   icheck = 0;
-  for (int i = 1; i <= NcGERG; ++i){
+  for (std::size_t i = 1; i <= NcGERG; ++i){
     if (std::abs(x[i] - xold[i]) > 0.0000001){ icheck = 1; }
     xold[i] = x[i];
   }
@@ -381,10 +382,10 @@ static void ReducingParametersGERG(const std::vector<double> &x, double &Tr, dou
   Dr = 0;
   Vr = 0;
   Tr = 0;
-  for (int i = 1; i <= NcGERG; ++i){
+  for (std::size_t i = 1; i <= NcGERG; ++i){
     if (x[i] > epsilon){
       F = 1;
-      for (int j = i; j <= NcGERG; ++j){
+      for (std::size_t j = i; j <= NcGERG; ++j){
         if (x[j] > epsilon){
           xij = F * (x[i] * x[j]) * (x[i] + x[j]);
           Vr = Vr + xij * gvij[i][j] / (bvij[i][j] * x[i] + x[j]);
@@ -423,13 +424,13 @@ static void Alpha0GERG(const double T, const double D, const std::vector<double>
   a0[0] = 0; a0[1] = 0; a0[2] = 0;
   if (D > epsilon) {LogD = log(D);} else {LogD = log(epsilon);}
   LogT = log(T);
-  for (int i = 1; i <= NcGERG; ++i){
+  for (std::size_t i = 1; i <= NcGERG; ++i){
     if (x[i] > epsilon){
       LogxD = LogD + log(x[i]);
       SumHyp0 = 0;
       SumHyp1 = 0;
       SumHyp2 = 0;
-      for (int j = 4; j <= 7; ++j){
+      for (std::size_t j = 4; j <= 7; ++j){
         if (th0i[i][j] > epsilon){
           th0T = th0i[i][j] / T;
           ep = exp(th0T);
@@ -484,7 +485,7 @@ static void AlpharGERG(const int itau, const int idelta, const double T, const d
     double lntau, ex, ex2, ex3, cij0, eij0;
     double delp[7+1], Expd[7+1], ndt, ndtd, ndtt, xijf;
 
-    for (int i = 0; i <= 3; ++i){ for (int j = 0; j <= 3; ++j){ ar[i][j] = 0; } }
+    for (std::size_t i = 0; i <= 3; ++i){ for (std::size_t j = 0; j <= 3; ++j){ ar[i][j] = 0; } }
 
     //Set up del, tau, log(tau), and the first 7 calculations for del^i
     ReducingParametersGERG(x, Tr, Dr);
@@ -493,7 +494,7 @@ static void AlpharGERG(const int itau, const int idelta, const double T, const d
     lntau = log(tau);
     delp[1] = del;
     Expd[1] = exp(-delp[1]);
-    for (int i = 2; i <= 7; ++i){
+    for (std::size_t i = 2; i <= 7; ++i){
         delp[i] = delp[i - 1] * del;
         Expd[i] = exp(-delp[i]);
     }
@@ -506,9 +507,9 @@ static void AlpharGERG(const int itau, const int idelta, const double T, const d
     Trold2 = Tr;
 
     // Calculate pure fluid contributions
-    for (int i = 1; i <= NcGERG; ++i){
+    for (std::size_t i = 1; i <= NcGERG; ++i){
         if (x[i] > epsilon){
-            for (int k = 1; k <= kpol[i]; ++k){
+            for (std::size_t k = 1; k <= kpol[i]; ++k){
                 ndt = x[i] * delp[doik[i][k]] * taup[i][k];
                 ndtd = ndt * doik[i][k];
                 ar[0][1] += ndtd;
@@ -523,7 +524,7 @@ static void AlpharGERG(const int itau, const int idelta, const double T, const d
                     ar[0][3] += ndtd * (doik[i][k] - 1) * (doik[i][k] - 2);
                 }
             }
-            for (int k = 1 + kpol[i]; k <= kpol[i] + kexp[i]; ++k){
+            for (std::size_t k = 1 + kpol[i]; k <= kpol[i] + kexp[i]; ++k){
                 ndt = x[i] * delp[doik[i][k]] * taup[i][k]*Expd[coik[i][k]];
                 ex = coik[i][k] * delp[coik[i][k]];
                 ex2 = doik[i][k] - ex;
@@ -544,14 +545,14 @@ static void AlpharGERG(const int itau, const int idelta, const double T, const d
     }
 
     // Calculate mixture contributions
-    for (int i = 1; i <= NcGERG - 1; ++i){
+    for (std::size_t i = 1; i <= NcGERG - 1; ++i){
         if (x[i] > epsilon){
-            for (int j = i + 1; j <= NcGERG; ++j){
+            for (std::size_t j = i + 1; j <= NcGERG; ++j){
                 if (x[j] > epsilon){
                     mn = mNumb[i][j];
                     if (mn >= 0){
                         xijf = x[i] * x[j] * fij[i][j];
-                        for (int k = 1; k <= kpolij[mn]; ++k){
+                        for (std::size_t k = 1; k <= kpolij[mn]; ++k){
                             ndt = xijf * delp[dijk[mn][k]] * taupijk[mn][k];
                             ndtd = ndt * dijk[mn][k];
                             ar[0][1] += ndtd;
@@ -566,7 +567,7 @@ static void AlpharGERG(const int itau, const int idelta, const double T, const d
                                 ar[0][3] += ndtd * (dijk[mn][k] - 1) * (dijk[mn][k] - 2);
                             }
                         }
-                        for (int k = 1 + kpolij[mn]; k <= kpolij[mn] + kexpij[mn]; ++k){
+                        for (std::size_t k = 1 + kpolij[mn]; k <= kpolij[mn] + kexpij[mn]; ++k){
                             cij0 = cijk[mn][k] * delp[2];
                             eij0 = eijk[mn][k] * del;
                             ndt = xijf * nijk[mn][k] * delp[dijk[mn][k]] * exp(cij0 + eij0 + gijk[mn][k] + tijk[mn][k] * lntau);
@@ -597,35 +598,35 @@ static void tTermsGERG(const double lntau, const std::vector<double> &x)
 
     // Calculate temperature dependent parts of the GERG-2008 equation of state
 
-    int i, mn;
+    int p, mn;
     double taup0[12+1];
 
-    i = 5;  // Use propane to get exponents for short form of EOS
-    for (int k = 1; k <= kpol[i] + kexp[i]; ++k){
-        taup0[k] = exp(toik[i][k] * lntau);
+    p = 5;  // Use propane to get exponents for short form of EOS
+    for (std::size_t k = 1; k <= kpol[p] + kexp[p]; ++k){
+        taup0[k] = exp(toik[p][k] * lntau);
     }
-    for (int i = 1; i <= NcGERG; ++i){
+    for (std::size_t i = 1; i <= NcGERG; ++i){
         if (x[i] > epsilon){
             if (i > 4 && i != 15 && i != 18 && i != 20 ) {
-                for (int k = 1; k <= kpol[i] + kexp[i]; ++k){
+                for (std::size_t k = 1; k <= kpol[i] + kexp[i]; ++k){
                     taup[i][k] = noik[i][k] * taup0[k];
                 }
             }
             else{
-                for (int k = 1; k <= kpol[i] + kexp[i]; ++k){
+                for (std::size_t k = 1; k <= kpol[i] + kexp[i]; ++k){
                     taup[i][k] = noik[i][k] * exp(toik[i][k] * lntau);
                 }
             }
         }
     }
 
-    for (int i = 1; i <= NcGERG - 1; ++i) {
+    for (std::size_t i = 1; i <= NcGERG - 1; ++i) {
         if (x[i] > epsilon){
-            for (int j = i + 1; j <= NcGERG; ++j) {
+            for (std::size_t j = i + 1; j <= NcGERG; ++j) {
                 if (x[j] > epsilon) {
                     mn = mNumb[i][j];
                     if (mn >= 0) {
-                        for (int k = 1; k <= kpolij[mn]; ++k) {
+                        for (std::size_t k = 1; k <= kpolij[mn]; ++k) {
                             taupijk[mn][k] = nijk[mn][k] * exp(tijk[mn][k] * lntau);
                         }
                     }
@@ -646,7 +647,7 @@ static void PseudoCriticalPointGERG(const std::vector<double> &x, double &Tcx, d
     Tcx = 0;
     Vcx = 0;
     Dcx = 0;
-    for (int i = 1; i <= NcGERG; ++i){
+    for (std::size_t i = 1; i <= NcGERG; ++i){
         Tcx = Tcx + x[i] * Tc[i];
         Vcx = Vcx + x[i] / Dc[i];
     }
@@ -667,7 +668,7 @@ void SetupGERG()
   Rsr = Rs / RGERG;
   o13 = 1.0 / 3.0;
 
-  for (int i = 1; i <= MaxFlds; ++i){
+  for (std::size_t i = 1; i <= MaxFlds; ++i){
     xold[i] = 0;
   }
   Told = 0;
@@ -696,7 +697,7 @@ void SetupGERG()
   MMiGERG[21] = 39.948;     // Argon
 
   // Number of polynomial and exponential terms
-  for(int i = 1; i <= MaxFlds; ++i){
+  for(std::size_t i = 1; i <= MaxFlds; ++i){
     kpol[i] = 6;
     kexp[i] = 6;
   }
@@ -763,7 +764,7 @@ void SetupGERG()
   Tc[21] = 150.687;
 
   // Exponents in pure fluid equations
-  for(int i = 1; i <= MaxFlds; ++i){
+  for(std::size_t i = 1; i <= MaxFlds; ++i){
     Vc3[i] = 1 / pow(Dc[i], o13) / 2;
     Tc2[i] = sqrt(Tc[i]);
     coik[i][1] = 0;  doik[i][1] = 1;  toik[i][1] = 0.25;
@@ -779,7 +780,7 @@ void SetupGERG()
     coik[i][11] = 3; doik[i][11] = 3; toik[i][11] = 14.5;
     coik[i][12] = 3; doik[i][12] = 4; toik[i][12] = 12;
   }
-  for (int i = 1; i <= 4; ++i){
+  for (std::size_t i = 1; i <= 4; ++i){
     if (i != 3){
       coik[i][1] = 0;  doik[i][1] = 1;  toik[i][1] = 0.125;
       coik[i][2] = 0;  doik[i][2] = 1;  toik[i][2] = 1.125;
@@ -1226,9 +1227,9 @@ void SetupGERG()
   fij[6][7] = -0.0551240293009; // Isobutane-n-Butane
 
   // Model numbers for binary mixtures with no excess functions (mn=-1)
-  for(int i = 1; i <= MaxFlds; ++i){
+  for(std::size_t i = 1; i <= MaxFlds; ++i){
     mNumb[i][i] = -1;
-    for (int j = i + 1; j <= MaxFlds; ++j){
+    for (std::size_t j = i + 1; j <= MaxFlds; ++j){
       fij[j][i] = fij[i][j];
       mNumb[i][j] = -1;
       mNumb[j][i] = -1;
@@ -1511,22 +1512,22 @@ void SetupGERG()
   bvij[19][21] = 1;           gvij[19][21] = 1;           btij[19][21] = 1;           gtij[19][21] = 1;           // H2S-Ar
   bvij[20][21] = 1;           gvij[20][21] = 1;           btij[20][21] = 1;           gtij[20][21] = 1;           // He-Ar
 
-  for(int i = 1; i <= MaxFlds; ++i){
+  for(std::size_t i = 1; i <= MaxFlds; ++i){
     bvij[i][i] = 1;
     btij[i][i] = 1;
     gvij[i][i] = 1 / Dc[i];
     gtij[i][i] = Tc[i];
-    for (int j = i + 1; j <= MaxFlds; ++j){
-      gvij[i][j] = gvij[i][j] * bvij[i][j] * pow(Vc3[i] + Vc3[j], 3);
+    for (std::size_t j = i + 1; j <= MaxFlds; ++j){
+      gvij[i][j] = gvij[i][j] * bvij[i][j] * cb(Vc3[i] + Vc3[j]);
       gtij[i][j] = gtij[i][j] * btij[i][j] * Tc2[i] * Tc2[j];
-      bvij[i][j] = pow(bvij[i][j], 2);
-      btij[i][j] = pow(btij[i][j], 2);
+      bvij[i][j] = sq(bvij[i][j]);
+      btij[i][j] = sq(btij[i][j]);
     }
   }
 
-  for (int i = 1; i <= MaxMdl; ++i){
-    for (int j = 1; j <= MaxTrmM; ++j){
-      gijk[i][j] = -cijk[i][j] * pow(eijk[i][j], 2) + bijk[i][j] * gijk[i][j];
+  for (std::size_t i = 1; i <= MaxMdl; ++i){
+    for (std::size_t j = 1; j <= MaxTrmM; ++j){
+      gijk[i][j] = -cijk[i][j] * sq(eijk[i][j]) + bijk[i][j] * gijk[i][j];
       eijk[i][j] = 2 * cijk[i][j] * eijk[i][j] - bijk[i][j];
       cijk[i][j] = -cijk[i][j];
     }
@@ -1535,10 +1536,10 @@ void SetupGERG()
   // Ideal gas terms
   T0 = 298.15;
   d0 = 101.325 / RGERG / T0;
-  for (int i = 1; i <= MaxFlds; ++i){
+  for (std::size_t i = 1; i <= MaxFlds; ++i){
     n0i[i][3] = n0i[i][3] - 1;
     n0i[i][2] = n0i[i][2] + T0;
-    for (int j = 1; j <= 7; ++j){
+    for (std::size_t j = 1; j <= 7; ++j){
       n0i[i][j] = Rsr * n0i[i][j];
     }
     n0i[i][2] = n0i[i][2] - T0;
@@ -1550,16 +1551,16 @@ void SetupGERG()
   // This is not called in the current code, but included below to show how the values were calculated.  The return above can be removed to call this code.
   // T0 = 298.15;
   // d0 = 101.325 / RGERG / T0;
-  // for (int i = 1; i <= MaxFlds; ++i){
+  // for (std::size_t i = 1; i <= MaxFlds; ++i){
   //   n1 = 0; n2 = 0;
-  //   if (th0i[i][4] > epsilon) { n2 += - n0i[i][4] * th0i[i][4] / Tanh(th0i[i][4] / T0); n1 += - n0i[i][4] * log(Sinh(th0i[i][4] / T0)); }
-  //   if (th0i[i][5] > epsilon) { n2 += + n0i[i][5] * th0i[i][5] * Tanh(th0i[i][5] / T0); n1 += + n0i[i][5] * log(Cosh(th0i[i][5] / T0)); }
-  //   if (th0i[i][6] > epsilon) { n2 += - n0i[i][6] * th0i[i][6] / Tanh(th0i[i][6] / T0); n1 += - n0i[i][6] * log(Sinh(th0i[i][6] / T0)); }
-  //   if (th0i[i][7] > epsilon) { n2 += + n0i[i][7] * th0i[i][7] * Tanh(th0i[i][7] / T0); n1 += + n0i[i][7] * log(Cosh(th0i[i][7] / T0)); }
+  //   if (th0i[i][4] > epsilon) { n2 += - n0i[i][4] * th0i[i][4] / tanh(th0i[i][4] / T0); n1 += - n0i[i][4] * log(sinh(th0i[i][4] / T0)); }
+  //   if (th0i[i][5] > epsilon) { n2 += + n0i[i][5] * th0i[i][5] * tanh(th0i[i][5] / T0); n1 += + n0i[i][5] * log(cosh(th0i[i][5] / T0)); }
+  //   if (th0i[i][6] > epsilon) { n2 += - n0i[i][6] * th0i[i][6] / tanh(th0i[i][6] / T0); n1 += - n0i[i][6] * log(sinh(th0i[i][6] / T0)); }
+  //   if (th0i[i][7] > epsilon) { n2 += + n0i[i][7] * th0i[i][7] * tanh(th0i[i][7] / T0); n1 += + n0i[i][7] * log(cosh(th0i[i][7] / T0)); }
   //   n0i[i][3] = n0i[i][3] - 1;
   //   n0i[i][1] = n1 - n2 / T0 + n0i[i][3] * (1 + log(T0));
   //   n0i[i][2] = n2 - n0i[i][3] * T0;
-  //   for (int j = 1; j <= 7; ++j){
+  //   for (std::size_t j = 1; j <= 7; ++j){
   //     n0i[i][j] = Rsr * n0i[i][j];
   //   }
   //   n0i[i][2] = n0i[i][2] - T0;

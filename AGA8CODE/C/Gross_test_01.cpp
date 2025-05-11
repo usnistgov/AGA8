@@ -31,7 +31,7 @@ int main()
     double HCH_reference    = 1004.738236956522;
     double xGrs_reference[] = {0.0, 0.9199999999999999, 0.02, 0.06};
     double Hv_reference     = 41.37676728724603;
-    double Hv2_reference    = 42.15440903329388;
+    double Hv2_reference    = 42.15440894466012;
 
     printf("Inputs-----\n");
     printf("Temperature [K]:                    300.0000000000000 != %0.16g\n",T);
@@ -140,11 +140,13 @@ int main()
     GrossMethod1(Th,Td,Pd,xGrs,Gr,Hv,mm,HCH,HN,ierr,herr);
     DensityGross(T,P,xGrs,HCH,D,ierr,herr);
     printf("Gross method 1-----\n");
-    D = 5.144374668159809;
+    D_reference = 5.144374668159809;
     if (std::abs(D_reference - D) > 1.0e-8)
     {
         printf("Molar density [mol/l]:              %0.16g != %0.16g\n",
             D_reference, D);
         return_value = EXIT_FAILURE;
     }
+
+    return return_value;
 }

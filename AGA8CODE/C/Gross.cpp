@@ -81,6 +81,9 @@ static double  xHN[MaxFlds+1] , MMiGross[MaxFlds+1]; // +1 since C/C++ is 0-base
 static double b0[4][4], b1[4][4], b2[4][4], bCHx[3][3], cCHx[3][3];
 static double c0[4][4][4], c1[4][4][4], c2[4][4][4];
 
+inline double sq(double x) { return x*x; }
+inline double cb(double x) { return x*x*x; }
+
 void MolarMassGross(const std::vector<double> &x, double &Mm)
 {
 // Sub MolarMassGross(x, Mm)
@@ -129,7 +132,7 @@ void PressureGross(const double T, const double D, const std::vector<double> &xG
     P = D*RGross*T;
     Bmix(T, xGrs, HCH, B, C, ierr, herr);
     if (ierr > 0) { return; }
-    Z = 1 + B*D + C*pow(D, 2);
+    Z = 1 + B*D + C*sq(D);
     P = D*RGross*T*Z;
     dPdDsave = RGross*T*(1 + 2*B*D + 3*C*D*D);
     if (P < 0){
@@ -261,7 +264,7 @@ void GrossInputs(const double T, const double P, const std::vector<double> &x, s
     ierr = 0;
     herr = "";
     GrossHv(x, xGrs, HN, HCH);
-    Bref = -0.12527 + 0.000591*T - 0.000000662*pow(T, 2);   // 2nd virial coefficient of the reference fluid at T
+    Bref = -0.12527 + 0.000591*T - 0.000000662*sq(T);   // 2nd virial coefficient of the reference fluid at T
     Zref = 1 + Bref*P/RGross/T;                             // Z of the reference fluid at T and P
     Mref = 28.9625;
     MolarMassGross(x, Mm);
@@ -298,23 +301,23 @@ void Bmix(const double T, const std::vector<double> &xGrs, const double HCH, dou
 
     // Temperature dependent Bi and Ci values for obtaining B(CH-CH) and C(CH-CH-CH)
     for (int i = 0; i <= 2; ++i){
-        bCH[i] = bCHx[0][i] + bCHx[1][i]*T + bCHx[2][i]*pow(T, 2);
-        cCH[i] = cCHx[0][i] + cCHx[1][i]*T + cCHx[2][i]*pow(T, 2);
+        bCH[i] = bCHx[0][i] + bCHx[1][i]*T + bCHx[2][i]*sq(T);
+        cCH[i] = cCHx[0][i] + cCHx[1][i]*T + cCHx[2][i]*sq(T);
     }
 
     // Bij and Cijk values for nitrogen and CO2
     for(int i = 2; i <= 3; ++i){
         for(int j = i; j <= 3; ++j){
-            BB[i][j] = b0[i][j] + b1[i][j] * T + b2[i][j]*pow(T, 2);
+            BB[i][j] = b0[i][j] + b1[i][j] * T + b2[i][j]*sq(T);
             for(int k = j; k <= 3; ++k){
-                CC[i][j][k] = c0[i][j][k] + c1[i][j][k] * T + c2[i][j][k]*pow(T, 2);
+                CC[i][j][k] = c0[i][j][k] + c1[i][j][k] * T + c2[i][j][k]*sq(T);
             }
         }
     }
 
     // Bij values for use in calculating Bmix
-    BB[1][1] = bCH[0] + bCH[1]*HCH + bCH[2]*pow(HCH, 2); // B(CH-CH) for the equivalent hydrocarbon
-    BB[1][2] = (0.72 + 0.00001875 * pow(320 - T, 2))*(BB[1][1] + BB[2][2])/2.0; // B(CH-N2)
+    BB[1][1] = bCH[0] + bCH[1]*HCH + bCH[2]*sq(HCH); // B(CH-CH) for the equivalent hydrocarbon
+    BB[1][2] = (0.72 + 0.00001875 * sq(320 - T))*(BB[1][1] + BB[2][2])/2.0; // B(CH-N2)
     if (BB[1][1]*BB[3][3] < 0){
         ierr = 4; herr = "Invalid input in Bmix routine";
         return;
@@ -322,29 +325,29 @@ void Bmix(const double T, const std::vector<double> &xGrs, const double HCH, dou
     BB[1][3] = -0.865 * sqrt(BB[1][1] * BB[3][3]); // B(CH-CO2)
 
     // Cijk values for use in calculating Cmix
-    CC[1][1][1] = cCH[0] + cCH[1] * HCH + cCH[2] * pow(HCH, 2); // C(CH-CH-CH) for the equivalent hydrocarbon
+    CC[1][1][1] = cCH[0] + cCH[1] * HCH + cCH[2] * sq(HCH); // C(CH-CH-CH) for the equivalent hydrocarbon
     if (CC[1][1][1] < 0 || CC[3][3][3] < 0){
         ierr = 5; herr = "Invalid input in Bmix routine";
         return;
     }
-    CC[1][1][2] = (0.92 + 0.0013 * (T - 270)) * pow(pow(CC[1][1][1], 2) * CC[2][2][2], onethrd); // C(CH-CH-N2)
-    CC[1][2][2] = (0.92 + 0.0013 * (T - 270)) * pow(pow(CC[2][2][2], 2) * CC[1][1][1], onethrd); // C(CH-N2-N2)
-    CC[1][1][3] = 0.92 * pow(pow(CC[1][1][1], 2) * CC[3][3][3], onethrd); // C(CH-CH-CO2)
-    CC[1][3][3] = 0.92 * pow(pow(CC[3][3][3], 2) * CC[1][1][1], onethrd); // C(CH-CO2-CO2)
+    CC[1][1][2] = (0.92 + 0.0013 * (T - 270)) * pow(sq(CC[1][1][1]) * CC[2][2][2], onethrd); // C(CH-CH-N2)
+    CC[1][2][2] = (0.92 + 0.0013 * (T - 270)) * pow(sq(CC[2][2][2]) * CC[1][1][1], onethrd); // C(CH-N2-N2)
+    CC[1][1][3] = 0.92 * pow(sq(CC[1][1][1]) * CC[3][3][3], onethrd); // C(CH-CH-CO2)
+    CC[1][3][3] = 0.92 * pow(sq(CC[3][3][3]) * CC[1][1][1], onethrd); // C(CH-CO2-CO2)
     CC[1][2][3] = 1.1 * pow(CC[1][1][1] * CC[2][2][2] * CC[3][3][3], onethrd); // C(CH-N2-CO2)
 
     // Calculate Bmix and Cmix
     for (std::size_t i = 1; i <= 3; ++i){
         for(std::size_t j = i; j <= 3; ++j){
             if (i == j){
-                B += BB[i][i]*pow(xGrs[i], 2);
+                B += BB[i][i]*sq(xGrs[i]);
             }
             else{
                 B += 2*BB[i][j]*xGrs[i]*xGrs[j];
             }
             for(std::size_t k = j; k <= 3; ++k){
                 if (i == j && j == k) {
-                    C += CC[i][i][i]*pow(xGrs[i], 3);
+                    C += CC[i][i][i]*cb(xGrs[i]);
                 }
                 else if (i != j && j != k && i != k){
                     C += 6*CC[i][j][k]*xGrs[i]*xGrs[j]*xGrs[k];
@@ -390,7 +393,7 @@ void GrossMethod1(const double Th, const double Td, const double Pd, std::vector
     Zd = 1;
     G1 = -2.709328;
     G2 = 0.021062199;
-    Bref = -0.12527 + 0.000591*Td - 0.000000662*pow(Td, 2);              // [dm^3/mol]
+    Bref = -0.12527 + 0.000591*Td - 0.000000662*sq(Td);              // [dm^3/mol]
     Zref = (1 + Pd / RGross / Td * Bref);
     for (int i = 0; i < 20; ++i){
         Zold = Zd;
@@ -449,7 +452,7 @@ void GrossMethod2(const double Th, const double Td, const double Pd, std::vector
     Z = 1;
     G1 = -2.709328;
     G2 = 0.021062199;
-    Bref = -0.12527 + 0.000591*Td - 0.000000662*pow(Td, 2);
+    Bref = -0.12527 + 0.000591*Td - 0.000000662*sq(Td);
     Zref = (1 + Pd / RGross / Td * Bref);
     for (int i = 0; i < 20; ++i){
         Zold = Z;
@@ -610,7 +613,7 @@ int main(){
     DensityGross(T,P,xGrs,HCH,D,ierr,herr);
     printf("Gross method 2-----\n");
     printf("Molar density [mol/l]:              5.197833636353455 != %0.16g\n", D);
-    printf("Volumetric heating value at Td,Pd:  42.15440903329388 != %0.16g\n", Hv2);
+    printf("Volumetric heating value at Td,Pd:  42.15440894466012 != %0.16g\n", Hv2);
 
     xGrs[2] = x[2];
     xGrs[3] = x[3];
